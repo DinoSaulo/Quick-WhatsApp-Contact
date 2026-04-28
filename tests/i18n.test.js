@@ -18,4 +18,20 @@ describe("i18n utils", () => {
       "Final number: +5511999999999"
     );
   });
+
+  it("expoe textos de configuracoes em ambos os idiomas", () => {
+    const en = getMessages("en-US");
+    const pt = getMessages("pt-BR");
+    expect(en.optionsTitle).toBe("Extension settings");
+    expect(pt.optionsTitle).toBe("Configurações da extensão");
+    expect(en.optionLanguage).toBe("Language");
+    expect(pt.optionLanguage).toBe("Idioma");
+  });
+
+  it("quando faltar parametro na interpolacao retorna string vazia no placeholder", () => {
+    const messages = getMessages("pt-BR");
+    expect(t(messages, "validationInvalidFormat", { ddi: "55" })).toBe(
+      "Formato inválido para +55. Use: "
+    );
+  });
 });

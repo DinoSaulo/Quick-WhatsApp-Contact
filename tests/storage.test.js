@@ -92,6 +92,12 @@ describe("storage utils", () => {
     );
   });
 
+  it("consumePendingContextCountry retorna string vazia quando nao houver valor", async () => {
+    chrome.storage.session.get.mockResolvedValue({});
+    const consumed = await consumePendingContextCountry();
+    expect(consumed).toBe("");
+  });
+
   it("getAutoHighlightEnabled usa default true", async () => {
     chrome.storage.sync.get.mockResolvedValue({});
     const result = await getAutoHighlightEnabled();
@@ -131,10 +137,31 @@ describe("storage utils", () => {
     });
   });
 
+  it("setLanguage aplica fallback para en-US quando idioma for invalido", async () => {
+    await setLanguage("es-ES");
+    expect(chrome.storage.sync.set).toHaveBeenCalledWith({
+      "quick-whatsapp-contact.language": "en-US"
+    });
+  });
+
   it("getSettings retorna defaults quando vazio", async () => {
     chrome.storage.sync.get.mockResolvedValue({});
     const settings = await getSettings();
     expect(settings).toEqual(DEFAULT_SETTINGS);
+  });
+
+  it("getSettings retorna valores salvos e normaliza linguagem", async () => {
+    chrome.storage.sync.get.mockResolvedValue({
+      "quick-whatsapp-contact.auto-highlight-enabled": false,
+      "quick-whatsapp-contact.dark-mode-enabled": true,
+      "quick-whatsapp-contact.language": "pt-br"
+    });
+    const settings = await getSettings();
+    expect(settings).toEqual({
+      autoHighlightEnabled: false,
+      darkModeEnabled: true,
+      language: "pt-BR"
+    });
   });
 
   it("saveSettings persiste estrutura completa", async () => {
@@ -147,6 +174,15 @@ describe("storage utils", () => {
       "quick-whatsapp-contact.auto-highlight-enabled": false,
       "quick-whatsapp-contact.dark-mode-enabled": true,
       "quick-whatsapp-contact.language": "pt-BR"
+    });
+  });
+
+  it("saveSettings aplica defaults quando campos nao sao enviados", async () => {
+    await saveSettings({ language: "invalid" });
+    expect(chrome.storage.sync.set).toHaveBeenCalledWith({
+      "quick-whatsapp-contact.auto-highlight-enabled": true,
+      "quick-whatsapp-contact.dark-mode-enabled": false,
+      "quick-whatsapp-contact.language": "en-US"
     });
   });
 });

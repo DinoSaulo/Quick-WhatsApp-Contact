@@ -28,6 +28,14 @@ describe("phone utils", () => {
     expect(joinCountryCodeAndNumber("55", "(11) 99999-8888")).toBe("5511999998888");
   });
 
+  it("concatena corretamente quando o DDI possui caracteres não numéricos", () => {
+    expect(joinCountryCodeAndNumber("1-242", "555-1234")).toBe("12425551234");
+  });
+
+  it("concatena corretamente quando o número local já vem com prefixo +", () => {
+    expect(joinCountryCodeAndNumber("351", "+91 234 5678")).toBe("351912345678");
+  });
+
   it("não concatena quando o número local esta vazio", () => {
     expect(joinCountryCodeAndNumber("55", "   ")).toBe("");
   });

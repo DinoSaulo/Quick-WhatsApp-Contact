@@ -2,11 +2,8 @@
   const PROCESS_SELECTION_MESSAGE = "quick-whatsapp-contact.process-selection";
   const AUTO_HIGHLIGHT_ENABLED_KEY = "quick-whatsapp-contact.auto-highlight-enabled";
   const LANGUAGE_KEY = "quick-whatsapp-contact.language";
-  const PHONE_MATCH_REGEX = /(?:\+?\d[\d().\s-]{6,}\d)/g;
-  const MAX_TEXT_LENGTH = 1000;
-  const ROOT_CLASS = "qwc-phone-root";
-  const BUTTON_CLASS = "qwc-phone-action";
-  const PHONE_TEXT_CLASS = "qwc-phone-text";
+  const ACTION_CLASS = "qwc-tel-action";
+  const ACTION_BUTTON_CLASS = "qwc-tel-action-button";
 
   const TEXTS = {
     "en-US": { actionWhatsapp: "Open in WhatsApp" },
@@ -30,7 +27,7 @@
     language = normalizeLanguage(stored[LANGUAGE_KEY]);
 
     if (isEnabled) {
-      scanDocument();
+      scanTelLinks();
       attachObserver();
     }
 
@@ -47,11 +44,11 @@
       if (changes[AUTO_HIGHLIGHT_ENABLED_KEY]) {
         isEnabled = Boolean(changes[AUTO_HIGHLIGHT_ENABLED_KEY].newValue);
         if (isEnabled) {
-          scanDocument();
+          scanTelLinks();
           attachObserver();
         } else {
           detachObserver();
-          clearHighlights();
+          clearActions();
         }
       }
     });
@@ -73,13 +70,13 @@
     const style = document.createElement("style");
     style.id = "qwc-highlight-style";
     style.textContent = `
-      .${ROOT_CLASS} {
+      .${ACTION_CLASS} {
         display: inline-flex;
-        align-items: center;
-        gap: 4px;
+        margin-left: 4px;
+        vertical-align: middle;
       }
 
-      .${BUTTON_CLASS} {
+      .${ACTION_BUTTON_CLASS} {
         width: 16px;
         height: 16px;
         border: none;
@@ -87,10 +84,9 @@
         margin: 0;
         background: transparent;
         cursor: pointer;
-        vertical-align: middle;
       }
 
-      .${BUTTON_CLASS} img {
+      .${ACTION_BUTTON_CLASS} img {
         display: block;
         width: 16px;
         height: 16px;
@@ -112,14 +108,20 @@
 
       mutationTimer = window.setTimeout(() => {
         for (const mutation of mutations) {
-          mutation.addedNodes.forEach((addedNode) => processNode(addedNode));
+          if (mutation.type === "attributes") {
+            processNode(mutation.target);
+          } else {
+            mutation.addedNodes.forEach((addedNode) => processNode(addedNode));
+          }
         }
       }, 120);
     });
 
     observer.observe(document.body || document.documentElement, {
       childList: true,
-      subtree: true
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["href"]
     });
   }
 
@@ -131,110 +133,58 @@
     observer = null;
   }
 
-  function clearHighlights() {
-    const highlights = document.querySelectorAll(`.${ROOT_CLASS}`);
-    highlights.forEach((root) => {
-      const phoneText = root.querySelector(`.${PHONE_TEXT_CLASS}`);
-      if (!phoneText || !root.parentNode) {
-        return;
-      }
-      root.replaceWith(document.createTextNode(phoneText.textContent || ""));
-    });
+  function clearActions() {
+    document.querySelectorAll(`.${ACTION_CLASS}`).forEach((element) => element.remove());
   }
 
-  function scanDocument() {
+  function scanTelLinks() {
     processNode(document.body || document.documentElement);
   }
 
   function processNode(node) {
-    if (!isEnabled || !node) {
+    if (!isEnabled || !node || !(node instanceof Element)) {
       return;
     }
 
-    if (node.nodeType === Node.TEXT_NODE) {
-      processTextNode(node);
-      return;
+    if (node.matches?.('a[href^="tel:"]')) {
+      ensureActionForLink(node);
     }
 
-    if (!(node instanceof Element)) {
-      return;
-    }
-
-    if (shouldSkipElement(node)) {
-      return;
-    }
-
-    const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT);
-    const textNodes = [];
-    while (walker.nextNode()) {
-      const current = walker.currentNode;
-      if (current && current.parentElement && !shouldSkipElement(current.parentElement)) {
-        textNodes.push(current);
-      }
-    }
-
-    textNodes.forEach(processTextNode);
-  }
-
-  function processTextNode(textNode) {
-    if (!textNode || !textNode.nodeValue) {
-      return;
-    }
-
-    const originalText = textNode.nodeValue;
-    if (!originalText.trim() || originalText.length > MAX_TEXT_LENGTH) {
-      return;
-    }
-
-    PHONE_MATCH_REGEX.lastIndex = 0;
-    const matches = [...originalText.matchAll(PHONE_MATCH_REGEX)];
-    if (!matches.length) {
-      return;
-    }
-
-    const fragment = document.createDocumentFragment();
-    let cursor = 0;
-    let hasReplacement = false;
-
-    matches.forEach((match) => {
-      const matchedText = match[0];
-      const startIndex = match.index ?? 0;
-      const endIndex = startIndex + matchedText.length;
-
-      if (startIndex > cursor) {
-        fragment.appendChild(document.createTextNode(originalText.slice(cursor, startIndex)));
-      }
-
-      if (isLikelyPhoneSelection(matchedText)) {
-        fragment.appendChild(createHighlightedNode(matchedText.trim()));
-        hasReplacement = true;
-      } else {
-        fragment.appendChild(document.createTextNode(matchedText));
-      }
-
-      cursor = endIndex;
+    node.querySelectorAll?.('a[href^="tel:"]').forEach((link) => {
+      ensureActionForLink(link);
     });
-
-    if (cursor < originalText.length) {
-      fragment.appendChild(document.createTextNode(originalText.slice(cursor)));
-    }
-
-    if (hasReplacement) {
-      textNode.replaceWith(fragment);
-    }
   }
 
-  function createHighlightedNode(phoneText) {
-    const root = document.createElement("span");
-    root.className = ROOT_CLASS;
+  function ensureActionForLink(linkElement) {
+    if (!(linkElement instanceof HTMLAnchorElement)) {
+      return;
+    }
 
-    const text = document.createElement("span");
-    text.className = PHONE_TEXT_CLASS;
-    text.textContent = phoneText;
+    const hrefValue = (linkElement.getAttribute("href") || "").trim();
+    if (!hrefValue.toLowerCase().startsWith("tel:")) {
+      const next = linkElement.nextElementSibling;
+      if (next && next.classList.contains(ACTION_CLASS)) {
+        next.remove();
+      }
+      return;
+    }
+
+    const next = linkElement.nextElementSibling;
+    if (next && next.classList.contains(ACTION_CLASS)) {
+      return;
+    }
+
+    const telValue = hrefValue.slice(4).trim();
+    if (!telValue) {
+      return;
+    }
+
+    const actionRoot = document.createElement("span");
+    actionRoot.className = ACTION_CLASS;
 
     const button = document.createElement("button");
     button.type = "button";
-    button.className = BUTTON_CLASS;
+    button.className = ACTION_BUTTON_CLASS;
     button.title = getText("actionWhatsapp");
     button.setAttribute("aria-label", getText("actionWhatsapp"));
 
@@ -248,63 +198,19 @@
       event.stopPropagation();
       chrome.runtime.sendMessage({
         type: PROCESS_SELECTION_MESSAGE,
-        selectionText: phoneText
+        selectionText: telValue
       });
     });
 
-    root.appendChild(text);
-    root.appendChild(button);
-    return root;
+    actionRoot.appendChild(button);
+    linkElement.insertAdjacentElement("afterend", actionRoot);
   }
 
   function refreshButtonLabels() {
     const label = getText("actionWhatsapp");
-    const buttons = document.querySelectorAll(`.${BUTTON_CLASS}`);
-    buttons.forEach((button) => {
+    document.querySelectorAll(`.${ACTION_BUTTON_CLASS}`).forEach((button) => {
       button.title = label;
       button.setAttribute("aria-label", label);
     });
-  }
-
-  function shouldSkipElement(element) {
-    if (!element || !(element instanceof Element)) {
-      return true;
-    }
-
-    if (element.closest(`.${ROOT_CLASS}`)) {
-      return true;
-    }
-
-    const tagName = element.tagName.toLowerCase();
-    return (
-      tagName === "script" ||
-      tagName === "style" ||
-      tagName === "noscript" ||
-      tagName === "textarea" ||
-      tagName === "input" ||
-      tagName === "select" ||
-      tagName === "button" ||
-      tagName === "code" ||
-      tagName === "pre" ||
-      element.isContentEditable
-    );
-  }
-
-  function isLikelyPhoneSelection(text) {
-    if (!text) {
-      return false;
-    }
-
-    const raw = String(text).trim();
-    if (raw.length < 7) {
-      return false;
-    }
-
-    if (!/^[+\d\s().-]+$/.test(raw)) {
-      return false;
-    }
-
-    const digits = raw.replace(/\D/g, "");
-    return digits.length >= 8 && digits.length <= 15;
   }
 })();

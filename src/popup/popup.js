@@ -58,7 +58,7 @@ class WhatsAppMessagePopup extends HTMLElement {
             </div>
             <p class="description">${description}</p>
             <form id="message-form">
-              <div class="field" ${this.requiresCountrySelection ? "" : "hidden"}>
+              <div class="field">
                 <label for="country-hidden">${this.messages.labelCountry}</label>
                 ${this.buildCountryPickerMarkup(this.selectedCountryCode)}
               </div>
@@ -186,7 +186,7 @@ class WhatsAppMessagePopup extends HTMLElement {
       const message = messageInput?.value ?? "";
       phoneInput?.setCustomValidity("");
 
-      if (this.requiresCountrySelection && !hasCountryCode(phone)) {
+      if (!hasCountryCode(phone)) {
         const selectedCountry = this.getSelectedCountry();
         const expectedFormats = getExpectedFormatsForDdi(selectedCountry.dialCode);
         const localNumberIsValid = isLocalNumberValidForDdi(phone, selectedCountry.dialCode);

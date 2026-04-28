@@ -2,7 +2,7 @@ import { detectCountryCodeFromBrowserLocation, detectCountryCodeFromUrl } from "
 import { describe, expect, it } from "vitest";
 
 describe("browser location detection", () => {
-  it("usa o region code da linguagem principal quando disponivel", () => {
+  it("uses region code from primary language when available", () => {
     expect(
       detectCountryCodeFromBrowserLocation({
         languages: ["pt-BR", "en-US"],
@@ -11,7 +11,7 @@ describe("browser location detection", () => {
     ).toBe("BR");
   });
 
-  it("resolve UK para GB", () => {
+  it("normalizes UK to GB", () => {
     expect(
       detectCountryCodeFromBrowserLocation({
         languages: ["en-UK"],
@@ -20,7 +20,16 @@ describe("browser location detection", () => {
     ).toBe("GB");
   });
 
-  it("usa fallback +1 (US) quando não consegue identificar o país", () => {
+  it("supports locale with underscore", () => {
+    expect(
+      detectCountryCodeFromBrowserLocation({
+        languages: ["en_GB"],
+        language: "en-US"
+      })
+    ).toBe("US");
+  });
+
+  it("uses fallback US when country cannot be detected", () => {
     expect(
       detectCountryCodeFromBrowserLocation({
         languages: ["en"],
@@ -38,6 +47,11 @@ describe("URL TLD detection", () => {
 
   it("detects PT from .pt", () => {
     expect(detectCountryCodeFromUrl("https://www.site.pt")).toBe("PT");
+  });
+
+  it("detects uppercase TLD", () => {
+    expect(detectCountryCodeFromUrl("https://dominio.COM.BR")).toBe("BR");
+    expect(detectCountryCodeFromUrl("https://dominio.PT")).toBe("PT");
   });
 
   it("returns empty string for non-country specific TLDs like .com or .org", () => {
