@@ -151,14 +151,32 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
-  # ── Level 3: Installation test (Ubuntu + Chrome only) ──────────────────────
+  # ── Level 3: Installation test (all platforms) ─────────────────────────────
   installation-test:
-    name: "3 · Instalacao no Chrome"
+    name: "3 · Instalacao no Chrome · ${{ matrix.label }}"
     needs: integration-tests
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    container: ${{ matrix.container }}
     timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            label: Ubuntu
+          - os: ubuntu-latest
+            label: Fedora
+            container: fedora:latest
+          - os: macos-latest
+            label: macOS
+          - os: windows-latest
+            label: Windows
 
     steps:
+      - name: Instalar dependencias do sistema (Fedora)
+        if: matrix.label == 'Fedora'
+        run: dnf install -y --setopt=install_weak_deps=False git curl
+
       - name: Clonar repositorio
         uses: actions/checkout@v4
 
