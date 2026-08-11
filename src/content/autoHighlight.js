@@ -77,19 +77,41 @@
       }
 
       .${ACTION_BUTTON_CLASS} {
-        width: 16px;
-        height: 16px;
+        width: 19.2px !important;
+        height: 19.2px !important;
+        min-width: 19.2px !important;
+        min-height: 19.2px !important;
         border: none;
+        border-radius: 50%;
         padding: 0;
         margin: 0;
         background: transparent;
         cursor: pointer;
+        transform-origin: center;
+        animation: qwc-tel-action-pulse 1.6s ease-in-out infinite !important;
       }
 
       .${ACTION_BUTTON_CLASS} img {
         display: block;
-        width: 16px;
-        height: 16px;
+        width: 19.2px !important;
+        height: 19.2px !important;
+      }
+
+      @keyframes qwc-tel-action-pulse {
+        0%, 100% {
+          transform: scale(1);
+          filter: drop-shadow(0 0 0 rgba(37, 211, 102, 0));
+        }
+        50% {
+          transform: scale(1.14);
+          filter: drop-shadow(0 0 4px rgba(37, 211, 102, 0.7));
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .${ACTION_BUTTON_CLASS} {
+          animation: none !important;
+        }
       }
     `;
 

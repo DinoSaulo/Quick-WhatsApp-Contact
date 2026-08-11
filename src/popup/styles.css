@@ -275,3 +275,63 @@ body {
   border-bottom-left-radius: 19px;
   border-bottom-right-radius: 19px;
 }
+
+body.popup-shell {
+  width: 360px;
+  overflow: hidden;
+}
+
+.popup-shell .panel {
+  padding: 12px;
+}
+
+.popup-shell .card__content {
+  padding: 16px;
+}
+
+.popup-shell .title {
+  margin: 4px 0 6px;
+  font-size: 22px;
+}
+
+.popup-shell .description {
+  margin-bottom: 12px;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.popup-shell .field {
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.popup-shell .field input,
+.popup-shell .field textarea,
+.popup-shell .country-picker__trigger {
+  padding: 10px 12px;
+}
+
+.popup-shell .field textarea {
+  min-height: 72px;
+  resize: none;
+}
+
+.popup-shell .country-picker__menu {
+  max-height: 240px;
+}
+
+.popup-shell .actions {
+  margin-top: 12px;
+}
+
+.popup-shell .button {
+  padding: 10px 16px;
+}
+
+.popup-shell .button--small {
+  padding: 8px 12px;
+}
+
+.popup-shell .preview {
+  padding: 10px 16px;
+}

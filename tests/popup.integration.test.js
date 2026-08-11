@@ -1,5 +1,12 @@
 /* @vitest-environment jsdom */
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const popupStyles = readFileSync(
+  resolve(import.meta.dirname, "../src/popup/styles.css"),
+  "utf8"
+);
 
 const mockStorage = vi.hoisted(() => ({
   consumePendingContextCountry: vi.fn(),
@@ -54,6 +61,22 @@ describe("popup integration", () => {
     };
 
     window.close = vi.fn();
+  });
+
+  it("keeps the popup compact and prevents root scrollbars", () => {
+    expect(popupStyles).toMatch(
+      /body\.popup-shell\s*\{[^}]*width:\s*360px;[^}]*overflow:\s*hidden;/s
+    );
+    expect(popupStyles).toMatch(/\.popup-shell \.panel\s*\{[^}]*padding:\s*12px;/s);
+    expect(popupStyles).toMatch(
+      /\.popup-shell \.card__content\s*\{[^}]*padding:\s*16px;/s
+    );
+    expect(popupStyles).toMatch(
+      /\.popup-shell \.field textarea\s*\{[^}]*min-height:\s*72px;[^}]*resize:\s*none;/s
+    );
+    expect(popupStyles).toMatch(
+      /\.popup-shell \.country-picker__menu\s*\{[^}]*max-height:\s*240px;/s
+    );
   });
 
   it("renders the selected country flag from a packaged Twemoji asset", async () => {

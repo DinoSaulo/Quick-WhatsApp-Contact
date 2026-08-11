@@ -60,6 +60,24 @@ describe("automatic tel link helper integration", () => {
     expect(icon.src).toBe("chrome-extension://test-id/icons/icon16.png");
   });
 
+  it("renders the tel action 20% larger with an accessible pulse animation", async () => {
+    const { dom } = await createPage({
+      html: '<a href="tel:+351912345678">Call</a>'
+    });
+
+    const styles = dom.window.document.getElementById("qwc-highlight-style").textContent;
+
+    expect(styles).toMatch(/\.qwc-tel-action-button\s*\{[^}]*width:\s*19\.2px/s);
+    expect(styles).toMatch(/\.qwc-tel-action-button\s+img\s*\{[^}]*width:\s*19\.2px/s);
+    expect(styles).toContain("@keyframes qwc-tel-action-pulse");
+    expect(styles).toContain(
+      "animation: qwc-tel-action-pulse 1.6s ease-in-out infinite !important"
+    );
+    expect(styles).toMatch(
+      /@media \(prefers-reduced-motion: reduce\)[\s\S]*animation:\s*none !important/
+    );
+  });
+
   it("sends only the tel value through the expected message protocol", async () => {
     const { dom, sendMessage } = await createPage({
       html: '<a href="tel: +55 (11) 99999-8888 ">Call</a>'

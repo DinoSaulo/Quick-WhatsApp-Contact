@@ -1,5 +1,16 @@
 /* @vitest-environment jsdom */
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const popupStyles = readFileSync(
+  resolve(import.meta.dirname, "../src/popup/styles.css"),
+  "utf8"
+);
+const optionsStyles = readFileSync(
+  resolve(import.meta.dirname, "../src/options/options.css"),
+  "utf8"
+);
 
 const mockStorage = vi.hoisted(() => ({
   getSettings: vi.fn(),
@@ -48,6 +59,35 @@ describe("options page integration", () => {
         remove: vi.fn().mockResolvedValue(true)
       }
     };
+  });
+
+  it("keeps the options card centered without inheriting popup dimensions", () => {
+    expect(optionsStyles).toMatch(
+      /\.options-shell\s*\{[^}]*max-width:\s*720px;[^}]*margin:\s*24px auto;/s
+    );
+    expect(popupStyles).toMatch(/body\.popup-shell\s*\{[^}]*width:\s*360px;/s);
+    const sharedBodyRule = popupStyles.match(/(?:^|\n)body\s*\{([^}]*)\}/)?.[1] ?? "";
+    expect(sharedBodyRule).not.toMatch(/(?:^|\n)\s*width:\s*360px;/);
+    expect(sharedBodyRule).not.toMatch(/(?:^|\n)\s*overflow:\s*hidden;/);
+  });
+
+  it("loads every saved setting into the options controls", async () => {
+    mockStorage.getSettings.mockResolvedValue({
+      language: "pt-BR",
+      darkModeEnabled: true,
+      autoHighlightEnabled: true,
+      defaultCountry: "PT"
+    });
+
+    const page = await renderOptionsPage();
+
+    expect(page.querySelector("#auto-highlight").checked).toBe(true);
+    expect(page.querySelector("#dark-mode").checked).toBe(true);
+    expect(page.querySelector("#language").value).toBe("pt-BR");
+    expect(page.querySelector("#default-country-hidden").value).toBe("PT");
+    expect(page.querySelector("#country-trigger").textContent).toContain("Portugal");
+    expect(document.documentElement.dataset.theme).toBe("dark");
+    expect(document.documentElement.lang).toBe("pt-BR");
   });
 
   it("renders default country picker with Automatic option when defaultCountry is empty", async () => {

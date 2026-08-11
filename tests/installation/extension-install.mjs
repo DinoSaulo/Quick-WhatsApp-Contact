@@ -71,6 +71,8 @@ try {
   const pageErrors = [];
   popup.on("pageerror", (error) => pageErrors.push(String(error)));
 
+  await popup.setViewport({ width: 360, height: 600, deviceScaleFactor: 1 });
+
   await popup.goto(popupUrl, {
     waitUntil: "domcontentloaded",
     timeout: 20_000,
@@ -84,6 +86,8 @@ try {
 
   const installedState = await popup.evaluate(() => {
     const flag = document.querySelector("#country-trigger .country-picker__flag-img");
+    const panel = document.querySelector(".panel");
+    const panelBounds = panel?.getBoundingClientRect();
 
     return {
       runtimeId: chrome.runtime.id,
@@ -93,6 +97,14 @@ try {
       flagUrl: flag?.src,
       flagComplete: flag?.complete,
       flagNaturalWidth: flag?.naturalWidth,
+      layout: {
+        viewportWidth: window.innerWidth,
+        viewportHeight: window.innerHeight,
+        documentWidth: document.documentElement.scrollWidth,
+        documentHeight: document.documentElement.scrollHeight,
+        panelRight: panelBounds?.right,
+        panelBottom: panelBounds?.bottom,
+      },
     };
   });
 
@@ -109,7 +121,64 @@ try {
   assert.match(flagUrl.pathname, /\/assets\/twemoji\/.*\.svg$/);
   assert.equal(installedState.flagComplete, true);
   assert.ok(installedState.flagNaturalWidth > 0, "A bandeira local não carregou.");
+  assert.ok(
+    installedState.layout.documentWidth <= installedState.layout.viewportWidth &&
+      installedState.layout.panelRight <= installedState.layout.viewportWidth,
+    "O popup possui overflow horizontal.",
+  );
+  assert.ok(
+    installedState.layout.documentHeight <= installedState.layout.viewportHeight &&
+      installedState.layout.panelBottom <= installedState.layout.viewportHeight,
+    "O conteúdo do popup não cabe integralmente na altura compacta de 600px.",
+  );
   assert.deepEqual(pageErrors, [], `Erros no popup: ${pageErrors.join("; ")}`);
+
+  await popup.evaluate(async () => {
+    await chrome.storage.sync.set({
+      "quick-whatsapp-contact.auto-highlight-enabled": false,
+      "quick-whatsapp-contact.dark-mode-enabled": true,
+      "quick-whatsapp-contact.language": "pt-BR",
+      "quick-whatsapp-contact.default-country": "PT",
+    });
+  });
+
+  const optionsPage = await browser.newPage();
+  await optionsPage.setViewport({ width: 1200, height: 800, deviceScaleFactor: 1 });
+  await optionsPage.goto(
+    `${extensionOrigin}/${expectedManifest.options_ui.page}`,
+    { waitUntil: "domcontentloaded", timeout: 20_000 },
+  );
+  await optionsPage.waitForSelector("extension-settings-page #country-trigger", {
+    timeout: 10_000,
+  });
+
+  const optionsState = await optionsPage.evaluate(() => {
+    const shell = document.querySelector(".options-shell");
+    const bounds = shell?.getBoundingClientRect();
+
+    return {
+      shellWidth: bounds?.width,
+      shellCenter: bounds ? bounds.left + bounds.width / 2 : undefined,
+      viewportCenter: window.innerWidth / 2,
+      autoHighlight: document.querySelector("#auto-highlight")?.checked,
+      darkMode: document.querySelector("#dark-mode")?.checked,
+      language: document.querySelector("#language")?.value,
+      defaultCountry: document.querySelector("#default-country-hidden")?.value,
+      theme: document.documentElement.dataset.theme,
+    };
+  });
+
+  assert.ok(optionsState.shellWidth <= 720, "A página de opções excedeu 720px.");
+  assert.ok(
+    Math.abs(optionsState.shellCenter - optionsState.viewportCenter) <= 1,
+    "A página de opções não está centralizada.",
+  );
+  assert.equal(optionsState.autoHighlight, false);
+  assert.equal(optionsState.darkMode, true);
+  assert.equal(optionsState.language, "pt-BR");
+  assert.equal(optionsState.defaultCountry, "PT");
+  assert.equal(optionsState.theme, "dark");
+  await optionsPage.close();
 
   // A página aberta também é um alvo da extensão; feche-a para que somente os
   // processos mantidos pela instalação sejam considerados na desinstalação.
