@@ -9,9 +9,16 @@ import {
   setLanguage
 } from "../utils/storage.js";
 
+const PAGE_ORIGINS = ["http://*/*", "https://*/*"];
+
 class ExtensionSettingsPage extends HTMLElement {
   async connectedCallback() {
     this.settings = await getSettings();
+    const hasSiteAccess = await chrome.permissions.contains({ origins: PAGE_ORIGINS });
+    if (this.settings.autoHighlightEnabled && !hasSiteAccess) {
+      this.settings.autoHighlightEnabled = false;
+      await setAutoHighlightEnabled(false);
+    }
     this.messages = getMessages(this.settings.language);
     document.documentElement.setAttribute("lang", this.settings.language);
     this.applyTheme(this.settings.darkModeEnabled);
@@ -90,23 +97,24 @@ class ExtensionSettingsPage extends HTMLElement {
             <p class="description">${this.messages.optionsDescription}</p>
 
             <div class="option-row">
-              <div class="option-label">${this.messages.optionAutoHighlight}</div>
+              <label class="option-label" for="auto-highlight">${this.messages.optionAutoHighlight}</label>
               <label class="toggle option-control">
                 <input id="auto-highlight" type="checkbox" ${
                   this.settings.autoHighlightEnabled ? "checked" : ""
-                } />
+                } aria-describedby="page-access-disclosure" />
               </label>
             </div>
+            <p class="privacy-note" id="page-access-disclosure">${this.messages.optionAutoHighlightDisclosure}</p>
 
             <div class="option-row">
-              <div class="option-label">${this.messages.optionDarkMode}</div>
+              <label class="option-label" for="dark-mode">${this.messages.optionDarkMode}</label>
               <label class="toggle option-control">
                 <input id="dark-mode" type="checkbox" ${this.settings.darkModeEnabled ? "checked" : ""} />
               </label>
             </div>
 
             <div class="option-row">
-              <div class="option-label">${this.messages.optionLanguage}</div>
+              <label class="option-label" for="language">${this.messages.optionLanguage}</label>
               <div class="option-control">
                 <select id="language">
                   <option value="en-US" ${
@@ -120,7 +128,7 @@ class ExtensionSettingsPage extends HTMLElement {
             </div>
 
             <div class="option-row">
-              <div class="option-label">${this.messages.optionDefaultCountry}</div>
+              <label class="option-label" for="country-trigger">${this.messages.optionDefaultCountry}</label>
               <div class="option-control">
                 ${this.buildCountryPickerMarkup(this.settings.defaultCountry)}
               </div>
@@ -254,8 +262,27 @@ class ExtensionSettingsPage extends HTMLElement {
     const hiddenCountryInput = this.querySelector("#default-country-hidden");
 
     autoHighlightInput?.addEventListener("change", async () => {
-      await setAutoHighlightEnabled(Boolean(autoHighlightInput.checked));
-      this.showSavedState();
+      const wantsPageHelpers = Boolean(autoHighlightInput.checked);
+      try {
+        if (wantsPageHelpers) {
+          const granted = await chrome.permissions.request({ origins: PAGE_ORIGINS });
+          if (!granted) {
+            autoHighlightInput.checked = false;
+            await setAutoHighlightEnabled(false);
+            this.showStatus(this.messages.permissionDenied, true);
+            return;
+          }
+        } else {
+          await chrome.permissions.remove({ origins: PAGE_ORIGINS });
+        }
+
+        await setAutoHighlightEnabled(wantsPageHelpers);
+        this.settings.autoHighlightEnabled = wantsPageHelpers;
+        this.showSavedState();
+      } catch {
+        autoHighlightInput.checked = !wantsPageHelpers;
+        this.showStatus(this.messages.permissionError, true);
+      }
     });
 
     darkModeInput?.addEventListener("change", async () => {
@@ -285,13 +312,19 @@ class ExtensionSettingsPage extends HTMLElement {
   }
 
   showSavedState() {
+    this.showStatus(this.messages.optionsSaved);
+  }
+
+  showStatus(message, isError = false) {
     const status = this.querySelector("#saved-status");
     if (!status) {
       return;
     }
-    status.textContent = this.messages.optionsSaved;
+    status.textContent = message;
+    status.dataset.state = isError ? "error" : "success";
     window.setTimeout(() => {
       status.textContent = "";
+      delete status.dataset.state;
     }, 1200);
   }
 }

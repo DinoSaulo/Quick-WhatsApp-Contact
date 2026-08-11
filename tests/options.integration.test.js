@@ -38,6 +38,13 @@ describe("options page integration", () => {
     mockStorage.setAutoHighlightEnabled.mockResolvedValue();
     mockStorage.setDarkModeEnabled.mockResolvedValue();
     mockStorage.setLanguage.mockResolvedValue();
+    global.chrome = {
+      permissions: {
+        contains: vi.fn().mockResolvedValue(true),
+        request: vi.fn().mockResolvedValue(true),
+        remove: vi.fn().mockResolvedValue(true)
+      }
+    };
   });
 
   it("renders default country picker with Automatic option when defaultCountry is empty", async () => {
@@ -49,7 +56,7 @@ describe("options page integration", () => {
     expect(trigger.textContent).toContain("— Automatic —");
   });
 
-  it("renders configured default country with flag image and DDI", async () => {
+  it("renders configured default country with a local flag and DDI", async () => {
     mockStorage.getSettings.mockResolvedValue({
       language: "en-US",
       darkModeEnabled: false,
@@ -64,9 +71,8 @@ describe("options page integration", () => {
     expect(hiddenInput.value).toBe("PT");
     expect(trigger.textContent).toContain("Portugal");
     expect(trigger.textContent).toContain("+351");
-    expect(trigger.querySelector(".country-picker__flag-img")?.getAttribute("src")).toBe(
-      "https://flagcdn.com/w40/pt.png"
-    );
+    expect(trigger.querySelector(".country-picker__flag-fallback")).not.toBeNull();
+    expect(trigger.querySelector("img")).toBeNull();
   });
 
   it("filters country dropdown options by search query in options page", async () => {
@@ -135,5 +141,43 @@ describe("options page integration", () => {
 
     expect(page.querySelector('img[src="x"]')).toBeNull();
     expect(window.hacked).toBeUndefined();
+  });
+
+  it("requests optional site access before enabling page helpers", async () => {
+    mockStorage.getSettings.mockResolvedValue({
+      language: "en-US",
+      darkModeEnabled: false,
+      autoHighlightEnabled: false,
+      defaultCountry: ""
+    });
+    const page = await renderOptionsPage();
+    const toggle = page.querySelector("#auto-highlight");
+
+    toggle.checked = true;
+    toggle.dispatchEvent(new Event("change", { bubbles: true }));
+    await vi.waitFor(() => expect(mockStorage.setAutoHighlightEnabled).toHaveBeenCalledWith(true));
+
+    expect(chrome.permissions.request).toHaveBeenCalledWith({
+      origins: ["http://*/*", "https://*/*"]
+    });
+  });
+
+  it("keeps page helpers disabled when optional site access is denied", async () => {
+    chrome.permissions.request.mockResolvedValue(false);
+    mockStorage.getSettings.mockResolvedValue({
+      language: "en-US",
+      darkModeEnabled: false,
+      autoHighlightEnabled: false,
+      defaultCountry: ""
+    });
+    const page = await renderOptionsPage();
+    const toggle = page.querySelector("#auto-highlight");
+
+    toggle.checked = true;
+    toggle.dispatchEvent(new Event("change", { bubbles: true }));
+    await vi.waitFor(() => expect(mockStorage.setAutoHighlightEnabled).toHaveBeenCalledWith(false));
+
+    expect(toggle.checked).toBe(false);
+    expect(page.querySelector("#saved-status").dataset.state).toBe("error");
   });
 });

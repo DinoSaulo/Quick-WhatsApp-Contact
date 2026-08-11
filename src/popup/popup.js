@@ -14,6 +14,7 @@ import {
   getPhoneMaskPlaceholder,
   hasCountryCode,
   isLocalNumberValidForDdi,
+  isLikelyPhoneText,
   isValidPhoneForSend,
   joinCountryCodeAndNumber,
   normalizeSelectedNumber
@@ -287,9 +288,17 @@ class WhatsAppMessagePopup extends HTMLElement {
       const phoneInput = this.querySelector("#phone");
       const messageInput = this.querySelector("#message");
 
-      let phone = normalizeSelectedNumber(phoneInput?.value ?? "");
+      const rawPhone = phoneInput?.value ?? "";
+      let phone = normalizeSelectedNumber(rawPhone);
       const message = messageInput?.value ?? "";
       phoneInput?.setCustomValidity("");
+
+      if (!isLikelyPhoneText(rawPhone)) {
+        phoneInput?.setCustomValidity(this.messages.validationInvalidPhone);
+        phoneInput?.reportValidity();
+        phoneInput?.focus();
+        return;
+      }
 
       if (!hasCountryCode(phone)) {
         const selectedCountry = this.getSelectedCountry();

@@ -7,7 +7,7 @@ const LANGUAGE_KEY = "quick-whatsapp-contact.language";
 const DEFAULT_COUNTRY_KEY = "quick-whatsapp-contact.default-country";
 
 export const DEFAULT_SETTINGS = {
-  autoHighlightEnabled: true,
+  autoHighlightEnabled: false,
   darkModeEnabled: false,
   language: "en-US",
   defaultCountry: ""

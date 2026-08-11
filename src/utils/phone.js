@@ -22,6 +22,15 @@ export function hasCountryCode(value = "") {
   return normalizeSelectedNumber(value).startsWith("+");
 }
 
+export function isLikelyPhoneText(value = "", minimumDigits = 8, maximumDigits = 15) {
+  const rawValue = String(value || "").trim();
+  if (!/^\+?[\d\s().-]+$/.test(rawValue)) {
+    return false;
+  }
+  const digitCount = rawValue.replace(/\D/g, "").length;
+  return digitCount >= minimumDigits && digitCount <= maximumDigits;
+}
+
 function normalizeDialCode(dialCode = "") {
   return String(dialCode).replace(/\D/g, "");
 }
@@ -47,9 +56,13 @@ export function isLocalNumberValidForDdi(localNumber = "", dialCode = "") {
   return expectedFormats.some((formatMask) => formatMaskToRegex(formatMask).test(localDigits));
 }
 
-export function isValidPhoneForSend(phoneNumber, minimumDigits = 8) {
+export function isValidPhoneForSend(phoneNumber, minimumDigits = 8, maximumDigits = 15) {
   const normalizedNumber = normalizeSelectedNumber(phoneNumber).replace(/^\+/, "");
-  return /^\d+$/.test(normalizedNumber) && normalizedNumber.length >= minimumDigits;
+  return (
+    /^\d+$/.test(normalizedNumber) &&
+    normalizedNumber.length >= minimumDigits &&
+    normalizedNumber.length <= maximumDigits
+  );
 }
 
 export function joinCountryCodeAndNumber(countryDialCode, phoneNumber) {
@@ -83,6 +96,9 @@ export function getPhoneMaskPlaceholder(mask) {
 }
 
 export function buildWhatsAppUrl(phoneNumber, message = "") {
+  if (!isLikelyPhoneText(phoneNumber)) {
+    return "";
+  }
   const normalizedNumber = normalizeSelectedNumber(phoneNumber).replace(/^\+/, "");
   if (!isValidPhoneForSend(normalizedNumber)) {
     return "";

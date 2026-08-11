@@ -14,11 +14,29 @@ concurrency:
 
 jobs:
   tests:
-    name: Testes unitarios e de integracao
-    runs-on: ubuntu-latest
+    name: Testes - ${{ matrix.label }}
+    runs-on: ${{ matrix.os }}
+    container: ${{ matrix.container }}
     timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            label: Ubuntu
+          - os: ubuntu-latest
+            label: Fedora
+            container: fedora:latest
+          - os: macos-latest
+            label: macOS
+          - os: windows-latest
+            label: Windows
 
     steps:
+      - name: Instalar dependencias do sistema (Fedora)
+        if: matrix.label == 'Fedora'
+        run: dnf install -y --setopt=install_weak_deps=False git curl
+
       - name: Clonar repositorio
         uses: actions/checkout@v4
 
@@ -31,7 +49,17 @@ jobs:
       - name: Instalar dependencias
         run: npm ci
 
+      - name: Verificar sintaxe
+        run: npm run lint
+
+      - name: Validar pacote Manifest V3
+        run: npm run validate:extension
+
+      - name: Gerar build da extensao
+        run: npm run build
+
       - name: Preparar diretorio de relatorios
+        shell: bash
         run: mkdir -p reports
 
       - name: Executar testes unitarios
@@ -90,7 +118,7 @@ jobs:
           }
 
           {
-            echo "## Resultado dos testes"
+            echo "## Resultado dos testes — ${{ matrix.label }}"
             echo
             echo "| Suite | Estado | Testes | Falhas | Erros | Duracao |"
             echo "|---|---:|---:|---:|---:|---:|"
@@ -99,14 +127,14 @@ jobs:
             echo
             echo "- Commit: \`${GITHUB_SHA}\`"
             echo "- Node.js: \`$(node --version)\`"
-            echo "- Runner: \`${RUNNER_OS}\`"
+            echo "- Runner: \`${{ matrix.label }}\`"
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Anexar relatorios JUnit
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: relatorios-de-testes
+          name: relatorios-de-testes-${{ matrix.label }}
           path: reports/*.xml
           if-no-files-found: warn
           retention-days: 14
@@ -115,6 +143,7 @@ jobs:
         if: >-
           always() &&
           (steps.unit.outcome == 'failure' || steps.integration.outcome == 'failure')
+        shell: bash
         run: |
           echo "Uma ou mais suites de testes falharam. Consulte o resumo e os relatorios JUnit."
           exit 1

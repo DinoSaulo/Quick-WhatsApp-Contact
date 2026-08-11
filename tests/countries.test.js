@@ -2,7 +2,6 @@ import {
   COUNTRIES,
   getCountryByCode,
   getDefaultCountryCodeForLanguage,
-  getCountryFlagUrl,
   renderCountryFlagHtml
 } from "../src/utils/countries.js";
 import { describe, expect, it } from "vitest";
@@ -39,18 +38,15 @@ describe("countries ddi list", () => {
     expect(getDefaultCountryCodeForLanguage("es-ES")).toBe("US");
   });
 
-  it("generates flag CDN URL for valid ISO2 codes", () => {
-    expect(getCountryFlagUrl("BR")).toBe("https://flagcdn.com/w40/br.png");
-    expect(getCountryFlagUrl("us")).toBe("https://flagcdn.com/w40/us.png");
-    expect(getCountryFlagUrl("invalid")).toBeNull();
-    expect(getCountryFlagUrl(null)).toBeNull();
+  it("renders a local emoji flag without remote resources", () => {
+    const country = { iso2: "BR", name: "Brasil", flag: "🇧🇷" };
+    const html = renderCountryFlagHtml(country);
+    expect(html).toContain("🇧🇷");
+    expect(html).not.toContain("http");
+    expect(html).not.toContain("<img");
   });
 
-  it("renders flag HTML with image, srcset, and XSS sanitization", () => {
-    const country = { iso2: "BR", name: 'Brasil "<script>', flag: "🇧🇷" };
-    const html = renderCountryFlagHtml(country);
-    expect(html).toContain('src="https://flagcdn.com/w40/br.png"');
-    expect(html).toContain('alt="Brasil &quot;&lt;script&gt;"');
-    expect(html).not.toContain("<script>");
+  it("uses a neutral local flag for invalid flag data", () => {
+    expect(renderCountryFlagHtml({ flag: '<script>alert("x")</script>' })).toContain("🏳");
   });
 });

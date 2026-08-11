@@ -2,6 +2,7 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 const handlers = vi.hoisted(() => ({}));
 const mockStorage = vi.hoisted(() => ({
+  getAutoHighlightEnabled: vi.fn(),
   getLanguage: vi.fn(),
   setPendingContextCountry: vi.fn(),
   setPendingContextNumber: vi.fn()
@@ -37,6 +38,16 @@ describe("background selection security integration", () => {
         onMessage: eventFor("message")
       },
       storage: { onChanged: eventFor("storageChanged") },
+      permissions: {
+        onAdded: eventFor("permissionsAdded"),
+        onRemoved: eventFor("permissionsRemoved"),
+        contains: vi.fn()
+      },
+      scripting: {
+        getRegisteredContentScripts: vi.fn(),
+        unregisterContentScripts: vi.fn(),
+        registerContentScripts: vi.fn()
+      },
       contextMenus: {
         onClicked: eventFor("contextClicked"),
         removeAll: vi.fn(),
@@ -51,11 +62,16 @@ describe("background selection security integration", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockStorage.getLanguage.mockResolvedValue("en-US");
+    mockStorage.getAutoHighlightEnabled.mockResolvedValue(false);
     mockStorage.setPendingContextCountry.mockResolvedValue();
     mockStorage.setPendingContextNumber.mockResolvedValue();
     mockLocation.detectCountryCodeFromUrl.mockReturnValue("PT");
     chrome.tabs.create.mockResolvedValue({});
     chrome.action.openPopup.mockResolvedValue();
+    chrome.permissions.contains.mockResolvedValue(false);
+    chrome.scripting.getRegisteredContentScripts.mockResolvedValue([]);
+    chrome.scripting.unregisterContentScripts.mockResolvedValue();
+    chrome.scripting.registerContentScripts.mockResolvedValue();
   });
 
   it("ignores messages outside the extension's selection protocol", () => {
@@ -70,26 +86,23 @@ describe("background selection security integration", () => {
     expect(chrome.action.openPopup).not.toHaveBeenCalled();
   });
 
-  it("sanitizes HTML from international selections and opens only wa.me", async () => {
+  it("rejects hostile international selections instead of extracting embedded digits", async () => {
     const result = await sendSelection(
       '<script>alert("x")</script> +351 912 345 678 <img src=x>'
     );
 
     expect(result.keepsChannelOpen).toBe(true);
     expect(result.response).toEqual({ ok: true });
-    expect(chrome.tabs.create).toHaveBeenCalledWith({
-      url: "https://wa.me/351912345678",
-      active: true
-    });
+    expect(chrome.tabs.create).not.toHaveBeenCalled();
     expect(chrome.action.openPopup).not.toHaveBeenCalled();
   });
 
-  it("stores only sanitized digits from a hostile local selection", async () => {
+  it("rejects hostile local selections", async () => {
     await sendSelection('<img src=x onerror=alert("x")> 912 345 678');
 
-    expect(mockStorage.setPendingContextCountry).toHaveBeenCalledWith("PT");
-    expect(mockStorage.setPendingContextNumber).toHaveBeenCalledWith("912345678");
-    expect(chrome.action.openPopup).toHaveBeenCalledOnce();
+    expect(mockStorage.setPendingContextCountry).not.toHaveBeenCalled();
+    expect(mockStorage.setPendingContextNumber).not.toHaveBeenCalled();
+    expect(chrome.action.openPopup).not.toHaveBeenCalled();
     expect(chrome.tabs.create).not.toHaveBeenCalled();
   });
 
@@ -110,5 +123,41 @@ describe("background selection security integration", () => {
     expect(mockStorage.setPendingContextNumber).toHaveBeenCalledWith("912345678");
     expect(chrome.action.openPopup).toHaveBeenCalledOnce();
     expect(chrome.tabs.create).not.toHaveBeenCalled();
+  });
+
+  it("registers page helpers only when enabled and optional host access is granted", async () => {
+    mockStorage.getAutoHighlightEnabled.mockResolvedValue(true);
+    chrome.permissions.contains.mockResolvedValue(true);
+
+    await handlers.installed();
+
+    expect(chrome.scripting.registerContentScripts).toHaveBeenCalledWith([
+      expect.objectContaining({
+        id: "quick-whatsapp-contact.page-helpers",
+        matches: ["http://*/*", "https://*/*"],
+        persistAcrossSessions: true
+      })
+    ]);
+  });
+
+  it("does not register page helpers without optional host access", async () => {
+    mockStorage.getAutoHighlightEnabled.mockResolvedValue(true);
+    chrome.permissions.contains.mockResolvedValue(false);
+
+    await handlers.installed();
+
+    expect(chrome.scripting.registerContentScripts).not.toHaveBeenCalled();
+  });
+
+  it("unregisters stale page helpers when the feature is disabled", async () => {
+    chrome.scripting.getRegisteredContentScripts.mockResolvedValue([
+      { id: "quick-whatsapp-contact.page-helpers" }
+    ]);
+
+    await handlers.permissionsRemoved();
+
+    expect(chrome.scripting.unregisterContentScripts).toHaveBeenCalledWith({
+      ids: ["quick-whatsapp-contact.page-helpers"]
+    });
   });
 });

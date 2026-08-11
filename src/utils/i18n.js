@@ -22,10 +22,15 @@ const DICTIONARY = {
     ddiDescription:
       "The selected number did not include an international code. Choose a country, review the number and send.",
     validationInvalidFormat: "Invalid format for +{ddi}. Use: {formats}",
+    validationInvalidPhone: "Enter a phone number containing 8 to 15 digits.",
     actionWhatsapp: "Open in WhatsApp",
     optionsTitle: "Extension settings",
     optionsDescription: "Manage behavior and appearance preferences.",
-    optionAutoHighlight: "Auto-highlight phone numbers on pages",
+    optionAutoHighlight: "Enable phone helpers on web pages",
+    optionAutoHighlightDisclosure:
+      "Optional: allows the extension to read selected text and tel: links on websites. Processing stays on your device; data is sent to WhatsApp only when you choose to open a conversation.",
+    permissionDenied: "Site access was not granted. Page helpers remain disabled.",
+    permissionError: "Site access could not be updated. Try again.",
     optionDarkMode: "Dark mode",
     optionLanguage: "Language",
     optionLanguageEnglish: "English (EN-US)",
@@ -59,10 +64,15 @@ const DICTIONARY = {
     ddiDescription:
       "O número selecionado não tinha código internacional. Escolha o país, revise o número e envie.",
     validationInvalidFormat: "Formato inválido para +{ddi}. Use: {formats}",
+    validationInvalidPhone: "Informe um telefone contendo de 8 a 15 dígitos.",
     actionWhatsapp: "Abrir no WhatsApp",
     optionsTitle: "Configurações da extensão",
     optionsDescription: "Gerencie preferências de comportamento e aparência.",
-    optionAutoHighlight: "Realce automático de números na página",
+    optionAutoHighlight: "Ativar recursos de telefone nas páginas",
+    optionAutoHighlightDisclosure:
+      "Opcional: permite que a extensão leia textos selecionados e links tel: nos sites. O processamento fica no dispositivo; os dados só são enviados ao WhatsApp quando você decide abrir uma conversa.",
+    permissionDenied: "O acesso aos sites não foi concedido. Os recursos de página continuam desativados.",
+    permissionError: "Não foi possível atualizar o acesso aos sites. Tente novamente.",
     optionDarkMode: "Modo escuro",
     optionLanguage: "Idioma",
     optionLanguageEnglish: "Inglês (EN-US)",

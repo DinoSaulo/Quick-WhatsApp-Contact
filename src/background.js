@@ -1,26 +1,47 @@
 import { getMessages } from "./utils/i18n.js";
 import { detectCountryCodeFromUrl } from "./utils/location.js";
-import { buildWhatsAppUrl, hasCountryCode, normalizeSelectedNumber } from "./utils/phone.js";
-import { getLanguage, setPendingContextCountry, setPendingContextNumber } from "./utils/storage.js";
+import {
+  buildWhatsAppUrl,
+  hasCountryCode,
+  isLikelyPhoneText,
+  normalizeSelectedNumber
+} from "./utils/phone.js";
+import {
+  getAutoHighlightEnabled,
+  getLanguage,
+  setPendingContextCountry,
+  setPendingContextNumber
+} from "./utils/storage.js";
 
 const CONTEXT_MENU_ID = "quick-whatsapp-contact.send";
 const PROCESS_SELECTION_MESSAGE = "quick-whatsapp-contact.process-selection";
 const LANGUAGE_STORAGE_KEY = "quick-whatsapp-contact.language";
+const AUTO_HIGHLIGHT_ENABLED_KEY = "quick-whatsapp-contact.auto-highlight-enabled";
+const PAGE_HELPERS_SCRIPT_ID = "quick-whatsapp-contact.page-helpers";
+const PAGE_ORIGINS = ["http://*/*", "https://*/*"];
 
 chrome.runtime.onInstalled.addListener(async () => {
-  await refreshContextMenu();
+  await Promise.all([refreshContextMenu(), syncPageHelpersRegistration()]);
 });
 
 chrome.runtime.onStartup.addListener(async () => {
-  await refreshContextMenu();
+  await Promise.all([refreshContextMenu(), syncPageHelpersRegistration()]);
 });
 
 chrome.storage.onChanged.addListener(async (changes, areaName) => {
-  if (areaName !== "sync" || !changes[LANGUAGE_STORAGE_KEY]) {
+  if (areaName !== "sync") {
     return;
   }
-  await refreshContextMenu();
+  if (changes[LANGUAGE_STORAGE_KEY]) {
+    await refreshContextMenu();
+  }
+  if (changes[AUTO_HIGHLIGHT_ENABLED_KEY]) {
+    await syncPageHelpersRegistration();
+  }
 });
+
+chrome.permissions.onAdded.addListener(syncPageHelpersRegistration);
+chrome.permissions.onRemoved.addListener(syncPageHelpersRegistration);
 
 chrome.contextMenus.onClicked.addListener(async (info) => {
   if (info.menuItemId !== CONTEXT_MENU_ID || !info.selectionText) {
@@ -56,6 +77,9 @@ async function refreshContextMenu() {
 }
 
 async function processSelection(selectionText, urlString) {
+  if (!isLikelyPhoneText(selectionText)) {
+    return;
+  }
   const sanitizedNumber = normalizeSelectedNumber(selectionText);
   if (!sanitizedNumber) {
     return;
@@ -82,4 +106,32 @@ async function processSelection(selectionText, urlString) {
 
 async function openWhatsAppTab(url) {
   return chrome.tabs.create({ url, active: true });
+}
+
+async function syncPageHelpersRegistration() {
+  const [isEnabled, hasSiteAccess] = await Promise.all([
+    getAutoHighlightEnabled(),
+    chrome.permissions.contains({ origins: PAGE_ORIGINS })
+  ]);
+
+  const existingScripts = await chrome.scripting.getRegisteredContentScripts({
+    ids: [PAGE_HELPERS_SCRIPT_ID]
+  });
+  if (existingScripts.length) {
+    await chrome.scripting.unregisterContentScripts({ ids: [PAGE_HELPERS_SCRIPT_ID] });
+  }
+
+  if (!isEnabled || !hasSiteAccess) {
+    return;
+  }
+
+  await chrome.scripting.registerContentScripts([
+    {
+      id: PAGE_HELPERS_SCRIPT_ID,
+      matches: PAGE_ORIGINS,
+      js: ["src/content/autoHighlight.js", "src/content/selectionButton.js"],
+      runAt: "document_idle",
+      persistAcrossSessions: true
+    }
+  ]);
 }

@@ -4,15 +4,16 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "build": "node scripts/build-extension.mjs",
+    "lint": "node scripts/check-source.mjs",
     "test": "vitest run",
     "test:unit": "vitest run --exclude tests/**/*.integration.test.js",
-    "test:integration": "vitest run .integration.test.js"
+    "test:integration": "vitest run .integration.test.js",
+    "validate:extension": "node scripts/validate-extension.mjs",
+    "verify": "npm run lint && npm run validate:extension && npm test && npm run build"
   },
   "devDependencies": {
     "jsdom": "^29.1.0",
     "vitest": "^3.2.4"
-  },
-  "dependencies": {
-    "twemoji": "^14.0.2"
   }
 }

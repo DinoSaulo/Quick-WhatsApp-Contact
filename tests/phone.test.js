@@ -4,6 +4,7 @@ import {
   getExpectedFormatsForDdi,
   getPhoneMaskPlaceholder,
   hasCountryCode,
+  isLikelyPhoneText,
   isValidPhoneForSend,
   isLocalNumberValidForDdi,
   joinCountryCodeAndNumber,
@@ -46,6 +47,14 @@ describe("phone utils", () => {
     expect(isValidPhoneForSend("+5511999998888")).toBe(true);
     expect(isValidPhoneForSend("55")).toBe(false);
     expect(isValidPhoneForSend("+")).toBe(false);
+    expect(isValidPhoneForSend("1".repeat(15))).toBe(true);
+    expect(isValidPhoneForSend("1".repeat(16))).toBe(false);
+  });
+
+  it("accepts only phone-like selected text with E.164 length limits", () => {
+    expect(isLikelyPhoneText("+351 912 345 678")).toBe(true);
+    expect(isLikelyPhoneText("call +351 912 345 678")).toBe(false);
+    expect(isLikelyPhoneText("1".repeat(16))).toBe(false);
   });
 
   it("retorna formatos esperados por DDI", () => {
@@ -154,12 +163,10 @@ describe("phone input security boundaries", () => {
     expect(normalizeSelectedNumber("+++351+912+345+678")).toBe("+351912345678");
   });
 
-  it("does not let a javascript scheme control the generated URL", () => {
+  it("rejects a javascript scheme instead of navigating", () => {
     const url = buildWhatsAppUrl("javascript:+351912345678");
 
-    expect(url).toBe("https://wa.me/351912345678");
-    expect(new URL(url).protocol).toBe("https:");
-    expect(new URL(url).hostname).toBe("wa.me");
+    expect(url).toBe("");
   });
 
   it.each([
@@ -167,8 +174,8 @@ describe("phone input security boundaries", () => {
     ["#fragment", "https://wa.me/351912345678"],
     ["&phone=javascript:alert(1)", "https://wa.me/3519123456781"],
     ["/../../evil", "https://wa.me/351912345678"]
-  ])("does not allow phone payload %s to alter the URL structure", (payload, expected) => {
-    expect(buildWhatsAppUrl(`+351912345678${payload}`)).toBe(expected);
+  ])("rejects phone payload %s", (payload) => {
+    expect(buildWhatsAppUrl(`+351912345678${payload}`)).toBe("");
   });
 
   it("encodes message query delimiters instead of creating extra parameters", () => {

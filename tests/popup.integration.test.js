@@ -304,7 +304,7 @@ describe("popup integration", () => {
     expect(phoneInput.validationMessage).not.toBe("");
   });
 
-  it("keeps a scheme-like phone payload on the fixed WhatsApp origin", async () => {
+  it("rejects a scheme-like phone payload", async () => {
     const popup = await renderPopup();
     popup.querySelector("#phone").value = "javascript:+351912345678";
 
@@ -313,10 +313,8 @@ describe("popup integration", () => {
     );
     await new Promise((resolve) => setTimeout(resolve, 0));
 
-    expect(chrome.tabs.create).toHaveBeenCalledWith({
-      url: "https://wa.me/351912345678",
-      active: true
-    });
+    expect(chrome.tabs.create).not.toHaveBeenCalled();
+    expect(popup.querySelector("#phone").validationMessage).not.toBe("");
   });
 
   it("filters country dropdown options by search input query", async () => {

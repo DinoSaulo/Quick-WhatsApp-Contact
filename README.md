@@ -1,5 +1,4 @@
 # Quick WhatsApp Contact
-
 > Extensão do Chrome para iniciar conversas no WhatsApp a partir de números encontrados em qualquer página web.
 
 `Chrome Extension` · `Manifest V3` · `Vanilla JS` · `Vitest`
@@ -43,11 +42,11 @@ Acesse a página de configurações pelo ícone de engrenagem no popup.
 
 ## Como instalar
 
-1. Clone ou baixe este repositório.
+1. Clone ou baixe este repositório e execute `npm ci` e `npm run build`.
 2. Abra o Chrome e acesse `chrome://extensions`.
 3. Ative o **Modo do desenvolvedor** (canto superior direito).
 4. Clique em **Carregar sem compactação**.
-5. Selecione a pasta raiz do projeto.
+5. Selecione a pasta `dist/extension`.
 
 ---
 
@@ -88,6 +87,24 @@ Execute todos os testes:
 npm test
 ```
 
+Execute a verificação completa de sintaxe, manifesto, testes e build:
+
+```bash
+npm run verify
+```
+
+O build publicável é gerado em `dist/extension` e contém somente o manifesto, o código da extensão e os ícones. Para criar o ZIP no Windows:
+
+```powershell
+Compress-Archive -Path dist/extension/* -DestinationPath dist/quick-whatsapp-contact.zip -Force
+```
+
+No Linux ou macOS:
+
+```bash
+(cd dist/extension && zip -qr ../quick-whatsapp-contact.zip .)
+```
+
 Execute um arquivo de teste específico:
 
 ```bash
@@ -102,3 +119,9 @@ npx vitest run tests/phone.test.js
 - **Vanilla JS** — ES Modules, sem bundler, sem frameworks
 - **Web Components** nativos (`HTMLElement` + `customElements.define`)
 - **Vitest** + **jsdom** para testes unitários e de integração
+
+---
+
+## Privacidade e publicação
+
+Os recursos que leem seleção e links `tel:` em páginas são opcionais, ficam desativados por padrão e solicitam permissão no momento da ativação. A extensão não possui backend ou telemetria. Consulte [PRIVACY.md](./PRIVACY.md), [diagnóstico da Chrome Web Store](./docs/STORE_READINESS.md) e [checklist de lançamento](./docs/RELEASE_CHECKLIST.md).

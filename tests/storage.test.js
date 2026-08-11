@@ -100,10 +100,10 @@ describe("storage utils", () => {
     expect(consumed).toBe("");
   });
 
-  it("getAutoHighlightEnabled usa default true", async () => {
+  it("getAutoHighlightEnabled uses privacy-preserving default false", async () => {
     chrome.storage.sync.get.mockResolvedValue({});
     const result = await getAutoHighlightEnabled();
-    expect(result).toBe(true);
+    expect(result).toBe(false);
   });
 
   it("setAutoHighlightEnabled salva booleano", async () => {
@@ -224,7 +224,7 @@ describe("storage utils", () => {
   it("saveSettings aplica defaults quando campos nao sao enviados", async () => {
     await saveSettings({ language: "invalid" });
     expect(chrome.storage.sync.set).toHaveBeenCalledWith({
-      "quick-whatsapp-contact.auto-highlight-enabled": true,
+      "quick-whatsapp-contact.auto-highlight-enabled": false,
       "quick-whatsapp-contact.dark-mode-enabled": false,
       "quick-whatsapp-contact.language": "en-US",
       "quick-whatsapp-contact.default-country": ""
