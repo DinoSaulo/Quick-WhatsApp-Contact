@@ -77,10 +77,14 @@ describe("countries ddi list", () => {
 
   it("uses an absolute extension URL when the Chrome runtime is available", () => {
     const previousChrome = globalThis.chrome;
-    globalThis.chrome = {
-      runtime: {
-        getURL: (path) => `chrome-extension://extension-id/${path}`
+    const runtime = {
+      getURL(path) {
+        expect(this).toBe(runtime);
+        return `chrome-extension://extension-id/${path}`;
       }
+    };
+    globalThis.chrome = {
+      runtime
     };
 
     try {

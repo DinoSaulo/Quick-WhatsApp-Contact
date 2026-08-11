@@ -48,7 +48,8 @@ describe("popup integration", () => {
         create: vi.fn().mockResolvedValue({})
       },
       runtime: {
-        openOptionsPage: vi.fn().mockResolvedValue({})
+        openOptionsPage: vi.fn().mockResolvedValue({}),
+        getURL: vi.fn((path) => `chrome-extension://popup-id/${path}`)
       }
     };
 
@@ -61,8 +62,35 @@ describe("popup integration", () => {
     const popup = await renderPopup();
     const flag = popup.querySelector("#country-trigger .country-picker__flag-img");
 
-    expect(flag?.getAttribute("src")).toBe("../../assets/twemoji/1f1fa-1f1f8.svg");
+    expect(flag?.getAttribute("src")).toBe(
+      "chrome-extension://popup-id/assets/twemoji/1f1fa-1f1f8.svg"
+    );
     expect(flag?.getAttribute("src")).not.toContain("http");
+  });
+
+  it("updates the packaged flag when the selected country changes", async () => {
+    const popup = await renderPopup();
+
+    popup.querySelector('[data-country-code="PT"]').click();
+
+    const flag = popup.querySelector("#country-trigger .country-picker__flag-img");
+    expect(popup.querySelector("#country-hidden").value).toBe("PT");
+    expect(flag?.src).toBe(
+      "chrome-extension://popup-id/assets/twemoji/1f1f5-1f1f9.svg"
+    );
+  });
+
+  it("renders all popup country flags without HTTP image sources", async () => {
+    const popup = await renderPopup();
+    const flagSources = Array.from(
+      popup.querySelectorAll(".country-picker__option .country-picker__flag-img")
+    ).map((image) => image.src);
+
+    expect(flagSources.length).toBeGreaterThanOrEqual(200);
+    expect(flagSources.every((source) =>
+      source.startsWith("chrome-extension://popup-id/assets/twemoji/")
+    )).toBe(true);
+    expect(flagSources.some((source) => /^https?:/.test(source))).toBe(false);
   });
 
   it("concatena DDI + numero ao enviar quando o telefone local nao possui +", async () => {

@@ -262,9 +262,9 @@ export function renderEmojiHtml(emoji) {
     return "";
   }
   const assetPath = `assets/twemoji/${assetName}`;
-  const getExtensionUrl = globalThis.chrome?.runtime?.getURL;
-  const assetUrl = typeof getExtensionUrl === "function"
-    ? getExtensionUrl(assetPath)
+  const runtime = globalThis.chrome?.runtime;
+  const assetUrl = typeof runtime?.getURL === "function"
+    ? runtime.getURL(assetPath)
     : `../../${assetPath}`;
   return `<img class="country-picker__flag-img" src="${assetUrl}" alt="" aria-hidden="true" draggable="false" />`;
 }

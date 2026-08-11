@@ -39,6 +39,9 @@ describe("options page integration", () => {
     mockStorage.setDarkModeEnabled.mockResolvedValue();
     mockStorage.setLanguage.mockResolvedValue();
     global.chrome = {
+      runtime: {
+        getURL: vi.fn((path) => `chrome-extension://options-id/${path}`)
+      },
       permissions: {
         contains: vi.fn().mockResolvedValue(true),
         request: vi.fn().mockResolvedValue(true),
@@ -55,7 +58,7 @@ describe("options page integration", () => {
     expect(hiddenInput.value).toBe("");
     expect(trigger.textContent).toContain("— Automatic —");
     expect(trigger.querySelector(".country-picker__flag-img")?.getAttribute("src"))
-      .toBe("../../assets/twemoji/1f310.svg");
+      .toBe("chrome-extension://options-id/assets/twemoji/1f310.svg");
   });
 
   it("renders configured default country with a local flag and DDI", async () => {
@@ -74,7 +77,7 @@ describe("options page integration", () => {
     expect(trigger.textContent).toContain("Portugal");
     expect(trigger.textContent).toContain("+351");
     expect(trigger.querySelector(".country-picker__flag-img")?.getAttribute("src"))
-      .toBe("../../assets/twemoji/1f1f5-1f1f9.svg");
+      .toBe("chrome-extension://options-id/assets/twemoji/1f1f5-1f1f9.svg");
   });
 
   it("filters country dropdown options by search query in options page", async () => {
@@ -117,6 +120,39 @@ describe("options page integration", () => {
     expect(trigger.textContent).toContain("Brasil");
     expect(trigger.textContent).toContain("+55");
     expect(page.querySelector("#saved-status").textContent).toBe("Settings saved");
+  });
+
+  it("updates the local flag when selecting a country and returning to Automatic", async () => {
+    const page = await renderOptionsPage();
+    const trigger = page.querySelector("#country-trigger");
+
+    page.querySelector('[data-country-code="BR"]').click();
+    await vi.waitFor(() => expect(mockStorage.setDefaultCountry).toHaveBeenCalledWith("BR"));
+    expect(trigger.querySelector(".country-picker__flag-img")?.src).toBe(
+      "chrome-extension://options-id/assets/twemoji/1f1e7-1f1f7.svg"
+    );
+
+    trigger.click();
+    page.querySelector('[data-country-code=""]').click();
+    await vi.waitFor(() => expect(mockStorage.setDefaultCountry).toHaveBeenLastCalledWith(""));
+
+    expect(page.querySelector("#default-country-hidden").value).toBe("");
+    expect(trigger.querySelector(".country-picker__flag-img")?.src).toBe(
+      "chrome-extension://options-id/assets/twemoji/1f310.svg"
+    );
+  });
+
+  it("renders every country option from the extension origin", async () => {
+    const page = await renderOptionsPage();
+    const flagSources = Array.from(
+      page.querySelectorAll(".country-picker__option .country-picker__flag-img")
+    ).map((image) => image.src);
+
+    expect(flagSources.length).toBeGreaterThanOrEqual(200);
+    expect(flagSources.every((source) =>
+      source.startsWith("chrome-extension://options-id/assets/twemoji/")
+    )).toBe(true);
+    expect(flagSources.some((source) => /^https?:/.test(source))).toBe(false);
   });
 
   it("closes search dropdown when Escape key is pressed", async () => {
