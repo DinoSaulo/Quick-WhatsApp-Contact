@@ -2,47 +2,14 @@ import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import puppeteer from "puppeteer-core";
+import {
+  createBrowserArgs,
+  findBrowserExecutable,
+} from "./browser-environment.mjs";
 
 const projectRoot = resolve(import.meta.dirname, "../..");
 const extensionPath = resolve(projectRoot, "dist", "extension");
 const manifestPath = resolve(extensionPath, "manifest.json");
-
-function findBrowserExecutable() {
-  const configuredPaths = [
-    process.env.CHROME_PATH,
-    process.env.CHROMIUM_PATH,
-    process.env.PUPPETEER_EXECUTABLE_PATH,
-  ];
-
-  const platformPaths = {
-    win32: [
-      "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
-      "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe",
-      resolve(
-        process.env.LOCALAPPDATA ?? "",
-        "Google",
-        "Chrome",
-        "Application",
-        "chrome.exe",
-      ),
-      "C:\\Program Files\\Chromium\\Application\\chrome.exe",
-    ],
-    darwin: [
-      "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
-      "/Applications/Chromium.app/Contents/MacOS/Chromium",
-    ],
-    linux: [
-      "/usr/bin/google-chrome",
-      "/usr/bin/google-chrome-stable",
-      "/usr/bin/chromium",
-      "/usr/bin/chromium-browser",
-    ],
-  };
-
-  return [...configuredPaths, ...(platformPaths[process.platform] ?? [])]
-    .filter(Boolean)
-    .find(existsSync);
-}
 
 async function waitUntil(predicate, failureMessage, timeout = 10_000) {
   const deadline = Date.now() + timeout;
@@ -71,14 +38,10 @@ assert.ok(
 let browser;
 
 try {
-  const browserArgs = ["--no-first-run", "--no-default-browser-check"];
-
   // GitHub Actions job containers run as root. Chromium refuses to start as
   // root unless its process sandbox is disabled; the outer job container
   // remains the isolation boundary in this CI-only scenario.
-  if (typeof process.getuid === "function" && process.getuid() === 0) {
-    browserArgs.push("--no-sandbox", "--disable-setuid-sandbox");
-  }
+  const browserArgs = createBrowserArgs();
 
   browser = await puppeteer.launch({
     executablePath,
