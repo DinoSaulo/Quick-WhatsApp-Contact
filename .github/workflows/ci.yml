@@ -42,7 +42,7 @@ jobs:
     steps:
       - name: Instalar dependencias do sistema (Fedora)
         if: matrix.label == 'Fedora'
-        run: dnf install -y --setopt=install_weak_deps=False git curl
+        run: dnf install -y --setopt=install_weak_deps=False git curl nodejs npm
 
       - name: Clonar repositorio
         uses: actions/checkout@v4
@@ -116,7 +116,7 @@ jobs:
     steps:
       - name: Instalar dependencias do sistema (Fedora)
         if: matrix.label == 'Fedora'
-        run: dnf install -y --setopt=install_weak_deps=False git curl
+        run: dnf install -y --setopt=install_weak_deps=False git curl nodejs npm
 
       - name: Clonar repositorio
         uses: actions/checkout@v4
@@ -175,7 +175,7 @@ jobs:
     steps:
       - name: Instalar dependencias do sistema (Fedora)
         if: matrix.label == 'Fedora'
-        run: dnf install -y --setopt=install_weak_deps=False git curl
+        run: dnf install -y --setopt=install_weak_deps=False git curl nodejs npm
 
       - name: Clonar repositorio
         uses: actions/checkout@v4
