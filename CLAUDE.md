@@ -13,7 +13,7 @@ There is no build step — the extension is loaded directly in Chrome via "Load 
 
 ## Architecture
 
-**ChamaNoZap** is a Manifest V3 Chrome extension that lets users open WhatsApp from any phone number found on a web page. It is written in vanilla JS with no bundler or framework.
+**Quick WhatsApp Contact** is a Manifest V3 Chrome extension that lets users open WhatsApp from any phone number found on a web page. It is written in vanilla JS with no bundler or framework.
 
 ### Entry points
 
