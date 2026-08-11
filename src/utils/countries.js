@@ -248,6 +248,15 @@ export function getDefaultCountryCodeForLanguage(language = "en-US") {
   return String(language || "").toLowerCase() === "pt-br" ? "BR" : "US";
 }
 
+function escapeHtml(str) {
+  return String(str || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 export function getCountryFlagUrl(iso2) {
   const normalized = String(iso2 || "").toLowerCase().replace(/[^a-z]/g, "");
   if (!normalized || normalized.length !== 2) {
@@ -258,19 +267,21 @@ export function getCountryFlagUrl(iso2) {
 
 export function renderCountryFlagHtml(country) {
   const flagUrl = country ? getCountryFlagUrl(country.iso2) : null;
-  const flagEmoji = country?.flag || "🏳";
+  const flagEmoji = escapeHtml(country?.flag || "🏳");
   if (!flagUrl) {
     return `<span class="country-picker__flag-fallback">${flagEmoji}</span>`;
   }
 
-  const srcset = `https://flagcdn.com/w80/${country.iso2.toLowerCase()}.png 2x`;
+  const safeIso2 = escapeHtml(String(country.iso2 || "").toLowerCase().replace(/[^a-z]/g, ""));
+  const safeName = escapeHtml(country.name || "");
+  const srcset = `https://flagcdn.com/w80/${safeIso2}.png 2x`;
   return `
     <span class="country-picker__flag-wrapper">
       <img
         class="country-picker__flag-img"
         src="${flagUrl}"
         srcset="${srcset}"
-        alt="${country.name || ''}"
+        alt="${safeName}"
         width="20"
         height="14"
         loading="lazy"
