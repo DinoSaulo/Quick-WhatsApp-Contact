@@ -8,6 +8,9 @@ on:
 permissions:
   contents: read
 
+env:
+  NODE_VERSION: "22.23.2"
+
 concurrency:
   group: pipeline-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -45,13 +48,16 @@ jobs:
         run: dnf install -y --setopt=install_weak_deps=False git curl nodejs npm
 
       - name: Clonar repositorio
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Configurar Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
-          node-version: 22
+          node-version: ${{ env.NODE_VERSION }}
           cache: npm
+
+      - name: Verificar versao do Node.js
+        run: node -e "const actual = process.versions.node; const expected = process.env.NODE_VERSION; if (actual !== expected) { console.error('Expected Node.js ' + expected + ', but found ' + actual); process.exit(1); } console.log('Using Node.js ' + actual);"
 
       - name: Instalar dependencias
         run: npm ci
@@ -73,7 +79,7 @@ jobs:
 
       - name: Anexar relatorio JUnit
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: relatorio-unitarios-${{ matrix.label }}
           path: reports/unit.xml
@@ -86,7 +92,7 @@ jobs:
 
       - name: Salvar build como artefato
         if: matrix.label == 'Ubuntu'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: extension-build
           path: dist/extension/
@@ -119,13 +125,16 @@ jobs:
         run: dnf install -y --setopt=install_weak_deps=False git curl nodejs npm
 
       - name: Clonar repositorio
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Configurar Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
-          node-version: 22
+          node-version: ${{ env.NODE_VERSION }}
           cache: npm
+
+      - name: Verificar versao do Node.js
+        run: node -e "const actual = process.versions.node; const expected = process.env.NODE_VERSION; if (actual !== expected) { console.error('Expected Node.js ' + expected + ', but found ' + actual); process.exit(1); } console.log('Using Node.js ' + actual);"
 
       - name: Instalar dependencias
         run: npm ci
@@ -144,7 +153,7 @@ jobs:
 
       - name: Anexar relatorio JUnit
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: relatorio-integracao-${{ matrix.label }}
           path: reports/integration.xml
@@ -175,22 +184,29 @@ jobs:
     steps:
       - name: Instalar dependencias do sistema (Fedora)
         if: matrix.label == 'Fedora'
-        run: dnf install -y --setopt=install_weak_deps=False git curl nodejs npm
+        run: dnf install -y --setopt=install_weak_deps=False git curl nodejs npm chromium
 
       - name: Clonar repositorio
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Configurar Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
-          node-version: 22
+          node-version: ${{ env.NODE_VERSION }}
           cache: npm
+
+      - name: Verificar versao do Node.js
+        run: node -e "const actual = process.versions.node; const expected = process.env.NODE_VERSION; if (actual !== expected) { console.error('Expected Node.js ' + expected + ', but found ' + actual); process.exit(1); } console.log('Using Node.js ' + actual);"
+
+      - name: Verificar Chromium no Fedora
+        if: matrix.label == 'Fedora'
+        run: chromium-browser --version
 
       - name: Instalar dependencias
         run: npm ci
 
       - name: Baixar build da etapa anterior
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: extension-build
           path: dist/extension/
@@ -207,13 +223,16 @@ jobs:
 
     steps:
       - name: Clonar repositorio
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Configurar Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
-          node-version: 22
+          node-version: ${{ env.NODE_VERSION }}
           cache: npm
+
+      - name: Verificar versao do Node.js
+        run: node -e "const actual = process.versions.node; const expected = process.env.NODE_VERSION; if (actual !== expected) { console.error('Expected Node.js ' + expected + ', but found ' + actual); process.exit(1); } console.log('Using Node.js ' + actual);"
 
       - name: Instalar dependencias
         run: npm ci
@@ -233,15 +252,18 @@ jobs:
 
     steps:
       - name: Clonar repositorio
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Configurar Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
-          node-version: 22
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Verificar versao do Node.js
+        run: node -e "const actual = process.versions.node; const expected = process.env.NODE_VERSION; if (actual !== expected) { console.error('Expected Node.js ' + expected + ', but found ' + actual); process.exit(1); } console.log('Using Node.js ' + actual);"
 
       - name: Baixar build da etapa de testes
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: extension-build
           path: dist/extension/

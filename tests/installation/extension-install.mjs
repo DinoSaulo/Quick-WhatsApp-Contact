@@ -71,13 +71,22 @@ assert.ok(
 let browser;
 
 try {
+  const browserArgs = ["--no-first-run", "--no-default-browser-check"];
+
+  // GitHub Actions job containers run as root. Chromium refuses to start as
+  // root unless its process sandbox is disabled; the outer job container
+  // remains the isolation boundary in this CI-only scenario.
+  if (typeof process.getuid === "function" && process.getuid() === 0) {
+    browserArgs.push("--no-sandbox", "--disable-setuid-sandbox");
+  }
+
   browser = await puppeteer.launch({
     executablePath,
     headless: true,
     pipe: true,
     enableExtensions: true,
     timeout: 30_000,
-    args: ["--no-first-run", "--no-default-browser-check"],
+    args: browserArgs,
   });
 
   const extensionId = await browser.installExtension(extensionPath);
