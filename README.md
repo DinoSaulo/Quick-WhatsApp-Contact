@@ -93,6 +93,14 @@ Execute a verificação completa de sintaxe, manifesto, testes e build:
 npm run verify
 ```
 
+Execute o smoke test do ciclo de instalação e desinstalação em um Chrome ou Chromium real:
+
+```bash
+npm run test:install
+```
+
+O teste constrói e instala a extensão, confirma o service worker Manifest V3, abre o popup e verifica os assets locais. Em seguida, desinstala a extensão e confirma que seus processos desaparecem e que o popup deixa de ser acessível. Se o navegador não estiver em um caminho padrão, informe `CHROME_PATH` ou `CHROMIUM_PATH` com o caminho do executável.
+
 O build publicável é gerado em `dist/extension` e contém somente o manifesto, o código da extensão, os ícones e os assets Twemoji locais. Para criar o ZIP no Windows:
 
 ```powershell

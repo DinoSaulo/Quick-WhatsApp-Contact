@@ -9,12 +9,14 @@
     "test": "vitest run",
     "test:unit": "vitest run --exclude tests/**/*.integration.test.js",
     "test:integration": "vitest run .integration.test.js",
+    "test:install": "npm run build && node tests/installation/extension-install.mjs",
     "validate:extension": "node scripts/validate-extension.mjs",
     "verify": "npm run lint && npm run validate:extension && npm test && npm run build"
   },
   "devDependencies": {
     "@twemoji/svg": "15.0.0",
     "jsdom": "^29.1.0",
+    "puppeteer-core": "24.8.1",
     "vitest": "^3.2.4"
   }
 }
