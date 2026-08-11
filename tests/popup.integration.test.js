@@ -93,8 +93,8 @@ describe("popup integration", () => {
     expect(flagSources.some((source) => /^https?:/.test(source))).toBe(false);
   });
 
-  it("concatena DDI + numero ao enviar quando o telefone local nao possui +", async () => {
-    mockStorage.consumePendingContextNumber.mockResolvedValue("91234-5678");
+  it("accepts a Brazilian mobile number with DDD and opens WhatsApp", async () => {
+    mockStorage.consumePendingContextNumber.mockResolvedValue("81986006397");
     mockStorage.consumePendingContextCountry.mockResolvedValue("BR");
     mockLocation.detectCountryCodeFromBrowserLocation.mockReturnValue("BR");
 
@@ -102,15 +102,16 @@ describe("popup integration", () => {
     const phoneInput = popup.querySelector("#phone");
     const form = popup.querySelector("#message-form");
 
-    phoneInput.value = "91234-5678";
+    phoneInput.value = "81 98600 6397";
     form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(chrome.tabs.create).toHaveBeenCalledWith({
-      url: "https://wa.me/55912345678",
+      url: "https://wa.me/5581986006397",
       active: true
     });
     expect(mockStorage.saveLastCountry).toHaveBeenCalledWith("BR");
+    expect(phoneInput.validationMessage).toBe("");
   });
 
   it("nao concatena novamente quando numero ja possui +DDI", async () => {
@@ -135,7 +136,7 @@ describe("popup integration", () => {
       darkModeEnabled: false,
       autoHighlightEnabled: true
     });
-    mockStorage.consumePendingContextNumber.mockResolvedValue("91234-5678");
+    mockStorage.consumePendingContextNumber.mockResolvedValue("11912345678");
     mockStorage.consumePendingContextCountry.mockResolvedValue("");
     mockStorage.getLastCountry.mockResolvedValue("");
     mockLocation.detectCountryCodeFromBrowserLocation.mockReturnValue("");

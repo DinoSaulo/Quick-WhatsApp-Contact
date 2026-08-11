@@ -58,17 +58,27 @@ describe("phone utils", () => {
   });
 
   it("retorna formatos esperados por DDI", () => {
-    expect(getExpectedFormatsForDdi("55")).toEqual(["9XXXX-XXXX", "XXXX-XXXX"]);
+    expect(getExpectedFormatsForDdi("55")).toEqual([
+      "(XX) 9XXXX-XXXX",
+      "(XX) XXXX-XXXX"
+    ]);
     expect(getExpectedFormatsForDdi("351")).toEqual(["XXXXXXXXX"]);
     expect(getExpectedFormatsForDdi("999")).toEqual([]);
   });
 
   it("valida número local com base no DDI selecionado", () => {
-    expect(isLocalNumberValidForDdi("91234-5678", "55")).toBe(true);
-    expect(isLocalNumberValidForDdi("1234-5678", "55")).toBe(true);
-    expect(isLocalNumberValidForDdi("2345-678", "55")).toBe(false);
+    expect(isLocalNumberValidForDdi("81 98600-6397", "55")).toBe(true);
+    expect(isLocalNumberValidForDdi("(11) 3456-7890", "55")).toBe(true);
+    expect(isLocalNumberValidForDdi("98600-6397", "55")).toBe(false);
+    expect(isLocalNumberValidForDdi("3456-7890", "55")).toBe(false);
     expect(isLocalNumberValidForDdi("123-4567", "1")).toBe(true);
     expect(isLocalNumberValidForDdi("12345678", "1")).toBe(false);
+  });
+
+  it("accepts the Brazilian mobile number reported by the user", () => {
+    expect(isLikelyPhoneText("81 98600 6397")).toBe(true);
+    expect(isLocalNumberValidForDdi("81 98600 6397", "55")).toBe(true);
+    expect(joinCountryCodeAndNumber("55", "81 98600 6397")).toBe("5581986006397");
   });
 
   it("monta a URL do WhatsApp com mensagem codificada", () => {

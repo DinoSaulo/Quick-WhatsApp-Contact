@@ -3,7 +3,10 @@ import { PHONE_FORMAT_RULES_BY_DDI } from "../src/utils/phoneFormats.js";
 
 describe("phoneFormats object", () => {
   it("contem formatos validos para o Brasil (55)", () => {
-    expect(PHONE_FORMAT_RULES_BY_DDI["55"]).toEqual(["9XXXX-XXXX", "XXXX-XXXX"]);
+    expect(PHONE_FORMAT_RULES_BY_DDI["55"]).toEqual([
+      "(XX) 9XXXX-XXXX",
+      "(XX) XXXX-XXXX"
+    ]);
   });
 
   it("contem formato valido para Portugal (351)", () => {

@@ -18,7 +18,7 @@ export const PHONE_FORMAT_RULES_BY_DDI = {
   "51": ["XXXXXXXXX"],
   "52": ["XXXXXXXXXX"],
   "54": ["XXXXXXXXXX", "XXXXXXXXXXX"],
-  "55": ["9XXXX-XXXX", "XXXX-XXXX"],
+  "55": ["(XX) 9XXXX-XXXX", "(XX) XXXX-XXXX"],
   "56": ["XXXXXXXXX"],
   "57": ["XXXXXXXXXX"],
   "58": ["XXXXXXXXXX"],
@@ -36,4 +36,3 @@ export const PHONE_FORMAT_RULES_BY_DDI = {
   "98": ["XXXXXXXXXX"],
   "351": ["XXXXXXXXX"]
 };
-
