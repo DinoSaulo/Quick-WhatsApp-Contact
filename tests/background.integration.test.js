@@ -160,4 +160,74 @@ describe("background selection security integration", () => {
       ids: ["quick-whatsapp-contact.page-helpers"]
     });
   });
+
+  it("opens a validated international number directly in WhatsApp", async () => {
+    await sendSelection("+351 912 345 678");
+
+    expect(chrome.tabs.create).toHaveBeenCalledWith({
+      url: "https://wa.me/351912345678",
+      active: true
+    });
+    expect(mockStorage.setPendingContextCountry).not.toHaveBeenCalled();
+    expect(mockStorage.setPendingContextNumber).not.toHaveBeenCalled();
+    expect(chrome.action.openPopup).not.toHaveBeenCalled();
+  });
+
+  it("persists local selection context before opening the popup", async () => {
+    await sendSelection("912 345 678", "https://store.example.pt/product");
+
+    expect(mockStorage.setPendingContextCountry).toHaveBeenCalledWith("PT");
+    expect(mockStorage.setPendingContextNumber).toHaveBeenCalledWith("912345678");
+    expect(chrome.action.openPopup).toHaveBeenCalledOnce();
+    expect(chrome.tabs.create).not.toHaveBeenCalled();
+  });
+
+  it("reports an asynchronous processing failure to the content script", async () => {
+    chrome.action.openPopup.mockRejectedValueOnce(new Error("popup unavailable"));
+
+    const { keepsChannelOpen, response } = await sendSelection("912 345 678");
+
+    expect(keepsChannelOpen).toBe(true);
+    expect(response).toEqual({ ok: false, error: "Error: popup unavailable" });
+  });
+
+  it("rebuilds context menu and page helper registration on browser startup", async () => {
+    mockStorage.getAutoHighlightEnabled.mockResolvedValue(true);
+    chrome.permissions.contains.mockResolvedValue(true);
+
+    await handlers.startup();
+
+    expect(chrome.contextMenus.removeAll).toHaveBeenCalledOnce();
+    expect(chrome.contextMenus.create).toHaveBeenCalledWith({
+      id: "quick-whatsapp-contact.send",
+      title: expect.any(String),
+      contexts: ["selection"]
+    });
+    expect(chrome.scripting.registerContentScripts).toHaveBeenCalledOnce();
+  });
+
+  it("replaces an existing helper registration instead of duplicating it", async () => {
+    mockStorage.getAutoHighlightEnabled.mockResolvedValue(true);
+    chrome.permissions.contains.mockResolvedValue(true);
+    chrome.scripting.getRegisteredContentScripts.mockResolvedValue([
+      { id: "quick-whatsapp-contact.page-helpers" }
+    ]);
+
+    await handlers.permissionsAdded();
+
+    expect(chrome.scripting.unregisterContentScripts).toHaveBeenCalledWith({
+      ids: ["quick-whatsapp-contact.page-helpers"]
+    });
+    expect(chrome.scripting.registerContentScripts).toHaveBeenCalledOnce();
+  });
+
+  it("ignores storage changes outside sync storage", async () => {
+    await handlers.storageChanged(
+      { "quick-whatsapp-contact.auto-highlight-enabled": { newValue: true } },
+      "local"
+    );
+
+    expect(chrome.contextMenus.removeAll).not.toHaveBeenCalled();
+    expect(chrome.scripting.getRegisteredContentScripts).not.toHaveBeenCalled();
+  });
 });

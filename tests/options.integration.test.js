@@ -180,4 +180,49 @@ describe("options page integration", () => {
     expect(toggle.checked).toBe(false);
     expect(page.querySelector("#saved-status").dataset.state).toBe("error");
   });
+
+  it("reconciles stale enabled settings when site access was revoked", async () => {
+    chrome.permissions.contains.mockResolvedValue(false);
+
+    const page = await renderOptionsPage();
+
+    expect(mockStorage.setAutoHighlightEnabled).toHaveBeenCalledWith(false);
+    expect(page.querySelector("#auto-highlight").checked).toBe(false);
+  });
+
+  it("removes optional site access when page helpers are disabled", async () => {
+    const page = await renderOptionsPage();
+    const toggle = page.querySelector("#auto-highlight");
+
+    toggle.checked = false;
+    toggle.dispatchEvent(new Event("change", { bubbles: true }));
+    await vi.waitFor(() => expect(mockStorage.setAutoHighlightEnabled).toHaveBeenCalledWith(false));
+
+    expect(chrome.permissions.remove).toHaveBeenCalledWith({
+      origins: ["http://*/*", "https://*/*"]
+    });
+    expect(page.querySelector("#saved-status").dataset.state).toBe("success");
+  });
+
+  it("restores the toggle and displays an error when permission removal fails", async () => {
+    chrome.permissions.remove.mockRejectedValue(new Error("permission API unavailable"));
+    const page = await renderOptionsPage();
+    const toggle = page.querySelector("#auto-highlight");
+
+    toggle.checked = false;
+    toggle.dispatchEvent(new Event("change", { bubbles: true }));
+    await vi.waitFor(() => expect(page.querySelector("#saved-status").dataset.state).toBe("error"));
+
+    expect(toggle.checked).toBe(true);
+    expect(mockStorage.setAutoHighlightEnabled).not.toHaveBeenCalled();
+  });
+
+  it("associates the page access disclosure with the permission toggle", async () => {
+    const page = await renderOptionsPage();
+    const toggle = page.querySelector("#auto-highlight");
+    const disclosure = page.querySelector("#page-access-disclosure");
+
+    expect(toggle.getAttribute("aria-describedby")).toBe("page-access-disclosure");
+    expect(disclosure.textContent.trim().length).toBeGreaterThan(20);
+  });
 });

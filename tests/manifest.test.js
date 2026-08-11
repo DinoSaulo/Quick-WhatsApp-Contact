@@ -47,4 +47,25 @@ describe("Chrome Web Store manifest readiness", () => {
     expect(resources).toEqual(["icons/icon16.png"]);
     expect(resources.some((resource) => /\.(?:js|html)$/i.test(resource))).toBe(false);
   });
+
+  it("sets the minimum Chrome version required by action.openPopup", () => {
+    expect(Number(manifest.minimum_chrome_version)).toBeGreaterThanOrEqual(127);
+  });
+
+  it("prevents extension pages from being embedded or changing their base URL", () => {
+    const csp = manifest.content_security_policy.extension_pages;
+
+    expect(csp).toContain("base-uri 'self'");
+    expect(csp).toContain("frame-ancestors 'none'");
+    expect(csp).not.toContain("unsafe-inline");
+  });
+
+  it("limits web-accessible resources to HTTP and HTTPS origins", () => {
+    expect(manifest.web_accessible_resources).toEqual([
+      {
+        resources: ["icons/icon16.png"],
+        matches: ["http://*/*", "https://*/*"]
+      }
+    ]);
+  });
 });

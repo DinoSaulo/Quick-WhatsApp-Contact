@@ -90,7 +90,6 @@
     });
 
     document.documentElement.appendChild(button);
-    updateButtonText();
     return button;
   }
 
@@ -106,6 +105,7 @@
   function getButton() {
     if (!buttonElement) {
       buttonElement = createButton();
+      updateButtonText();
     }
     return buttonElement;
   }
