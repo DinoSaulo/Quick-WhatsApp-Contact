@@ -58,6 +58,14 @@ jobs:
       - name: Gerar build da extensao
         run: npm run build
 
+      - name: Salvar build como artefato
+        if: matrix.label == 'Ubuntu'
+        uses: actions/upload-artifact@v4
+        with:
+          name: extension-build
+          path: dist/extension/
+          retention-days: 1
+
       - name: Preparar diretorio de relatorios
         shell: bash
         run: mkdir -p reports
@@ -82,12 +90,19 @@ jobs:
           --reporter=junit
           --outputFile.junit=reports/integration.xml
 
+      - name: Testar instalacao no Chrome
+        id: installation
+        if: matrix.label == 'Ubuntu'
+        continue-on-error: true
+        run: npm run test:install
+
       - name: Publicar resumo dos testes
         if: always()
         shell: bash
         env:
           UNIT_OUTCOME: ${{ steps.unit.outcome }}
           INTEGRATION_OUTCOME: ${{ steps.integration.outcome }}
+          INSTALLATION_OUTCOME: ${{ steps.installation.outcome }}
         run: |
           summarize() {
             local label="$1"
@@ -124,6 +139,7 @@ jobs:
             echo "|---|---:|---:|---:|---:|---:|"
             summarize "Unitarios" "$UNIT_OUTCOME" "reports/unit.xml"
             summarize "Integracao" "$INTEGRATION_OUTCOME" "reports/integration.xml"
+            summarize "Instalacao Chrome" "$INSTALLATION_OUTCOME" ""
             echo
             echo "- Commit: \`${GITHUB_SHA}\`"
             echo "- Node.js: \`$(node --version)\`"
@@ -142,7 +158,9 @@ jobs:
       - name: Validar resultado final
         if: >-
           always() &&
-          (steps.unit.outcome == 'failure' || steps.integration.outcome == 'failure')
+          (steps.unit.outcome == 'failure' ||
+           steps.integration.outcome == 'failure' ||
+           (matrix.label == 'Ubuntu' && steps.installation.outcome == 'failure'))
         shell: bash
         run: |
           echo "Uma ou mais suites de testes falharam. Consulte o resumo e os relatorios JUnit."
@@ -164,13 +182,12 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
 
-      - name: Instalar dependencias
-        run: npm ci
-
-      - name: Gerar build da extensao
-        run: npm run build
+      - name: Baixar build da etapa de testes
+        uses: actions/download-artifact@v4
+        with:
+          name: extension-build
+          path: dist/extension/
 
       - name: Ler versao do manifesto
         id: version
