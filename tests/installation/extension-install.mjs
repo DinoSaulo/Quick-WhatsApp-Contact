@@ -155,6 +155,8 @@ try {
   const optionsState = await optionsPage.evaluate(() => {
     const shell = document.querySelector(".options-shell");
     const bounds = shell?.getBoundingClientRect();
+    const brand = document.querySelector(".options-brand img");
+    const brandBounds = brand?.getBoundingClientRect();
 
     return {
       shellWidth: bounds?.width,
@@ -165,6 +167,10 @@ try {
       language: document.querySelector("#language")?.value,
       defaultCountry: document.querySelector("#default-country-hidden")?.value,
       theme: document.documentElement.dataset.theme,
+      brandUrl: brand?.src,
+      brandComplete: brand?.complete,
+      brandNaturalWidth: brand?.naturalWidth,
+      brandCenter: brandBounds ? brandBounds.left + brandBounds.width / 2 : undefined,
     };
   });
 
@@ -178,6 +184,16 @@ try {
   assert.equal(optionsState.language, "pt-BR");
   assert.equal(optionsState.defaultCountry, "PT");
   assert.equal(optionsState.theme, "dark");
+  assert.equal(
+    optionsState.brandUrl,
+    `${extensionOrigin}/icons/logo-generated-512.png`,
+  );
+  assert.equal(optionsState.brandComplete, true);
+  assert.ok(optionsState.brandNaturalWidth > 0, "A marca da página de opções não carregou.");
+  assert.ok(
+    Math.abs(optionsState.brandCenter - optionsState.viewportCenter) <= 1,
+    "A marca da página de opções não está centralizada.",
+  );
   await optionsPage.close();
 
   // A página aberta também é um alvo da extensão; feche-a para que somente os

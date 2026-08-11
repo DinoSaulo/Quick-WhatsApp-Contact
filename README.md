@@ -1,4 +1,9 @@
 # Quick WhatsApp Contact
+
+<p align="center">
+  <img src="./icons/logo-generated-512.png" alt="Quick WhatsApp Contact" width="280" />
+</p>
+
 > Extensão do Chrome para iniciar conversas no WhatsApp a partir de números encontrados em qualquer página web.
 
 `Chrome Extension` · `Manifest V3` · `Vanilla JS` · `Vitest`

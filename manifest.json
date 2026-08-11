@@ -21,8 +21,9 @@
   "action": {
     "default_title": "Quick WhatsApp Contact",
     "default_icon": {
-      "16": "icons/icon16.png",
-      "48": "icons/icon48.png"
+      "16": "icons/toolbar16.png",
+      "24": "icons/toolbar24.png",
+      "32": "icons/toolbar32.png"
     },
     "default_popup": "src/popup/popup.html"
   },

@@ -63,7 +63,7 @@ describe("options page integration", () => {
 
   it("keeps the options card centered without inheriting popup dimensions", () => {
     expect(optionsStyles).toMatch(
-      /\.options-shell\s*\{[^}]*max-width:\s*720px;[^}]*margin:\s*24px auto;/s
+      /\.options-shell\s*\{[^}]*max-width:\s*720px;[^}]*margin:\s*16px auto 24px;/s
     );
     expect(popupStyles).toMatch(/body\.popup-shell\s*\{[^}]*width:\s*360px;/s);
     const sharedBodyRule = popupStyles.match(/(?:^|\n)body\s*\{([^}]*)\}/)?.[1] ?? "";
