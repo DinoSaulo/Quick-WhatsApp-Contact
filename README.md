@@ -1,135 +1,104 @@
 # Quick WhatsApp Contact
 
-Extensão de navegador em Manifest V3 para iniciar conversas no WhatsApp a partir de números encontrados em paginas web, com tratamento inteligente de DDI e interface de envio com mensagem personalizada.
+> Extensão do Chrome para iniciar conversas no WhatsApp a partir de números encontrados em qualquer página web.
+
+`Chrome Extension` · `Manifest V3` · `Vanilla JS` · `Vitest`
+
+---
+
+## Sobre
+
+**Quick WhatsApp Contact** detecta números de telefone em páginas web e abre o WhatsApp com um clique. A extensão trata automaticamente DDI, aplica a máscara do país selecionado e permite enviar uma mensagem personalizada — tudo sem sair da aba atual.
+
+A interface está disponível em **Inglês (EN-US)** e **Português (PT-BR)**.
+
+---
 
 ## Funcionalidades
 
-- Menu de contexto com a ação `Chamar no WhatsApp` para números selecionados em qualquer página.
-- Botao flutuante ao selecionar um número em página web, semelhante ao comportamento de extensões como Google Translate.
-- Realce automatico opcional de números na página com icone do WhatsApp ao lado para abrir com um clique.
-- Sanitizacao automatica de números, removendo espacos, parenteses e tracos.
-- Deteccao de DDI:
-  - Se o número selecionado ja possui prefixo internacional com `+`, a extensão abre diretamente uma nova aba do WhatsApp.
-  - Se o número não possui DDI, a extensão abre uma tela para escolha do país e composicao do número completo.
-- Popup da extensão com campo de número e textarea para mensagem.
-- Página de configurações dedicada para:
-- realce automatico de números na página (on/off);
-- dark mode (on/off);
-- idioma da extensão (EN-US ou PT-BR, padrão EN-US).
-- Persistencia do ultimo país selecionado usando `chrome.storage.sync`.
-- Testes unitarios para sanitização, validacao de DDI e concatenacao de número.
+- **Menu de contexto** — selecione qualquer texto que pareça um número e clique em "Chamar no WhatsApp".
+- **Botão flutuante** — ao selecionar texto semelhante a um número, um botão de atalho aparece na página.
+- **Realce automático** — injeta um botão do WhatsApp ao lado de todos os links `<a href="tel:">` da página.
+- **Popup manual** — clique no ícone da extensão para digitar um número e uma mensagem personalizada.
+- **Seletor de país** — escolha o país pelo nome, bandeira e DDI; a máscara do campo de número muda automaticamente.
+- **Máscara de telefone dinâmica** — o formato do campo (ex: `11 99999-9999` para o Brasil) se atualiza conforme o país selecionado.
+- **Detecção automática de país** — o país é inferido pelo locale do navegador ou pelo TLD da URL atual.
+- **Abertura inteligente** — número com `+` abre o WhatsApp diretamente; número sem DDI abre uma tela para completar o país e o número.
+- **Persistência** — o último país usado e todas as preferências são salvos via `chrome.storage.sync`.
 
-## Estrutura do projeto
+---
 
-```text
-.
-|-- manifest.json
-|-- package.json
-|-- vitest.config.js
-|-- src
-|   |-- background.js
-|   |-- popup
-|   |   |-- popup.html
-|   |   |-- popup.js
-|   |   |-- ddi.html
-|   |   |-- ddi.js
-|   |   `-- styles.css
-|   `-- utils
-|       |-- countries.js
-|       |-- phone.js
-|       `-- storage.js
-`-- tests
-    `-- phone.test.js
-```
+## Configurações
 
-## Arquitetura
+Acesse a página de configurações pelo ícone de engrenagem no popup.
 
-### `src/background.js`
+| Opção | Descrição |
+|---|---|
+| Realce automático | Liga/desliga os botões injetados ao lado de links `tel:` nas páginas |
+| Dark mode | Alterna entre tema claro e escuro |
+| Idioma | Inglês (EN-US) ou Português (PT-BR) |
+| País padrão | País pré-selecionado ao abrir o popup (substitui a detecção automática) |
 
-Service worker do Manifest V3 responsavel por:
+---
 
-- criar o item de menu de contexto;
-- ler o texto selecionado;
-- sanitizar o número;
-- decidir se abre o WhatsApp diretamente ou a tela de seleção de DDI;
-- abrir sempre uma nova aba com `chrome.tabs.create`.
+## Como instalar
 
-### `src/utils/phone.js`
+1. Clone ou baixe este repositório.
+2. Abra o Chrome e acesse `chrome://extensions`.
+3. Ative o **Modo do desenvolvedor** (canto superior direito).
+4. Clique em **Carregar sem compactação**.
+5. Selecione a pasta raiz do projeto.
 
-Modulo com funções puras para:
-
-- sanitizar números;
-- normalizar o prefixo `+`;
-- validar se o número possui DDI;
-- concatenar DDI com número local;
-- construir a URL final do WhatsApp.
-
-### `src/popup/`
-
-Contem duas interfaces baseadas em Web Components:
-
-- `popup.html` / `popup.js`: popup principal da extensão para envio de mensagem com número completo.
-- `ddi.html` / `ddi.js`: tela aberta em nova aba quando o número selecionado não possui DDI.
-
-### `src/utils/storage.js`
-
-Abstracao para salvar e recuperar o ultimo país selecionado via `chrome.storage.sync`.
-
-## Como carregar a extensão localmente
-
-1. Abra o Chrome ou um navegador compativel com extensões MV3.
-2. Acesse `chrome://extensions`.
-3. Ative o `Modo do desenvolvedor`.
-4. Clique em `Carregar sem compactacao`.
-5. Selecione a pasta raiz do projeto:
-   `C:\Users\saulo\projects\ChamaNoZap`
+---
 
 ## Como usar
 
-### Fluxo 1: Menu de contexto
+### Fluxo 1 — Menu de contexto
 
 1. Selecione um número em qualquer página web.
-2. Clique com o botão direito.
-3. Escolha `Chamar no WhatsApp`.
-4. Resultado:
-   - Se o número estiver no formato internacional com `+`, o WhatsApp abre diretamente em nova aba.
-   - Se o número não tiver DDI, o popup fixo da extensão (ancorado no icone da barra) sera aberto para escolha do país e envio.
+2. Clique com o botão direito e escolha **Chamar no WhatsApp**.
+3. Se o número já tiver DDI (`+55...`), o WhatsApp abre diretamente em nova aba.
+4. Se não tiver DDI, o popup abre para você escolher o país e confirmar o envio.
 
-### Fluxo 2: Popup da extensão
+### Fluxo 2 — Popup manual
 
-1. Clique no icone da extensão.
-2. Informe o número.
-3. Opcionalmente, escreva uma mensagem.
-4. Clique em `Enviar`.
-5. O WhatsApp sera aberto em nova aba com o número e a mensagem preenchidos.
+1. Clique no ícone da extensão na barra do navegador.
+2. Selecione o país, informe o número e, opcionalmente, escreva uma mensagem.
+3. Clique em **Enviar** — o WhatsApp abre em nova aba com o número e a mensagem preenchidos.
 
-## Executando os testes
+### Fluxo 3 — Realce automático
 
-Instale as dependencias:
+1. Com o realce ativado nas configurações, acesse qualquer página que contenha links `tel:`.
+2. Um botão do WhatsApp aparece ao lado de cada link.
+3. Clique no botão para abrir o WhatsApp com aquele número diretamente.
+
+---
+
+## Desenvolvimento
+
+Instale as dependências:
 
 ```bash
 npm install
 ```
 
-Execute a suite:
+Execute todos os testes:
 
 ```bash
 npm test
 ```
 
-## Regras implementadas
+Execute um arquivo de teste específico:
 
-- Manifest V3 com service worker.
-- Uso de JavaScript ES Modules.
-- UI baseada em Web Components.
-- Sanitizacao de números antes de qualquer envio.
-- Abertura obrigatória em nova aba para toda ação de envio.
-- Persistencia do ultimo país selecionado.
-- Testes unitarios para regras centrais de negocio.
+```bash
+npx vitest run tests/phone.test.js
+```
 
-## Observacoes
+---
 
-- A detecção de DDI considera números que comecam com `+`.
-- A lista de países em `src/utils/countries.js` pode ser expandida facilmente.
-- O projeto foi estruturado para manter a logica de dominio desacoplada da interface, facilitando testes e evolucao.
+## Tecnologias
 
+- **Chrome Extension Manifest V3** com service worker
+- **Vanilla JS** — ES Modules, sem bundler, sem frameworks
+- **Web Components** nativos (`HTMLElement` + `customElements.define`)
+- **Vitest** + **jsdom** para testes unitários e de integração
