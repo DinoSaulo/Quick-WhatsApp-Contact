@@ -1,4 +1,4 @@
-name: Testes
+name: Pipeline
 
 on:
   push:
@@ -9,15 +9,22 @@ permissions:
   contents: read
 
 concurrency:
-  group: tests-${{ github.workflow }}-${{ github.ref }}
+  group: pipeline-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# ─────────────────────────────────────────────────────────────────────────────
+#  Level 1 ▶ Level 2      ▶ Level 3       ▶ Level 4   ▶ Level 5
+#  Unit     ▶ Integration ▶ Installation  ▶ Validate  ▶ Release
+# ─────────────────────────────────────────────────────────────────────────────
+
 jobs:
-  tests:
-    name: Testes - ${{ matrix.label }}
+
+  # ── Level 1: Unit tests (all platforms) ────────────────────────────────────
+  unit-tests:
+    name: "1 · Unitarios · ${{ matrix.label }}"
     runs-on: ${{ matrix.os }}
     container: ${{ matrix.container }}
-    timeout-minutes: 15
+    timeout-minutes: 10
     strategy:
       fail-fast: false
       matrix:
@@ -52,10 +59,29 @@ jobs:
       - name: Verificar sintaxe
         run: npm run lint
 
-      - name: Validar pacote Manifest V3
-        run: npm run validate:extension
+      - name: Preparar diretorio de relatorios
+        shell: bash
+        run: mkdir -p reports
+
+      - name: Executar testes unitarios
+        run: >-
+          npm run test:unit --
+          --reporter=default
+          --reporter=github-actions
+          --reporter=junit
+          --outputFile.junit=reports/unit.xml
+
+      - name: Anexar relatorio JUnit
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: relatorio-unitarios-${{ matrix.label }}
+          path: reports/unit.xml
+          if-no-files-found: warn
+          retention-days: 14
 
       - name: Gerar build da extensao
+        if: matrix.label == 'Ubuntu'
         run: npm run build
 
       - name: Salvar build como artefato
@@ -66,23 +92,49 @@ jobs:
           path: dist/extension/
           retention-days: 1
 
+  # ── Level 2: Integration tests (all platforms) ─────────────────────────────
+  integration-tests:
+    name: "2 · Integracao · ${{ matrix.label }}"
+    needs: unit-tests
+    runs-on: ${{ matrix.os }}
+    container: ${{ matrix.container }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            label: Ubuntu
+          - os: ubuntu-latest
+            label: Fedora
+            container: fedora:latest
+          - os: macos-latest
+            label: macOS
+          - os: windows-latest
+            label: Windows
+
+    steps:
+      - name: Instalar dependencias do sistema (Fedora)
+        if: matrix.label == 'Fedora'
+        run: dnf install -y --setopt=install_weak_deps=False git curl
+
+      - name: Clonar repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependencias
+        run: npm ci
+
       - name: Preparar diretorio de relatorios
         shell: bash
         run: mkdir -p reports
 
-      - name: Executar testes unitarios
-        id: unit
-        continue-on-error: true
-        run: >-
-          npm run test:unit --
-          --reporter=default
-          --reporter=github-actions
-          --reporter=junit
-          --outputFile.junit=reports/unit.xml
-
       - name: Executar testes de integracao
-        id: integration
-        continue-on-error: true
         run: >-
           npm run test:integration --
           --reporter=default
@@ -90,87 +142,74 @@ jobs:
           --reporter=junit
           --outputFile.junit=reports/integration.xml
 
-      - name: Testar instalacao no Chrome
-        id: installation
-        if: matrix.label == 'Ubuntu'
-        continue-on-error: true
-        run: npm run test:install
-
-      - name: Publicar resumo dos testes
-        if: always()
-        shell: bash
-        env:
-          UNIT_OUTCOME: ${{ steps.unit.outcome }}
-          INTEGRATION_OUTCOME: ${{ steps.integration.outcome }}
-          INSTALLATION_OUTCOME: ${{ steps.installation.outcome }}
-        run: |
-          summarize() {
-            local label="$1"
-            local outcome="$2"
-            local report="$3"
-            local status="❌ Falhou"
-            local tests="-"
-            local failures="-"
-            local errors="-"
-            local duration="-"
-
-            if [[ "$outcome" == "success" ]]; then
-              status="✅ Passou"
-            elif [[ "$outcome" == "skipped" ]]; then
-              status="⏭️ Ignorado"
-            fi
-
-            if [[ -f "$report" ]]; then
-              local suite
-              suite=$(grep -m1 '<testsuites ' "$report" || true)
-              tests=$(sed -n 's/.* tests="\([^"]*\)".*/\1/p' <<< "$suite")
-              failures=$(sed -n 's/.* failures="\([^"]*\)".*/\1/p' <<< "$suite")
-              errors=$(sed -n 's/.* errors="\([^"]*\)".*/\1/p' <<< "$suite")
-              duration=$(sed -n 's/.* time="\([^"]*\)".*/\1/p' <<< "$suite")
-            fi
-
-            echo "| $label | $status | ${tests:--} | ${failures:--} | ${errors:--} | ${duration:--}s |"
-          }
-
-          {
-            echo "## Resultado dos testes — ${{ matrix.label }}"
-            echo
-            echo "| Suite | Estado | Testes | Falhas | Erros | Duracao |"
-            echo "|---|---:|---:|---:|---:|---:|"
-            summarize "Unitarios" "$UNIT_OUTCOME" "reports/unit.xml"
-            summarize "Integracao" "$INTEGRATION_OUTCOME" "reports/integration.xml"
-            summarize "Instalacao Chrome" "$INSTALLATION_OUTCOME" ""
-            echo
-            echo "- Commit: \`${GITHUB_SHA}\`"
-            echo "- Node.js: \`$(node --version)\`"
-            echo "- Runner: \`${{ matrix.label }}\`"
-          } >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Anexar relatorios JUnit
+      - name: Anexar relatorio JUnit
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: relatorios-de-testes-${{ matrix.label }}
-          path: reports/*.xml
+          name: relatorio-integracao-${{ matrix.label }}
+          path: reports/integration.xml
           if-no-files-found: warn
           retention-days: 14
 
-      - name: Validar resultado final
-        if: >-
-          always() &&
-          (steps.unit.outcome == 'failure' ||
-           steps.integration.outcome == 'failure' ||
-           (matrix.label == 'Ubuntu' && steps.installation.outcome == 'failure'))
-        shell: bash
-        run: |
-          echo "Uma ou mais suites de testes falharam. Consulte o resumo e os relatorios JUnit."
-          exit 1
+  # ── Level 3: Installation test (Ubuntu + Chrome only) ──────────────────────
+  installation-test:
+    name: "3 · Instalacao no Chrome"
+    needs: integration-tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
 
+    steps:
+      - name: Clonar repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Baixar build da etapa anterior
+        uses: actions/download-artifact@v4
+        with:
+          name: extension-build
+          path: dist/extension/
+
+      - name: Testar instalacao e desinstalacao no Chrome
+        run: npm run test:install
+
+  # ── Level 4: Validate extension package ────────────────────────────────────
+  validate-extension:
+    name: "4 · Validar Extensao"
+    needs: installation-test
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Clonar repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Validar pacote Manifest V3
+        run: npm run validate:extension
+
+  # ── Level 5: Publish release (main branch only) ────────────────────────────
   release:
-    name: Publicar Release
-    needs: tests
+    name: "5 · Publicar Release"
+    needs: validate-extension
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: write
 
