@@ -276,4 +276,6 @@ body {
   border-top: 1px solid var(--border);
   font-size: 13px;
   color: var(--muted);
+  border-bottom-left-radius: 19px;
+  border-bottom-right-radius: 19px;
 }

@@ -1,6 +1,11 @@
 .options-shell {
   max-width: 720px;
   margin: 24px auto;
+  padding-bottom: 260px;
+}
+
+.options-shell .card {
+  overflow: visible;
 }
 
 .option-row {
