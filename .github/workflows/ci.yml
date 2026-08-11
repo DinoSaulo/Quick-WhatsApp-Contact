@@ -147,3 +147,45 @@ jobs:
         run: |
           echo "Uma ou mais suites de testes falharam. Consulte o resumo e os relatorios JUnit."
           exit 1
+
+  release:
+    name: Publicar Release
+    needs: tests
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Clonar repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Gerar build da extensao
+        run: npm run build
+
+      - name: Ler versao do manifesto
+        id: version
+        run: |
+          echo "value=$(node -p "JSON.parse(require('fs').readFileSync('manifest.json','utf8')).version")" >> "$GITHUB_OUTPUT"
+
+      - name: Criar arquivo ZIP
+        run: |
+          (cd dist/extension && zip -qr "../../dist/quick-whatsapp-contact-v${{ steps.version.outputs.value }}.zip" .)
+
+      - name: Publicar release no GitHub
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.version.outputs.value }}
+          name: Quick WhatsApp Contact v${{ steps.version.outputs.value }}
+          files: dist/quick-whatsapp-contact-v${{ steps.version.outputs.value }}.zip
+          generate_release_notes: true
+          make_latest: true
