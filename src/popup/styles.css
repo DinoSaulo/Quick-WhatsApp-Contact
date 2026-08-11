@@ -55,7 +55,7 @@ body {
   border: 1px solid var(--border);
   border-radius: 20px;
   box-shadow: var(--shadow);
-  overflow: hidden;
+  overflow: visible;
 }
 
 .card__content {

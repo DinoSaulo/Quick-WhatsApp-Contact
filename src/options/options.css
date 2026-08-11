@@ -39,6 +39,10 @@
   background: #202a34;
 }
 
+.option-control .country-picker {
+  min-width: 260px;
+}
+
 .status-text {
   margin-top: 12px;
   font-size: 12px;
