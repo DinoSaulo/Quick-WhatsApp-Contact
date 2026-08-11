@@ -2,7 +2,8 @@ import {
   COUNTRIES,
   DEFAULT_COUNTRY_CODE,
   getCountryByCode,
-  getDefaultCountryCodeForLanguage
+  getDefaultCountryCodeForLanguage,
+  renderCountryFlagHtml
 } from "../utils/countries.js";
 import { getMessages, t } from "../utils/i18n.js";
 import { detectCountryCodeFromBrowserLocation } from "../utils/location.js";
@@ -85,7 +86,7 @@ class CountryDdiScreen extends HTMLElement {
       const searchKey = `${country.name.toLowerCase()} ${country.code.toLowerCase()} ${country.dialCode} +${country.dialCode} ${country.flag}`.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
       return `
         <button class="country-picker__option" type="button" data-country-code="${country.code}" data-search="${searchKey}">
-          <span class="country-picker__flag">${country.flag}</span>
+          <span class="country-picker__flag">${renderCountryFlagHtml(country)}</span>
           <span class="country-picker__name">${country.name}</span>
           <span class="country-picker__ddi">+${country.dialCode}</span>
         </button>
@@ -96,7 +97,7 @@ class CountryDdiScreen extends HTMLElement {
       <div class="country-picker" id="country-picker">
         <input id="country-hidden" name="country" type="hidden" value="${selectedCountry.code}" />
         <button class="country-picker__trigger" id="country-trigger" type="button" aria-expanded="false">
-          <span class="country-picker__flag">${selectedCountry.flag}</span>
+          <span class="country-picker__flag">${renderCountryFlagHtml(selectedCountry)}</span>
           <span class="country-picker__name">${selectedCountry.name}</span>
           <span class="country-picker__ddi">+${selectedCountry.dialCode}</span>
         </button>
@@ -218,7 +219,7 @@ class CountryDdiScreen extends HTMLElement {
         }
         if (trigger) {
           trigger.innerHTML = `
-            <span class="country-picker__flag">${selectedCountry.flag}</span>
+            <span class="country-picker__flag">${renderCountryFlagHtml(selectedCountry)}</span>
             <span class="country-picker__name">${selectedCountry.name}</span>
             <span class="country-picker__ddi">+${selectedCountry.dialCode}</span>
           `;

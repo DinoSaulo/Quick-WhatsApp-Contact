@@ -201,8 +201,26 @@ body {
 
 .country-picker__flag {
   min-width: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   font-family: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif;
   font-size: 16px;
+}
+
+.country-picker__flag-wrapper {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.country-picker__flag-img {
+  width: 20px;
+  height: 14px;
+  border-radius: 2px;
+  object-fit: cover;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.15);
+  vertical-align: middle;
 }
 
 .country-picker__name {

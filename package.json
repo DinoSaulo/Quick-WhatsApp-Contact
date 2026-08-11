@@ -9,5 +9,8 @@
   "devDependencies": {
     "jsdom": "^29.1.0",
     "vitest": "^3.2.4"
+  },
+  "dependencies": {
+    "twemoji": "^14.0.2"
   }
 }

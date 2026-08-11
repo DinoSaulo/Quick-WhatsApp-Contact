@@ -1,4 +1,4 @@
-import { COUNTRIES } from "../utils/countries.js";
+import { COUNTRIES, getCountryByCode, renderCountryFlagHtml } from "../utils/countries.js";
 import { getMessages } from "../utils/i18n.js";
 import {
   getSettings,
@@ -21,6 +21,63 @@ class ExtensionSettingsPage extends HTMLElement {
 
   applyTheme(isDark) {
     document.documentElement.dataset.theme = isDark ? "dark" : "light";
+  }
+
+  buildCountryPickerMarkup(selectedCode) {
+    const selectedCountry = selectedCode ? getCountryByCode(selectedCode) : null;
+    const isAutomatic = !selectedCode;
+
+    const automaticOptionMarkup = `
+      <button class="country-picker__option" type="button" data-country-code="" data-search="${this.messages.optionDefaultCountryNone.toLowerCase()} automatic automatico">
+        <span class="country-picker__flag">🌐</span>
+        <span class="country-picker__name">${this.messages.optionDefaultCountryNone}</span>
+        <span class="country-picker__ddi"></span>
+      </button>
+    `;
+
+    const items = COUNTRIES.map((country) => {
+      const searchKey = `${country.name.toLowerCase()} ${country.code.toLowerCase()} ${country.dialCode} +${country.dialCode} ${country.flag}`.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+      return `
+        <button class="country-picker__option" type="button" data-country-code="${country.code}" data-search="${searchKey}">
+          <span class="country-picker__flag">${renderCountryFlagHtml(country)}</span>
+          <span class="country-picker__name">${country.name}</span>
+          <span class="country-picker__ddi">+${country.dialCode}</span>
+        </button>
+      `;
+    }).join("");
+
+    const triggerFlagMarkup = isAutomatic || !selectedCountry
+      ? `<span class="country-picker__flag">🌐</span>`
+      : `<span class="country-picker__flag">${renderCountryFlagHtml(selectedCountry)}</span>`;
+
+    const triggerNameMarkup = isAutomatic || !selectedCountry
+      ? this.messages.optionDefaultCountryNone
+      : selectedCountry.name;
+
+    const triggerDdiMarkup = isAutomatic || !selectedCountry
+      ? ""
+      : `+${selectedCountry.dialCode}`;
+
+    return `
+      <div class="country-picker" id="country-picker">
+        <input id="default-country-hidden" name="defaultCountry" type="hidden" value="${selectedCode || ""}" />
+        <button class="country-picker__trigger" id="country-trigger" type="button" aria-expanded="false">
+          ${triggerFlagMarkup}
+          <span class="country-picker__name">${triggerNameMarkup}</span>
+          <span class="country-picker__ddi">${triggerDdiMarkup}</span>
+        </button>
+        <div class="country-picker__menu" id="country-menu" hidden>
+          <div class="country-picker__search">
+            <input id="country-search" class="country-picker__search-input" type="text" placeholder="${this.messages.searchCountryPlaceholder}" autocomplete="off" />
+          </div>
+          <div class="country-picker__options" id="country-options">
+            ${automaticOptionMarkup}
+            ${items}
+          </div>
+          <div class="country-picker__no-results" id="country-no-results" hidden>${this.messages.searchCountryNoResults}</div>
+        </div>
+      </div>
+    `;
   }
 
   render() {
@@ -65,12 +122,7 @@ class ExtensionSettingsPage extends HTMLElement {
             <div class="option-row">
               <div class="option-label">${this.messages.optionDefaultCountry}</div>
               <div class="option-control">
-                <select id="default-country">
-                  <option value="" ${!this.settings.defaultCountry ? "selected" : ""}>${this.messages.optionDefaultCountryNone}</option>
-                  ${COUNTRIES.map((country) => `
-                    <option value="${country.code}" ${this.settings.defaultCountry === country.code ? "selected" : ""}>${country.flag} ${country.name} (+${country.dialCode})</option>
-                  `).join("")}
-                </select>
+                ${this.buildCountryPickerMarkup(this.settings.defaultCountry)}
               </div>
             </div>
 
@@ -81,11 +133,125 @@ class ExtensionSettingsPage extends HTMLElement {
     `;
   }
 
+  bindCountryPickerEvents() {
+    const picker = this.querySelector("#country-picker");
+    const trigger = this.querySelector("#country-trigger");
+    const menu = this.querySelector("#country-menu");
+    const hiddenInput = this.querySelector("#default-country-hidden");
+    const searchInput = this.querySelector("#country-search");
+    const noResults = this.querySelector("#country-no-results");
+    const optionButtons = this.querySelectorAll(".country-picker__option");
+
+    const filterCountries = (queryText) => {
+      const query = String(queryText || "")
+        .toLowerCase()
+        .trim()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "");
+      let visibleCount = 0;
+      optionButtons.forEach((button) => {
+        const searchData = button.getAttribute("data-search") || "";
+        const matches = !query || searchData.includes(query);
+        button.hidden = !matches;
+        if (matches) {
+          visibleCount++;
+        }
+      });
+      if (noResults) {
+        noResults.hidden = visibleCount > 0;
+      }
+    };
+
+    const resetSearch = () => {
+      if (searchInput) {
+        searchInput.value = "";
+      }
+      filterCountries("");
+    };
+
+    const closeMenu = () => {
+      if (!menu || !trigger) {
+        return;
+      }
+      menu.hidden = true;
+      trigger.setAttribute("aria-expanded", "false");
+      resetSearch();
+    };
+
+    trigger?.addEventListener("click", () => {
+      if (!menu) {
+        return;
+      }
+      const willOpen = menu.hidden;
+      menu.hidden = !willOpen;
+      trigger.setAttribute("aria-expanded", String(willOpen));
+      if (willOpen) {
+        resetSearch();
+        searchInput?.focus();
+      }
+    });
+
+    searchInput?.addEventListener("input", (event) => {
+      filterCountries(event.target.value);
+    });
+
+    searchInput?.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        closeMenu();
+        trigger?.focus();
+      }
+    });
+
+    optionButtons.forEach((button) => {
+      button.addEventListener("click", async () => {
+        const code = button.getAttribute("data-country-code") ?? "";
+        if (hiddenInput) {
+          hiddenInput.value = code;
+        }
+        const isAutomatic = !code;
+        const selectedCountry = isAutomatic ? null : getCountryByCode(code);
+        if (trigger) {
+          const flagMarkup = isAutomatic || !selectedCountry
+            ? `<span class="country-picker__flag">🌐</span>`
+            : `<span class="country-picker__flag">${renderCountryFlagHtml(selectedCountry)}</span>`;
+          const nameMarkup = isAutomatic || !selectedCountry
+            ? this.messages.optionDefaultCountryNone
+            : selectedCountry.name;
+          const ddiMarkup = isAutomatic || !selectedCountry
+            ? ""
+            : `+${selectedCountry.dialCode}`;
+
+          trigger.innerHTML = `
+            ${flagMarkup}
+            <span class="country-picker__name">${nameMarkup}</span>
+            <span class="country-picker__ddi">${ddiMarkup}</span>
+          `;
+        }
+        closeMenu();
+        await setDefaultCountry(code);
+        this.settings.defaultCountry = code;
+        this.showSavedState();
+      });
+    });
+
+    document.addEventListener("click", (event) => {
+      if (!picker || !menu || menu.hidden) {
+        return;
+      }
+      const target = event.target;
+      if (target instanceof Node && !picker.contains(target)) {
+        closeMenu();
+      }
+    });
+  }
+
   bindEvents() {
+    this.bindCountryPickerEvents();
+
     const autoHighlightInput = this.querySelector("#auto-highlight");
     const darkModeInput = this.querySelector("#dark-mode");
     const languageInput = this.querySelector("#language");
-    const defaultCountryInput = this.querySelector("#default-country");
+    const hiddenCountryInput = this.querySelector("#default-country-hidden");
 
     autoHighlightInput?.addEventListener("change", async () => {
       await setAutoHighlightEnabled(Boolean(autoHighlightInput.checked));
@@ -106,7 +272,7 @@ class ExtensionSettingsPage extends HTMLElement {
         autoHighlightEnabled: Boolean(autoHighlightInput?.checked),
         darkModeEnabled: Boolean(darkModeInput?.checked),
         language: languageInput.value,
-        defaultCountry: defaultCountryInput?.value ?? ""
+        defaultCountry: hiddenCountryInput?.value ?? ""
       };
       await saveSettings(mergedSettings);
       this.settings = mergedSettings;
@@ -114,11 +280,6 @@ class ExtensionSettingsPage extends HTMLElement {
       document.documentElement.setAttribute("lang", this.settings.language);
       this.render();
       this.bindEvents();
-      this.showSavedState();
-    });
-
-    defaultCountryInput?.addEventListener("change", async () => {
-      await setDefaultCountry(defaultCountryInput.value);
       this.showSavedState();
     });
   }
