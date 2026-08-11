@@ -32,7 +32,9 @@ const DICTIONARY = {
     optionLanguagePortuguese: "Portuguese (PT-BR)",
     optionDefaultCountry: "Default country",
     optionDefaultCountryNone: "— Automatic —",
-    optionsSaved: "Settings saved"
+    optionsSaved: "Settings saved",
+    searchCountryPlaceholder: "Search country...",
+    searchCountryNoResults: "No countries found"
   },
   "pt-BR": {
     extensionName: "Quick WhatsApp Contact",
@@ -44,14 +46,14 @@ const DICTIONARY = {
       "Digite o número completo com DDI ou cole um contato para abrir o WhatsApp em uma nova aba.",
     popupDescriptionNeedsCountry:
       "Selecione o país para completar o DDI do número selecionado e abrir o WhatsApp.",
-    labelCountry: "Pais",
+    labelCountry: "País",
     labelPhone: "Número",
     labelMessage: "Mensagem",
     buttonSend: "Enviar",
     buttonCancel: "Cancelar",
     previewTab: "Toda ação de envio abre o WhatsApp em uma nova aba.",
     previewFinalNumber: "Número final: +{number}",
-    previewInvalidNumber: "Número final: informe um telefone valido",
+    previewInvalidNumber: "Número final: informe um telefone válido",
     ddiEyebrow: "Selecionar DDI",
     ddiTitle: "Complete o número",
     ddiDescription:
@@ -60,14 +62,16 @@ const DICTIONARY = {
     actionWhatsapp: "Abrir no WhatsApp",
     optionsTitle: "Configurações da extensão",
     optionsDescription: "Gerencie preferências de comportamento e aparência.",
-    optionAutoHighlight: "Realce automatico de números na página",
+    optionAutoHighlight: "Realce automático de números na página",
     optionDarkMode: "Modo escuro",
     optionLanguage: "Idioma",
     optionLanguageEnglish: "Inglês (EN-US)",
     optionLanguagePortuguese: "Português (PT-BR)",
     optionDefaultCountry: "País padrão",
     optionDefaultCountryNone: "— Automático —",
-    optionsSaved: "Configurações salvas"
+    optionsSaved: "Configurações salvas",
+    searchCountryPlaceholder: "Buscar país...",
+    searchCountryNoResults: "Nenhum país encontrado"
   }
 };
 
