@@ -11,6 +11,10 @@ const optionsStyles = readFileSync(
   resolve(import.meta.dirname, "../src/options/options.css"),
   "utf8"
 );
+const optionsHtml = readFileSync(
+  resolve(import.meta.dirname, "../src/options/options.html"),
+  "utf8"
+);
 
 const mockStorage = vi.hoisted(() => ({
   getSettings: vi.fn(),
@@ -63,12 +67,37 @@ describe("options page integration", () => {
 
   it("keeps the options card centered without inheriting popup dimensions", () => {
     expect(optionsStyles).toMatch(
-      /\.options-shell\s*\{[^}]*max-width:\s*720px;[^}]*margin:\s*16px auto 24px;/s
+      /\.options-shell\s*\{[^}]*max-width:\s*720px;[^}]*margin:\s*0 auto;/s
     );
     expect(popupStyles).toMatch(/body\.popup-shell\s*\{[^}]*width:\s*360px;/s);
     const sharedBodyRule = popupStyles.match(/(?:^|\n)body\s*\{([^}]*)\}/)?.[1] ?? "";
     expect(sharedBodyRule).not.toMatch(/(?:^|\n)\s*width:\s*360px;/);
     expect(sharedBodyRule).not.toMatch(/(?:^|\n)\s*overflow:\s*hidden;/);
+  });
+
+  it("fits the options page to the viewport without a page scrollbar", () => {
+    expect(optionsHtml).toContain('class="page-shell options-page"');
+    expect(optionsStyles).toMatch(
+      /\.options-page\s*\{[^}]*height:\s*100dvh;[^}]*overflow:\s*hidden;[^}]*grid-template-rows:\s*auto minmax\(0, 1fr\) auto;/s
+    );
+    expect(optionsStyles).not.toMatch(/padding-bottom:\s*260px/);
+    expect(optionsStyles).toMatch(/@media\s*\(max-width:\s*560px\)/);
+    expect(optionsStyles).toMatch(/@media\s*\(max-height:\s*680px\)/);
+  });
+
+  it("shows the open-source project and author links in the footer", () => {
+    document.body.innerHTML = optionsHtml;
+    const footer = document.querySelector(".options-footer");
+    const links = [...footer.querySelectorAll("a")];
+
+    expect(links.map((link) => link.href)).toEqual([
+      "https://github.com/DinoSaulo/Quick-WhatsApp-Contact",
+      "https://github.com/DinoSaulo"
+    ]);
+    expect(footer.textContent).toContain("open source e está no GitHub");
+    expect(footer.textContent).toContain("desenvolvido por");
+    expect(links.every((link) => link.target === "_blank")).toBe(true);
+    expect(links.every((link) => link.rel === "noopener noreferrer")).toBe(true);
   });
 
   it("loads every saved setting into the options controls", async () => {

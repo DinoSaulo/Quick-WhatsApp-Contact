@@ -171,6 +171,11 @@ try {
       brandComplete: brand?.complete,
       brandNaturalWidth: brand?.naturalWidth,
       brandCenter: brandBounds ? brandBounds.left + brandBounds.width / 2 : undefined,
+      hasVerticalOverflow:
+        document.documentElement.scrollHeight > window.innerHeight ||
+        document.body.scrollHeight > window.innerHeight,
+      projectUrl: document.querySelector('.options-footer a[href*="Quick-WhatsApp-Contact"]')?.href,
+      authorUrl: document.querySelector('.options-footer a[href="https://github.com/DinoSaulo"]')?.href,
     };
   });
 
@@ -194,6 +199,12 @@ try {
     Math.abs(optionsState.brandCenter - optionsState.viewportCenter) <= 1,
     "A marca da página de opções não está centralizada.",
   );
+  assert.equal(optionsState.hasVerticalOverflow, false, "A página de opções possui rolagem vertical.");
+  assert.equal(
+    optionsState.projectUrl,
+    "https://github.com/DinoSaulo/Quick-WhatsApp-Contact",
+  );
+  assert.equal(optionsState.authorUrl, "https://github.com/DinoSaulo");
   await optionsPage.close();
 
   // A página aberta também é um alvo da extensão; feche-a para que somente os

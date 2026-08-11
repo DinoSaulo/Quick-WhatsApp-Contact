@@ -1,25 +1,69 @@
+.options-page {
+  width: 100%;
+  min-width: 0;
+  height: 100vh;
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+}
+
 .options-brand {
   display: flex;
   justify-content: center;
-  margin: 24px auto 0;
+  margin: clamp(8px, 2vh, 20px) auto 0;
 }
 
 .options-brand img {
   display: block;
-  width: 160px;
-  height: 160px;
-  border-radius: 24px;
+  width: clamp(72px, 18vh, 144px);
+  height: clamp(72px, 18vh, 144px);
+  border-radius: clamp(14px, 3vh, 24px);
   box-shadow: var(--shadow);
 }
 
+extension-settings-page {
+  display: block;
+  min-height: 0;
+}
+
 .options-shell {
+  width: min(100%, 720px);
+  height: 100%;
   max-width: 720px;
-  margin: 16px auto 24px;
-  padding-bottom: 260px;
+  margin: 0 auto;
+  padding: clamp(8px, 1.5vh, 16px) 20px;
+  display: flex;
+  align-items: center;
 }
 
 .options-shell .card {
+  width: 100%;
   overflow: visible;
+}
+
+.options-footer {
+  padding: 8px 20px 12px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.options-footer p {
+  margin: 0;
+}
+
+.options-footer a {
+  color: var(--accent);
+  font-weight: 700;
+  text-underline-offset: 2px;
+}
+
+.options-footer a:hover,
+.options-footer a:focus-visible {
+  color: var(--accent-strong);
 }
 
 .option-row {
@@ -77,4 +121,64 @@
   color: var(--muted);
   font-size: 12px;
   line-height: 1.5;
+}
+
+@media (max-width: 560px) {
+  .options-shell {
+    padding-inline: 12px;
+  }
+
+  .options-shell .card__content {
+    padding: 16px;
+  }
+
+  .option-row {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
+    padding: 8px 0;
+  }
+
+  .option-control,
+  .option-control .country-picker {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .options-footer {
+    padding-inline: 12px;
+  }
+}
+
+@media (max-height: 680px) {
+  .options-brand img {
+    width: 72px;
+    height: 72px;
+    border-radius: 14px;
+  }
+
+  .options-shell {
+    padding-block: 6px;
+  }
+
+  .options-shell .card__content {
+    padding-block: 12px;
+  }
+
+  .options-shell .title {
+    margin-block: 3px 6px;
+    font-size: 20px;
+  }
+
+  .options-shell .description {
+    margin-bottom: 8px;
+  }
+
+  .option-row {
+    padding-block: 7px;
+  }
+
+  .options-footer {
+    padding-block: 5px 7px;
+  }
 }
