@@ -1,0 +1,120 @@
+name: Testes
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tests-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    name: Testes unitarios e de integracao
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Clonar repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Preparar diretorio de relatorios
+        run: mkdir -p reports
+
+      - name: Executar testes unitarios
+        id: unit
+        continue-on-error: true
+        run: >-
+          npm run test:unit --
+          --reporter=default
+          --reporter=github-actions
+          --reporter=junit
+          --outputFile.junit=reports/unit.xml
+
+      - name: Executar testes de integracao
+        id: integration
+        continue-on-error: true
+        run: >-
+          npm run test:integration --
+          --reporter=default
+          --reporter=github-actions
+          --reporter=junit
+          --outputFile.junit=reports/integration.xml
+
+      - name: Publicar resumo dos testes
+        if: always()
+        shell: bash
+        env:
+          UNIT_OUTCOME: ${{ steps.unit.outcome }}
+          INTEGRATION_OUTCOME: ${{ steps.integration.outcome }}
+        run: |
+          summarize() {
+            local label="$1"
+            local outcome="$2"
+            local report="$3"
+            local status="❌ Falhou"
+            local tests="-"
+            local failures="-"
+            local errors="-"
+            local duration="-"
+
+            if [[ "$outcome" == "success" ]]; then
+              status="✅ Passou"
+            elif [[ "$outcome" == "skipped" ]]; then
+              status="⏭️ Ignorado"
+            fi
+
+            if [[ -f "$report" ]]; then
+              local suite
+              suite=$(grep -m1 '<testsuites ' "$report" || true)
+              tests=$(sed -n 's/.* tests="\([^"]*\)".*/\1/p' <<< "$suite")
+              failures=$(sed -n 's/.* failures="\([^"]*\)".*/\1/p' <<< "$suite")
+              errors=$(sed -n 's/.* errors="\([^"]*\)".*/\1/p' <<< "$suite")
+              duration=$(sed -n 's/.* time="\([^"]*\)".*/\1/p' <<< "$suite")
+            fi
+
+            echo "| $label | $status | ${tests:--} | ${failures:--} | ${errors:--} | ${duration:--}s |"
+          }
+
+          {
+            echo "## Resultado dos testes"
+            echo
+            echo "| Suite | Estado | Testes | Falhas | Erros | Duracao |"
+            echo "|---|---:|---:|---:|---:|---:|"
+            summarize "Unitarios" "$UNIT_OUTCOME" "reports/unit.xml"
+            summarize "Integracao" "$INTEGRATION_OUTCOME" "reports/integration.xml"
+            echo
+            echo "- Commit: \`${GITHUB_SHA}\`"
+            echo "- Node.js: \`$(node --version)\`"
+            echo "- Runner: \`${RUNNER_OS}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Anexar relatorios JUnit
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: relatorios-de-testes
+          path: reports/*.xml
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Validar resultado final
+        if: >-
+          always() &&
+          (steps.unit.outcome == 'failure' || steps.integration.outcome == 'failure')
+        run: |
+          echo "Uma ou mais suites de testes falharam. Consulte o resumo e os relatorios JUnit."
+          exit 1
