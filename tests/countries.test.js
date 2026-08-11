@@ -2,6 +2,8 @@ import {
   COUNTRIES,
   getCountryByCode,
   getDefaultCountryCodeForLanguage,
+  getTwemojiAssetName,
+  renderEmojiHtml,
   renderCountryFlagHtml
 } from "../src/utils/countries.js";
 import { describe, expect, it } from "vitest";
@@ -38,15 +40,59 @@ describe("countries ddi list", () => {
     expect(getDefaultCountryCodeForLanguage("es-ES")).toBe("US");
   });
 
-  it("renders a local emoji flag without remote resources", () => {
+  it("renders a local Twemoji flag without remote resources", () => {
     const country = { iso2: "BR", name: "Brasil", flag: "🇧🇷" };
     const html = renderCountryFlagHtml(country);
-    expect(html).toContain("🇧🇷");
+
+    expect(html).toContain("../../assets/twemoji/1f1e7-1f1f7.svg");
+    expect(html).toContain('class="country-picker__flag-img"');
     expect(html).not.toContain("http");
-    expect(html).not.toContain("<img");
+    expect(html).toContain("<img");
   });
 
   it("uses a neutral local flag for invalid flag data", () => {
-    expect(renderCountryFlagHtml({ flag: '<script>alert("x")</script>' })).toContain("🏳");
+    const html = renderCountryFlagHtml({
+      iso2: '<script>alert("x")</script>',
+      flag: '<script>alert("x")</script>'
+    });
+
+    expect(html).toContain("../../assets/twemoji/1f3f3.svg");
+    expect(html).not.toContain("script");
+  });
+
+  it("maps emoji code points to deterministic local asset names", () => {
+    expect(getTwemojiAssetName("🇵🇹")).toBe("1f1f5-1f1f9.svg");
+    expect(getTwemojiAssetName("🌐")).toBe("1f310.svg");
+    expect(getTwemojiAssetName("❤️")).toBe("2764.svg");
+    expect(getTwemojiAssetName("")).toBe("");
+  });
+
+  it("renders the automatic-country globe from the local Twemoji package", () => {
+    const html = renderEmojiHtml("🌐");
+
+    expect(html).toContain("../../assets/twemoji/1f310.svg");
+    expect(html).toContain('aria-hidden="true"');
+    expect(html).not.toContain("http");
+  });
+
+  it("uses an absolute extension URL when the Chrome runtime is available", () => {
+    const previousChrome = globalThis.chrome;
+    globalThis.chrome = {
+      runtime: {
+        getURL: (path) => `chrome-extension://extension-id/${path}`
+      }
+    };
+
+    try {
+      expect(renderCountryFlagHtml({ iso2: "PT" })).toContain(
+        "chrome-extension://extension-id/assets/twemoji/1f1f5-1f1f9.svg"
+      );
+    } finally {
+      if (previousChrome === undefined) {
+        delete globalThis.chrome;
+      } else {
+        globalThis.chrome = previousChrome;
+      }
+    }
   });
 });

@@ -55,6 +55,16 @@ describe("popup integration", () => {
     window.close = vi.fn();
   });
 
+  it("renders the selected country flag from a packaged Twemoji asset", async () => {
+    mockStorage.getLastCountry.mockResolvedValue("US");
+
+    const popup = await renderPopup();
+    const flag = popup.querySelector("#country-trigger .country-picker__flag-img");
+
+    expect(flag?.getAttribute("src")).toBe("../../assets/twemoji/1f1fa-1f1f8.svg");
+    expect(flag?.getAttribute("src")).not.toContain("http");
+  });
+
   it("concatena DDI + numero ao enviar quando o telefone local nao possui +", async () => {
     mockStorage.consumePendingContextNumber.mockResolvedValue("91234-5678");
     mockStorage.consumePendingContextCountry.mockResolvedValue("BR");

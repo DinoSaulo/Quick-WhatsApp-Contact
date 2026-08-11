@@ -93,7 +93,7 @@ Execute a verificação completa de sintaxe, manifesto, testes e build:
 npm run verify
 ```
 
-O build publicável é gerado em `dist/extension` e contém somente o manifesto, o código da extensão e os ícones. Para criar o ZIP no Windows:
+O build publicável é gerado em `dist/extension` e contém somente o manifesto, o código da extensão, os ícones e os assets Twemoji locais. Para criar o ZIP no Windows:
 
 ```powershell
 Compress-Archive -Path dist/extension/* -DestinationPath dist/quick-whatsapp-contact.zip -Force
@@ -119,6 +119,10 @@ npx vitest run tests/phone.test.js
 - **Vanilla JS** — ES Modules, sem bundler, sem frameworks
 - **Web Components** nativos (`HTMLElement` + `customElements.define`)
 - **Vitest** + **jsdom** para testes unitários e de integração
+
+### Assets de terceiros
+
+As bandeiras e o ícone de seleção automática usam gráficos [Twemoji](https://github.com/jdecked/twemoji) empacotados localmente. Os gráficos Twemoji são licenciados sob [CC-BY 4.0](https://creativecommons.org/licenses/by/4.0/); nenhum emoji é carregado de CDN durante a execução.
 
 ---
 

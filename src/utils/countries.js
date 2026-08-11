@@ -248,9 +248,28 @@ export function getDefaultCountryCodeForLanguage(language = "en-US") {
   return String(language || "").toLowerCase() === "pt-br" ? "BR" : "US";
 }
 
+export function getTwemojiAssetName(emoji) {
+  const codePoints = Array.from(String(emoji || ""))
+    .map((character) => character.codePointAt(0))
+    .filter((codePoint) => codePoint !== 0xfe0f)
+    .map((codePoint) => codePoint.toString(16));
+  return codePoints.length ? `${codePoints.join("-")}.svg` : "";
+}
+
+export function renderEmojiHtml(emoji) {
+  const assetName = getTwemojiAssetName(emoji);
+  if (!/^[a-f0-9-]+\.svg$/.test(assetName)) {
+    return "";
+  }
+  const assetPath = `assets/twemoji/${assetName}`;
+  const getExtensionUrl = globalThis.chrome?.runtime?.getURL;
+  const assetUrl = typeof getExtensionUrl === "function"
+    ? getExtensionUrl(assetPath)
+    : `../../${assetPath}`;
+  return `<img class="country-picker__flag-img" src="${assetUrl}" alt="" aria-hidden="true" draggable="false" />`;
+}
+
 export function renderCountryFlagHtml(country) {
-  const flagEmoji = /^[\p{Regional_Indicator}]{2}$/u.test(country?.flag || "")
-    ? country.flag
-    : "🏳";
-  return `<span class="country-picker__flag-fallback" aria-hidden="true">${flagEmoji}</span>`;
+  const flagEmoji = flagFromIso2(country?.iso2);
+  return renderEmojiHtml(flagEmoji);
 }

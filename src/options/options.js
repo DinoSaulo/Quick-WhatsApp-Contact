@@ -1,4 +1,9 @@
-import { COUNTRIES, getCountryByCode, renderCountryFlagHtml } from "../utils/countries.js";
+import {
+  COUNTRIES,
+  getCountryByCode,
+  renderCountryFlagHtml,
+  renderEmojiHtml
+} from "../utils/countries.js";
 import { getMessages } from "../utils/i18n.js";
 import {
   getSettings,
@@ -36,7 +41,7 @@ class ExtensionSettingsPage extends HTMLElement {
 
     const automaticOptionMarkup = `
       <button class="country-picker__option" type="button" data-country-code="" data-search="${this.messages.optionDefaultCountryNone.toLowerCase()} automatic automatico">
-        <span class="country-picker__flag">🌐</span>
+        <span class="country-picker__flag">${renderEmojiHtml("🌐")}</span>
         <span class="country-picker__name">${this.messages.optionDefaultCountryNone}</span>
         <span class="country-picker__ddi"></span>
       </button>
@@ -54,7 +59,7 @@ class ExtensionSettingsPage extends HTMLElement {
     }).join("");
 
     const triggerFlagMarkup = isAutomatic || !selectedCountry
-      ? `<span class="country-picker__flag">🌐</span>`
+      ? `<span class="country-picker__flag">${renderEmojiHtml("🌐")}</span>`
       : `<span class="country-picker__flag">${renderCountryFlagHtml(selectedCountry)}</span>`;
 
     const triggerNameMarkup = isAutomatic || !selectedCountry
@@ -220,7 +225,7 @@ class ExtensionSettingsPage extends HTMLElement {
         const selectedCountry = isAutomatic ? null : getCountryByCode(code);
         if (trigger) {
           const flagMarkup = isAutomatic || !selectedCountry
-            ? `<span class="country-picker__flag">🌐</span>`
+            ? `<span class="country-picker__flag">${renderEmojiHtml("🌐")}</span>`
             : `<span class="country-picker__flag">${renderCountryFlagHtml(selectedCountry)}</span>`;
           const nameMarkup = isAutomatic || !selectedCountry
             ? this.messages.optionDefaultCountryNone

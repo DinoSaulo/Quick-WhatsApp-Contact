@@ -54,6 +54,8 @@ describe("options page integration", () => {
 
     expect(hiddenInput.value).toBe("");
     expect(trigger.textContent).toContain("— Automatic —");
+    expect(trigger.querySelector(".country-picker__flag-img")?.getAttribute("src"))
+      .toBe("../../assets/twemoji/1f310.svg");
   });
 
   it("renders configured default country with a local flag and DDI", async () => {
@@ -71,8 +73,8 @@ describe("options page integration", () => {
     expect(hiddenInput.value).toBe("PT");
     expect(trigger.textContent).toContain("Portugal");
     expect(trigger.textContent).toContain("+351");
-    expect(trigger.querySelector(".country-picker__flag-fallback")).not.toBeNull();
-    expect(trigger.querySelector("img")).toBeNull();
+    expect(trigger.querySelector(".country-picker__flag-img")?.getAttribute("src"))
+      .toBe("../../assets/twemoji/1f1f5-1f1f9.svg");
   });
 
   it("filters country dropdown options by search query in options page", async () => {
