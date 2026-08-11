@@ -143,11 +143,43 @@ body {
   left: 0;
   right: 0;
   max-height: 280px;
-  overflow: auto;
+  overflow-y: auto;
   background: var(--panel);
   border: 1px solid var(--border);
   border-radius: 14px;
   box-shadow: var(--shadow);
+}
+
+.country-picker__search {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 8px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+}
+
+.country-picker__search-input {
+  width: 100%;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 13px;
+  outline: none;
+  font-family: inherit;
+}
+
+.country-picker__search-input:focus {
+  border-color: var(--accent);
+}
+
+.country-picker__no-results {
+  padding: 12px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 13px;
 }
 
 .country-picker__option {

@@ -82,8 +82,9 @@ class CountryDdiScreen extends HTMLElement {
   buildCountryPickerMarkup(selectedCode) {
     const selectedCountry = getCountryByCode(selectedCode);
     const items = COUNTRIES.map((country) => {
+      const searchKey = `${country.name.toLowerCase()} ${country.code.toLowerCase()} ${country.dialCode} +${country.dialCode} ${country.flag}`.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
       return `
-        <button class="country-picker__option" type="button" data-country-code="${country.code}">
+        <button class="country-picker__option" type="button" data-country-code="${country.code}" data-search="${searchKey}">
           <span class="country-picker__flag">${country.flag}</span>
           <span class="country-picker__name">${country.name}</span>
           <span class="country-picker__ddi">+${country.dialCode}</span>
@@ -100,7 +101,13 @@ class CountryDdiScreen extends HTMLElement {
           <span class="country-picker__ddi">+${selectedCountry.dialCode}</span>
         </button>
         <div class="country-picker__menu" id="country-menu" hidden>
-          ${items}
+          <div class="country-picker__search">
+            <input id="country-search" class="country-picker__search-input" type="text" placeholder="${this.messages.searchCountryPlaceholder}" autocomplete="off" />
+          </div>
+          <div class="country-picker__options" id="country-options">
+            ${items}
+          </div>
+          <div class="country-picker__no-results" id="country-no-results" hidden>${this.messages.searchCountryNoResults}</div>
         </div>
       </div>
     `;
@@ -138,7 +145,36 @@ class CountryDdiScreen extends HTMLElement {
     const menu = this.querySelector("#country-menu");
     const hiddenInput = this.querySelector("#country-hidden");
     const numberInput = this.querySelector("#local-number");
+    const searchInput = this.querySelector("#country-search");
+    const noResults = this.querySelector("#country-no-results");
     const optionButtons = this.querySelectorAll(".country-picker__option");
+
+    const filterCountries = (queryText) => {
+      const query = String(queryText || "")
+        .toLowerCase()
+        .trim()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "");
+      let visibleCount = 0;
+      optionButtons.forEach((button) => {
+        const searchData = button.getAttribute("data-search") || "";
+        const matches = !query || searchData.includes(query);
+        button.hidden = !matches;
+        if (matches) {
+          visibleCount++;
+        }
+      });
+      if (noResults) {
+        noResults.hidden = visibleCount > 0;
+      }
+    };
+
+    const resetSearch = () => {
+      if (searchInput) {
+        searchInput.value = "";
+      }
+      filterCountries("");
+    };
 
     const closeMenu = () => {
       if (!menu || !trigger) {
@@ -146,6 +182,7 @@ class CountryDdiScreen extends HTMLElement {
       }
       menu.hidden = true;
       trigger.setAttribute("aria-expanded", "false");
+      resetSearch();
     };
 
     trigger?.addEventListener("click", () => {
@@ -155,6 +192,21 @@ class CountryDdiScreen extends HTMLElement {
       const willOpen = menu.hidden;
       menu.hidden = !willOpen;
       trigger.setAttribute("aria-expanded", String(willOpen));
+      if (willOpen) {
+        resetSearch();
+        searchInput?.focus();
+      }
+    });
+
+    searchInput?.addEventListener("input", (event) => {
+      filterCountries(event.target.value);
+    });
+
+    searchInput?.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        closeMenu();
+        trigger?.focus();
+      }
     });
 
     optionButtons.forEach((button) => {

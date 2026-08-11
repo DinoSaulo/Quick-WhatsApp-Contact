@@ -318,4 +318,30 @@ describe("popup integration", () => {
       active: true
     });
   });
+
+  it("filters country dropdown options by search input query", async () => {
+    const popup = await renderPopup();
+    const trigger = popup.querySelector("#country-trigger");
+    const searchInput = popup.querySelector("#country-search");
+    const noResults = popup.querySelector("#country-no-results");
+    const options = popup.querySelectorAll(".country-picker__option");
+
+    trigger.click();
+    expect(searchInput.placeholder).toBe("Search country...");
+
+    searchInput.value = "Brasil";
+    searchInput.dispatchEvent(new Event("input", { bubbles: true }));
+
+    const visibleOptions = Array.from(options).filter((option) => !option.hidden);
+    expect(visibleOptions.length).toBe(1);
+    expect(visibleOptions[0].getAttribute("data-country-code")).toBe("BR");
+    expect(noResults.hidden).toBe(true);
+
+    searchInput.value = "xyz123nonexistent";
+    searchInput.dispatchEvent(new Event("input", { bubbles: true }));
+
+    const visibleAfterNoMatch = Array.from(options).filter((option) => !option.hidden);
+    expect(visibleAfterNoMatch.length).toBe(0);
+    expect(noResults.hidden).toBe(false);
+  });
 });

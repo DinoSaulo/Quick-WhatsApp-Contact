@@ -135,4 +135,23 @@ describe("country DDI screen mask integration", () => {
       active: true
     });
   });
+
+  it("filters country options in ddi screen by search query", async () => {
+    const screen = await renderDdiScreen();
+    const trigger = screen.querySelector("#country-trigger");
+    const searchInput = screen.querySelector("#country-search");
+    const noResults = screen.querySelector("#country-no-results");
+    const options = screen.querySelectorAll(".country-picker__option");
+
+    trigger.click();
+    expect(searchInput.placeholder).toBe("Search country...");
+
+    searchInput.value = "Alemanha";
+    searchInput.dispatchEvent(new Event("input", { bubbles: true }));
+
+    const visibleOptions = Array.from(options).filter((option) => !option.hidden);
+    expect(visibleOptions.length).toBe(1);
+    expect(visibleOptions[0].getAttribute("data-country-code")).toBe("DE");
+    expect(noResults.hidden).toBe(true);
+  });
 });
