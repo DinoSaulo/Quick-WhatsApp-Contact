@@ -96,6 +96,11 @@ describe("options page integration", () => {
     const visibleOptions = Array.from(options).filter((option) => !option.hidden);
     expect(visibleOptions.length).toBe(1);
     expect(visibleOptions[0].getAttribute("data-country-code")).toBe("DE");
+    expect(visibleOptions[0].style.display).toBe("");
+    expect(visibleOptions[0].getAttribute("aria-hidden")).toBe("false");
+    expect(Array.from(options).filter((option) => option.hidden).every(
+      (option) => option.style.display === "none" && option.getAttribute("aria-hidden") === "true"
+    )).toBe(true);
     expect(noResults.hidden).toBe(true);
 
     searchInput.value = "nonexistent999";
@@ -104,6 +109,28 @@ describe("options page integration", () => {
     const visibleAfterNoMatch = Array.from(options).filter((option) => !option.hidden);
     expect(visibleAfterNoMatch.length).toBe(0);
     expect(noResults.hidden).toBe(false);
+  });
+
+  it("normalizes accents and restores all countries when the search is cleared", async () => {
+    const page = await renderOptionsPage();
+    const trigger = page.querySelector("#country-trigger");
+    const searchInput = page.querySelector("#country-search");
+    const options = Array.from(page.querySelectorAll(".country-picker__option"));
+
+    trigger.click();
+    expect(document.activeElement).toBe(searchInput);
+
+    searchInput.value = "paises baixos";
+    searchInput.dispatchEvent(new Event("input", { bubbles: true }));
+
+    const matched = options.filter((option) => option.style.display !== "none");
+    expect(matched).toHaveLength(1);
+    expect(matched[0].getAttribute("data-country-code")).toBe("NL");
+
+    searchInput.value = "";
+    searchInput.dispatchEvent(new Event("input", { bubbles: true }));
+    expect(options.every((option) => option.style.display === "")).toBe(true);
+    expect(options.every((option) => option.getAttribute("aria-hidden") === "false")).toBe(true);
   });
 
   it("selects a new default country and persists it via setDefaultCountry", async () => {

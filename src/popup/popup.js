@@ -178,6 +178,8 @@ class WhatsAppMessagePopup extends HTMLElement {
         const searchData = button.getAttribute("data-search") || "";
         const matches = !query || searchData.includes(query);
         button.hidden = !matches;
+        button.style.display = matches ? "" : "none";
+        button.setAttribute("aria-hidden", String(!matches));
         if (matches) {
           visibleCount++;
         }

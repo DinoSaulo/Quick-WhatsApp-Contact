@@ -195,6 +195,10 @@ body {
   cursor: pointer;
 }
 
+.country-picker__option[hidden] {
+  display: none !important;
+}
+
 .country-picker__option:hover {
   background: var(--surface);
 }

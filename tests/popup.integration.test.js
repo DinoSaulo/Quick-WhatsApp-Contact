@@ -371,6 +371,10 @@ describe("popup integration", () => {
     const visibleOptions = Array.from(options).filter((option) => !option.hidden);
     expect(visibleOptions.length).toBe(1);
     expect(visibleOptions[0].getAttribute("data-country-code")).toBe("BR");
+    expect(visibleOptions[0].style.display).toBe("");
+    expect(Array.from(options).filter((option) => option.hidden).every(
+      (option) => option.style.display === "none" && option.getAttribute("aria-hidden") === "true"
+    )).toBe(true);
     expect(noResults.hidden).toBe(true);
 
     searchInput.value = "xyz123nonexistent";
@@ -379,5 +383,27 @@ describe("popup integration", () => {
     const visibleAfterNoMatch = Array.from(options).filter((option) => !option.hidden);
     expect(visibleAfterNoMatch.length).toBe(0);
     expect(noResults.hidden).toBe(false);
+  });
+
+  it("keeps the search focused and resets filtered countries when reopened", async () => {
+    const popup = await renderPopup();
+    const trigger = popup.querySelector("#country-trigger");
+    const searchInput = popup.querySelector("#country-search");
+    const options = Array.from(popup.querySelectorAll(".country-picker__option"));
+
+    trigger.click();
+    expect(document.activeElement).toBe(searchInput);
+
+    searchInput.value = "portugal";
+    searchInput.dispatchEvent(new Event("input", { bubbles: true }));
+    expect(options.filter((option) => option.style.display !== "none")).toHaveLength(1);
+
+    searchInput.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    expect(popup.querySelector("#country-menu").hidden).toBe(true);
+    expect(document.activeElement).toBe(trigger);
+
+    trigger.click();
+    expect(searchInput.value).toBe("");
+    expect(options.every((option) => option.style.display === "")).toBe(true);
   });
 });
