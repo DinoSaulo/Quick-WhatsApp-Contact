@@ -1,9 +1,16 @@
-import { COUNTRIES, DEFAULT_COUNTRY_CODE, getCountryByCode } from "../utils/countries.js";
+import {
+  COUNTRIES,
+  DEFAULT_COUNTRY_CODE,
+  getCountryByCode,
+  getDefaultCountryCodeForLanguage
+} from "../utils/countries.js";
 import { getMessages, t } from "../utils/i18n.js";
 import { detectCountryCodeFromBrowserLocation } from "../utils/location.js";
 import {
+  applyPhoneMask,
   buildWhatsAppUrl,
   getExpectedFormatsForDdi,
+  getPhoneMaskPlaceholder,
   hasCountryCode,
   isLocalNumberValidForDdi,
   isValidPhoneForSend,
@@ -24,13 +31,15 @@ class WhatsAppMessagePopup extends HTMLElement {
     this.requiresCountrySelection = Boolean(this.pendingContextNumber);
     const contextCountry = await consumePendingContextCountry();
     const storedCountry = await getLastCountry();
+    const defaultCountry = settings.defaultCountry;
+    const languageDefaultCountry = getDefaultCountryCodeForLanguage(this.language);
     const detectedCountry = detectCountryCodeFromBrowserLocation({
       languages: navigator.languages,
       language: navigator.language
     });
     this.selectedCountryCode = this.requiresCountrySelection
-      ? contextCountry || detectedCountry || DEFAULT_COUNTRY_CODE
-      : storedCountry || detectedCountry || DEFAULT_COUNTRY_CODE;
+      ? contextCountry || defaultCountry || storedCountry || languageDefaultCountry || detectedCountry || DEFAULT_COUNTRY_CODE
+      : defaultCountry || storedCountry || languageDefaultCountry || detectedCountry || DEFAULT_COUNTRY_CODE;
 
     this.render();
     this.bindEvents();
@@ -113,11 +122,38 @@ class WhatsAppMessagePopup extends HTMLElement {
     return getCountryByCode(countryHidden?.value ?? DEFAULT_COUNTRY_CODE);
   }
 
+  applyMaskToPhoneInput(input, mask) {
+    if (!input || input.value.startsWith("+")) return;
+    const start = input.selectionStart ?? input.value.length;
+    const digitsBeforeCursor = input.value.slice(0, start).replace(/\D/g, "").length;
+    input.value = applyPhoneMask(input.value, mask);
+    let newCursor = 0;
+    let counted = 0;
+    for (let i = 0; i < input.value.length; i++) {
+      if (/\d/.test(input.value[i])) {
+        counted++;
+        if (counted === digitsBeforeCursor) {
+          newCursor = i + 1;
+          break;
+        }
+      }
+    }
+    if (counted < digitsBeforeCursor) newCursor = input.value.length;
+    input.setSelectionRange(newCursor, newCursor);
+  }
+
+  updatePhonePlaceholder(input, country) {
+    if (!input) return;
+    const isInternational = input.value.startsWith("+");
+    input.placeholder = isInternational ? `+${country.dialCode}...` : getPhoneMaskPlaceholder(country.phoneMask);
+  }
+
   bindCountryPickerEvents() {
     const picker = this.querySelector("#country-picker");
     const trigger = this.querySelector("#country-trigger");
     const menu = this.querySelector("#country-menu");
     const hiddenInput = this.querySelector("#country-hidden");
+    const phoneInput = this.querySelector("#phone");
     const optionButtons = this.querySelectorAll(".country-picker__option");
 
     const closeMenu = () => {
@@ -151,9 +187,25 @@ class WhatsAppMessagePopup extends HTMLElement {
             <span class="country-picker__ddi">+${selectedCountry.dialCode}</span>
           `;
         }
+        this.applyMaskToPhoneInput(phoneInput, selectedCountry.phoneMask);
+        this.updatePhonePlaceholder(phoneInput, selectedCountry);
         closeMenu();
       });
     });
+
+    if (phoneInput) {
+      const initialCountry = getCountryByCode(this.selectedCountryCode);
+      this.updatePhonePlaceholder(phoneInput, initialCountry);
+      if (phoneInput.value && !phoneInput.value.startsWith("+")) {
+        phoneInput.value = applyPhoneMask(phoneInput.value, initialCountry.phoneMask);
+      }
+
+      phoneInput.addEventListener("input", () => {
+        const country = this.getSelectedCountry();
+        this.applyMaskToPhoneInput(phoneInput, country.phoneMask);
+        this.updatePhonePlaceholder(phoneInput, country);
+      });
+    }
 
     document.addEventListener("click", (event) => {
       if (!picker || !menu || menu.hidden) {

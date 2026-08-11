@@ -5,6 +5,7 @@ import {
   DEFAULT_SETTINGS,
   getAutoHighlightEnabled,
   getDarkModeEnabled,
+  getDefaultCountry,
   getLanguage,
   getLastCountry,
   getSettings,
@@ -13,6 +14,7 @@ import {
   saveSettings,
   setAutoHighlightEnabled,
   setDarkModeEnabled,
+  setDefaultCountry,
   setLanguage,
   setPendingContextCountry,
   setPendingContextNumber
@@ -124,6 +126,36 @@ describe("storage utils", () => {
     });
   });
 
+  it("getDefaultCountry uses an empty default when no country was configured", async () => {
+    chrome.storage.sync.get.mockResolvedValue({});
+
+    await expect(getDefaultCountry()).resolves.toBe("");
+    expect(chrome.storage.sync.get).toHaveBeenCalledWith(
+      "quick-whatsapp-contact.default-country"
+    );
+  });
+
+  it("gets and sets the configured default country", async () => {
+    chrome.storage.sync.get.mockResolvedValue({
+      "quick-whatsapp-contact.default-country": "PT"
+    });
+
+    await expect(getDefaultCountry()).resolves.toBe("PT");
+
+    await setDefaultCountry("BR");
+    expect(chrome.storage.sync.set).toHaveBeenCalledWith({
+      "quick-whatsapp-contact.default-country": "BR"
+    });
+  });
+
+  it("clears the configured default country when given null", async () => {
+    await setDefaultCountry(null);
+
+    expect(chrome.storage.sync.set).toHaveBeenCalledWith({
+      "quick-whatsapp-contact.default-country": ""
+    });
+  });
+
   it("getLanguage usa en-US por padrão", async () => {
     chrome.storage.sync.get.mockResolvedValue({});
     const result = await getLanguage();
@@ -160,8 +192,19 @@ describe("storage utils", () => {
     expect(settings).toEqual({
       autoHighlightEnabled: false,
       darkModeEnabled: true,
-      language: "pt-BR"
+      language: "pt-BR",
+      defaultCountry: ""
     });
+  });
+
+  it("getSettings includes the configured default country", async () => {
+    chrome.storage.sync.get.mockResolvedValue({
+      "quick-whatsapp-contact.default-country": "GB"
+    });
+
+    const settings = await getSettings();
+
+    expect(settings.defaultCountry).toBe("GB");
   });
 
   it("saveSettings persiste estrutura completa", async () => {
@@ -173,7 +216,8 @@ describe("storage utils", () => {
     expect(chrome.storage.sync.set).toHaveBeenCalledWith({
       "quick-whatsapp-contact.auto-highlight-enabled": false,
       "quick-whatsapp-contact.dark-mode-enabled": true,
-      "quick-whatsapp-contact.language": "pt-BR"
+      "quick-whatsapp-contact.language": "pt-BR",
+      "quick-whatsapp-contact.default-country": ""
     });
   });
 
@@ -182,7 +226,18 @@ describe("storage utils", () => {
     expect(chrome.storage.sync.set).toHaveBeenCalledWith({
       "quick-whatsapp-contact.auto-highlight-enabled": true,
       "quick-whatsapp-contact.dark-mode-enabled": false,
-      "quick-whatsapp-contact.language": "en-US"
+      "quick-whatsapp-contact.language": "en-US",
+      "quick-whatsapp-contact.default-country": ""
     });
+  });
+
+  it("saveSettings persists the configured default country", async () => {
+    await saveSettings({ defaultCountry: "PT" });
+
+    expect(chrome.storage.sync.set).toHaveBeenCalledWith(
+      expect.objectContaining({
+        "quick-whatsapp-contact.default-country": "PT"
+      })
+    );
   });
 });

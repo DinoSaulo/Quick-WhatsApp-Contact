@@ -1,8 +1,10 @@
+import { COUNTRIES } from "../utils/countries.js";
 import { getMessages } from "../utils/i18n.js";
 import {
   getSettings,
   saveSettings,
   setAutoHighlightEnabled,
+  setDefaultCountry,
   setDarkModeEnabled,
   setLanguage
 } from "../utils/storage.js";
@@ -60,6 +62,18 @@ class ExtensionSettingsPage extends HTMLElement {
               </div>
             </div>
 
+            <div class="option-row">
+              <div class="option-label">${this.messages.optionDefaultCountry}</div>
+              <div class="option-control">
+                <select id="default-country">
+                  <option value="" ${!this.settings.defaultCountry ? "selected" : ""}>${this.messages.optionDefaultCountryNone}</option>
+                  ${COUNTRIES.map((country) => `
+                    <option value="${country.code}" ${this.settings.defaultCountry === country.code ? "selected" : ""}>${country.flag} ${country.name} (+${country.dialCode})</option>
+                  `).join("")}
+                </select>
+              </div>
+            </div>
+
             <div class="status-text" id="saved-status"></div>
           </div>
         </section>
@@ -71,6 +85,7 @@ class ExtensionSettingsPage extends HTMLElement {
     const autoHighlightInput = this.querySelector("#auto-highlight");
     const darkModeInput = this.querySelector("#dark-mode");
     const languageInput = this.querySelector("#language");
+    const defaultCountryInput = this.querySelector("#default-country");
 
     autoHighlightInput?.addEventListener("change", async () => {
       await setAutoHighlightEnabled(Boolean(autoHighlightInput.checked));
@@ -90,7 +105,8 @@ class ExtensionSettingsPage extends HTMLElement {
         ...this.settings,
         autoHighlightEnabled: Boolean(autoHighlightInput?.checked),
         darkModeEnabled: Boolean(darkModeInput?.checked),
-        language: languageInput.value
+        language: languageInput.value,
+        defaultCountry: defaultCountryInput?.value ?? ""
       };
       await saveSettings(mergedSettings);
       this.settings = mergedSettings;
@@ -98,6 +114,11 @@ class ExtensionSettingsPage extends HTMLElement {
       document.documentElement.setAttribute("lang", this.settings.language);
       this.render();
       this.bindEvents();
+      this.showSavedState();
+    });
+
+    defaultCountryInput?.addEventListener("change", async () => {
+      await setDefaultCountry(defaultCountryInput.value);
       this.showSavedState();
     });
   }

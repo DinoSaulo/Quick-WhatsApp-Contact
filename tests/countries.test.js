@@ -1,17 +1,21 @@
-import { COUNTRIES, getCountryByCode } from "../src/utils/countries.js";
+import {
+  COUNTRIES,
+  getCountryByCode,
+  getDefaultCountryCodeForLanguage
+} from "../src/utils/countries.js";
 import { describe, expect, it } from "vitest";
 
 describe("countries ddi list", () => {
-  it("mantem uma lista extensa de países e territorios", () => {
+  it("keeps an extensive list of countries and territories", () => {
     expect(COUNTRIES.length).toBeGreaterThanOrEqual(200);
   });
 
-  it("inclui opções de DDI para Porto Rico", () => {
+  it("includes DDI options for Puerto Rico", () => {
     const puertoRico = COUNTRIES.filter((country) => country.name === "Porto Rico");
     expect(puertoRico.map((country) => country.dialCode)).toEqual(["1-787", "1-939"]);
   });
 
-  it("inclui opções de DDI para Republica Dominicana", () => {
+  it("includes DDI options for Dominican Republic", () => {
     const dominicanRepublic = COUNTRIES.filter(
       (country) => country.name === "Republica Dominicana"
     );
@@ -22,7 +26,14 @@ describe("countries ddi list", () => {
     ]);
   });
 
-  it("recupera o Brasil pelo código padrão", () => {
+  it("resolves Brazil by country code", () => {
     expect(getCountryByCode("BR")?.dialCode).toBe("55");
+  });
+
+  it("defines default country by extension language", () => {
+    expect(getDefaultCountryCodeForLanguage("pt-BR")).toBe("BR");
+    expect(getDefaultCountryCodeForLanguage("PT-br")).toBe("BR");
+    expect(getDefaultCountryCodeForLanguage("en-US")).toBe("US");
+    expect(getDefaultCountryCodeForLanguage("es-ES")).toBe("US");
   });
 });

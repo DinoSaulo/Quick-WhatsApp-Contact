@@ -30,6 +30,8 @@ const DICTIONARY = {
     optionLanguage: "Language",
     optionLanguageEnglish: "English (EN-US)",
     optionLanguagePortuguese: "Portuguese (PT-BR)",
+    optionDefaultCountry: "Default country",
+    optionDefaultCountryNone: "— Automatic —",
     optionsSaved: "Settings saved"
   },
   "pt-BR": {
@@ -63,6 +65,8 @@ const DICTIONARY = {
     optionLanguage: "Idioma",
     optionLanguageEnglish: "Inglês (EN-US)",
     optionLanguagePortuguese: "Português (PT-BR)",
+    optionDefaultCountry: "País padrão",
+    optionDefaultCountryNone: "— Automático —",
     optionsSaved: "Configurações salvas"
   }
 };

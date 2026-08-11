@@ -1,9 +1,16 @@
-import { COUNTRIES, DEFAULT_COUNTRY_CODE, getCountryByCode } from "../utils/countries.js";
+import {
+  COUNTRIES,
+  DEFAULT_COUNTRY_CODE,
+  getCountryByCode,
+  getDefaultCountryCodeForLanguage
+} from "../utils/countries.js";
 import { getMessages, t } from "../utils/i18n.js";
 import { detectCountryCodeFromBrowserLocation } from "../utils/location.js";
 import {
+  applyPhoneMask,
   buildWhatsAppUrl,
   getExpectedFormatsForDdi,
+  getPhoneMaskPlaceholder,
   isLocalNumberValidForDdi,
   isValidPhoneForSend,
   joinCountryCodeAndNumber,
@@ -33,11 +40,14 @@ class CountryDdiScreen extends HTMLElement {
 
   async resolveInitialCountry() {
     const storedCountryCode = await getLastCountry();
+    const settings = await getSettings();
+    const defaultCountry = settings.defaultCountry;
+    const languageDefaultCountry = getDefaultCountryCodeForLanguage(this.language);
     const detectedCountryCode = detectCountryCodeFromBrowserLocation({
       languages: navigator.languages,
       language: navigator.language
     });
-    return detectedCountryCode || storedCountryCode || DEFAULT_COUNTRY_CODE;
+    return defaultCountry || storedCountryCode || languageDefaultCountry || detectedCountryCode || DEFAULT_COUNTRY_CODE;
   }
 
   render() {
@@ -101,11 +111,33 @@ class CountryDdiScreen extends HTMLElement {
     return getCountryByCode(hiddenInput?.value ?? DEFAULT_COUNTRY_CODE);
   }
 
+  applyMaskToInput(input, mask) {
+    if (!input) return;
+    const start = input.selectionStart ?? input.value.length;
+    const digitsBeforeCursor = input.value.slice(0, start).replace(/\D/g, "").length;
+    input.value = applyPhoneMask(input.value, mask);
+    input.placeholder = getPhoneMaskPlaceholder(mask);
+    let newCursor = 0;
+    let counted = 0;
+    for (let i = 0; i < input.value.length; i++) {
+      if (/\d/.test(input.value[i])) {
+        counted++;
+        if (counted === digitsBeforeCursor) {
+          newCursor = i + 1;
+          break;
+        }
+      }
+    }
+    if (counted < digitsBeforeCursor) newCursor = input.value.length;
+    input.setSelectionRange(newCursor, newCursor);
+  }
+
   bindCountryPickerEvents() {
     const picker = this.querySelector("#country-picker");
     const trigger = this.querySelector("#country-trigger");
     const menu = this.querySelector("#country-menu");
     const hiddenInput = this.querySelector("#country-hidden");
+    const numberInput = this.querySelector("#local-number");
     const optionButtons = this.querySelectorAll(".country-picker__option");
 
     const closeMenu = () => {
@@ -139,10 +171,23 @@ class CountryDdiScreen extends HTMLElement {
             <span class="country-picker__ddi">+${selectedCountry.dialCode}</span>
           `;
         }
+        this.applyMaskToInput(numberInput, selectedCountry.phoneMask);
         closeMenu();
         this.updatePreview();
       });
     });
+
+    if (numberInput) {
+      const initialCountry = getCountryByCode(this.selectedCountryCode);
+      numberInput.placeholder = getPhoneMaskPlaceholder(initialCountry.phoneMask);
+      numberInput.value = applyPhoneMask(numberInput.value, initialCountry.phoneMask);
+
+      numberInput.addEventListener("input", () => {
+        const country = this.getSelectedCountry();
+        this.applyMaskToInput(numberInput, country.phoneMask);
+        this.updatePreview();
+      });
+    }
 
     document.addEventListener("click", (event) => {
       if (!picker || !menu || menu.hidden) {
@@ -161,8 +206,6 @@ class CountryDdiScreen extends HTMLElement {
     const numberInput = this.querySelector("#local-number");
     const form = this.querySelector("#ddi-form");
     const cancelButton = this.querySelector("#cancel");
-
-    numberInput?.addEventListener("input", () => this.updatePreview());
 
     form?.addEventListener("submit", async (event) => {
       event.preventDefault();

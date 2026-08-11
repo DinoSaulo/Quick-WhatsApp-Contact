@@ -63,6 +63,25 @@ export function joinCountryCodeAndNumber(countryDialCode, phoneNumber) {
   return `${dialCode}${normalizedNumber}`;
 }
 
+export function applyPhoneMask(rawValue, mask) {
+  if (!mask) return rawValue;
+  const digits = String(rawValue).replace(/\D/g, "");
+  const maxDigits = (mask.match(/\S/g) || []).length;
+  const limited = digits.slice(0, maxDigits);
+  if (!limited) return "";
+  let result = "";
+  let di = 0;
+  for (let i = 0; i < mask.length && di < limited.length; i++) {
+    result += mask[i] === " " ? " " : limited[di++];
+  }
+  return result.trimEnd();
+}
+
+export function getPhoneMaskPlaceholder(mask) {
+  if (!mask) return "";
+  return mask.replace(/\S/g, "_");
+}
+
 export function buildWhatsAppUrl(phoneNumber, message = "") {
   const normalizedNumber = normalizeSelectedNumber(phoneNumber).replace(/^\+/, "");
   if (!isValidPhoneForSend(normalizedNumber)) {

@@ -4,11 +4,13 @@ const PENDING_CONTEXT_COUNTRY_KEY = "quick-whatsapp-contact.pending-context-coun
 const AUTO_HIGHLIGHT_ENABLED_KEY = "quick-whatsapp-contact.auto-highlight-enabled";
 const DARK_MODE_ENABLED_KEY = "quick-whatsapp-contact.dark-mode-enabled";
 const LANGUAGE_KEY = "quick-whatsapp-contact.language";
+const DEFAULT_COUNTRY_KEY = "quick-whatsapp-contact.default-country";
 
 export const DEFAULT_SETTINGS = {
   autoHighlightEnabled: true,
   darkModeEnabled: false,
-  language: "en-US"
+  language: "en-US",
+  defaultCountry: ""
 };
 
 export function normalizeLanguage(language = "") {
@@ -77,11 +79,21 @@ export async function setLanguage(language) {
   await chrome.storage.sync.set({ [LANGUAGE_KEY]: normalizeLanguage(language) });
 }
 
+export async function getDefaultCountry() {
+  const result = await chrome.storage.sync.get(DEFAULT_COUNTRY_KEY);
+  return result[DEFAULT_COUNTRY_KEY] ?? DEFAULT_SETTINGS.defaultCountry;
+}
+
+export async function setDefaultCountry(countryCode) {
+  await chrome.storage.sync.set({ [DEFAULT_COUNTRY_KEY]: String(countryCode ?? "") });
+}
+
 export async function getSettings() {
   const result = await chrome.storage.sync.get([
     AUTO_HIGHLIGHT_ENABLED_KEY,
     DARK_MODE_ENABLED_KEY,
-    LANGUAGE_KEY
+    LANGUAGE_KEY,
+    DEFAULT_COUNTRY_KEY
   ]);
 
   return {
@@ -93,7 +105,8 @@ export async function getSettings() {
       typeof result[DARK_MODE_ENABLED_KEY] === "boolean"
         ? result[DARK_MODE_ENABLED_KEY]
         : DEFAULT_SETTINGS.darkModeEnabled,
-    language: normalizeLanguage(result[LANGUAGE_KEY] ?? DEFAULT_SETTINGS.language)
+    language: normalizeLanguage(result[LANGUAGE_KEY] ?? DEFAULT_SETTINGS.language),
+    defaultCountry: result[DEFAULT_COUNTRY_KEY] ?? DEFAULT_SETTINGS.defaultCountry
   };
 }
 
@@ -107,6 +120,7 @@ export async function saveSettings(settings = {}) {
       typeof settings.darkModeEnabled === "boolean"
         ? settings.darkModeEnabled
         : DEFAULT_SETTINGS.darkModeEnabled,
-    [LANGUAGE_KEY]: normalizeLanguage(settings.language ?? DEFAULT_SETTINGS.language)
+    [LANGUAGE_KEY]: normalizeLanguage(settings.language ?? DEFAULT_SETTINGS.language),
+    [DEFAULT_COUNTRY_KEY]: String(settings.defaultCountry ?? DEFAULT_SETTINGS.defaultCountry)
   });
 }

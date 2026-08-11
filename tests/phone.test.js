@@ -1,6 +1,8 @@
 import {
+  applyPhoneMask,
   buildWhatsAppUrl,
   getExpectedFormatsForDdi,
+  getPhoneMaskPlaceholder,
   hasCountryCode,
   isValidPhoneForSend,
   isLocalNumberValidForDdi,
@@ -84,5 +86,116 @@ describe("phone utils", () => {
     expect(buildWhatsAppUrl("")).toBe("");
     expect(buildWhatsAppUrl("+")).toBe("");
     expect(buildWhatsAppUrl("55")).toBe("");
+  });
+});
+
+describe("country phone masks", () => {
+  it.each([
+    ["Brazil", "(11) 99999-8888", "11 99999 9999", "11 99999 8888"],
+    ["Portugal", "912-345-678", "999 999 999", "912 345 678"],
+    ["United States", "(415) 555-2671", "999 999 9999", "415 555 2671"],
+    ["United Kingdom", "020 7946 0958", "9999 999 9999", "0207 946 0958"],
+    ["India", "+91 98765 43210", "99999 99999", "91987 65432"]
+  ])("formats digits using the %s mask", (_country, raw, mask, expected) => {
+    expect(applyPhoneMask(raw, mask)).toBe(expected);
+  });
+
+  it("formats partial input without appending separators", () => {
+    expect(applyPhoneMask("119", "11 99999 9999")).toBe("11 9");
+    expect(applyPhoneMask("912", "999 999 999")).toBe("912");
+  });
+
+  it("removes existing punctuation before applying the selected mask", () => {
+    expect(applyPhoneMask("12.34/56 abc 789", "999 999 999")).toBe("123 456 789");
+  });
+
+  it("truncates digits that exceed the selected country's mask", () => {
+    expect(applyPhoneMask("912345678999", "999 999 999")).toBe("912 345 678");
+  });
+
+  it("returns an empty value when there are no digits", () => {
+    expect(applyPhoneMask("( ) -", "999 999 9999")).toBe("");
+  });
+
+  it("leaves the original value untouched when no mask is available", () => {
+    expect(applyPhoneMask("+123 custom", "")).toBe("+123 custom");
+    expect(applyPhoneMask("123", null)).toBe("123");
+  });
+
+  it.each([
+    ["11 99999 9999", "__ _____ ____"],
+    ["999 999 999", "___ ___ ___"],
+    ["9999 999 9999", "____ ___ ____"],
+    ["9 99 99 99 99", "_ __ __ __ __"]
+  ])("builds a placeholder for mask %s", (mask, expected) => {
+    expect(getPhoneMaskPlaceholder(mask)).toBe(expected);
+  });
+
+  it("returns an empty placeholder when no mask is available", () => {
+    expect(getPhoneMaskPlaceholder("")).toBe("");
+    expect(getPhoneMaskPlaceholder(null)).toBe("");
+  });
+});
+
+describe("phone input security boundaries", () => {
+  it("removes HTML and script syntax from selected phone text", () => {
+    expect(normalizeSelectedNumber('<img src=x onerror=alert("x")> +351 912 345 678')).toBe(
+      "+351912345678"
+    );
+  });
+
+  it("removes control characters and keeps only phone digits", () => {
+    expect(normalizeSelectedNumber("+351\u0000\r\n912\t345\u001f678")).toBe(
+      "+351912345678"
+    );
+  });
+
+  it("collapses multiple plus signs to one leading international prefix", () => {
+    expect(normalizeSelectedNumber("+++351+912+345+678")).toBe("+351912345678");
+  });
+
+  it("does not let a javascript scheme control the generated URL", () => {
+    const url = buildWhatsAppUrl("javascript:+351912345678");
+
+    expect(url).toBe("https://wa.me/351912345678");
+    expect(new URL(url).protocol).toBe("https:");
+    expect(new URL(url).hostname).toBe("wa.me");
+  });
+
+  it.each([
+    ["?text=attacker", "https://wa.me/351912345678"],
+    ["#fragment", "https://wa.me/351912345678"],
+    ["&phone=javascript:alert(1)", "https://wa.me/3519123456781"],
+    ["/../../evil", "https://wa.me/351912345678"]
+  ])("does not allow phone payload %s to alter the URL structure", (payload, expected) => {
+    expect(buildWhatsAppUrl(`+351912345678${payload}`)).toBe(expected);
+  });
+
+  it("encodes message query delimiters instead of creating extra parameters", () => {
+    const url = buildWhatsAppUrl("+351912345678", "hello&admin=true#fragment");
+
+    expect(url).toBe(
+      "https://wa.me/351912345678?text=hello%26admin%3Dtrue%23fragment"
+    );
+    expect(new URL(url).searchParams.get("admin")).toBeNull();
+  });
+
+  it("encodes line breaks and HTML in messages", () => {
+    const url = buildWhatsAppUrl(
+      "+351912345678",
+      '<script>alert("x")</script>\r\nsecond line'
+    );
+
+    expect(new URL(url).searchParams.get("text")).toBe(
+      '<script>alert("x")</script>\r\nsecond line'
+    );
+    expect(url).not.toContain("<script>");
+    expect(url).not.toContain("\r");
+    expect(url).not.toContain("\n");
+  });
+
+  it("rejects payloads that contain no usable phone number", () => {
+    expect(buildWhatsAppUrl("javascript:alert('x')")).toBe("");
+    expect(buildWhatsAppUrl("<script></script>")).toBe("");
   });
 });
