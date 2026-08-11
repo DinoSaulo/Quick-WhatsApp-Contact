@@ -3,9 +3,11 @@
 
 `Chrome Extension` · `Manifest V3` · `Vanilla JS` · `Vitest`
 
+[![Pipeline](https://github.com/DinoSaulo/Quick-WhatsApp-Contact/actions/workflows/ci.yml/badge.svg)](https://github.com/DinoSaulo/Quick-WhatsApp-Contact/actions/workflows/ci.yml)
+
 ---
 
-## Sobre
+## 💬 Sobre
 
 **Quick WhatsApp Contact** detecta números de telefone em páginas web e abre o WhatsApp com um clique. A extensão trata automaticamente DDI, aplica a máscara do país selecionado e permite enviar uma mensagem personalizada — tudo sem sair da aba atual.
 
@@ -13,34 +15,34 @@ A interface está disponível em **Inglês (EN-US)** e **Português (PT-BR)**.
 
 ---
 
-## Funcionalidades
+## ✨ Funcionalidades
 
-- **Menu de contexto** — selecione qualquer texto que pareça um número e clique em "Chamar no WhatsApp".
-- **Botão flutuante** — ao selecionar texto semelhante a um número, um botão de atalho aparece na página.
-- **Realce automático** — injeta um botão do WhatsApp ao lado de todos os links `<a href="tel:">` da página.
-- **Popup manual** — clique no ícone da extensão para digitar um número e uma mensagem personalizada.
-- **Seletor de país** — escolha o país pelo nome, bandeira e DDI; a máscara do campo de número muda automaticamente.
-- **Máscara de telefone dinâmica** — o formato do campo (ex: `11 99999-9999` para o Brasil) se atualiza conforme o país selecionado.
-- **Detecção automática de país** — o país é inferido pelo locale do navegador ou pelo TLD da URL atual.
-- **Abertura inteligente** — número com `+` abre o WhatsApp diretamente; número sem DDI abre uma tela para completar o país e o número.
-- **Persistência** — o último país usado e todas as preferências são salvos via `chrome.storage.sync`.
+- 🖱️ **Menu de contexto** — selecione qualquer texto que pareça um número e clique em "Chamar no WhatsApp".
+- 💡 **Botão flutuante** — ao selecionar texto semelhante a um número, um botão de atalho aparece na página.
+- 🔗 **Realce automático** — injeta um botão do WhatsApp ao lado de todos os links `<a href="tel:">` da página.
+- ⌨️ **Popup manual** — clique no ícone da extensão para digitar um número e uma mensagem personalizada.
+- 🌍 **Seletor de país** — escolha o país pelo nome, bandeira e DDI; a máscara do campo de número muda automaticamente.
+- 🎭 **Máscara de telefone dinâmica** — o formato do campo (ex: `11 99999-9999` para o Brasil) se atualiza conforme o país selecionado.
+- 📡 **Detecção automática de país** — o país é inferido pelo locale do navegador ou pelo TLD da URL atual.
+- 🚀 **Abertura inteligente** — número com `+` abre o WhatsApp diretamente; número sem DDI abre uma tela para completar o país e o número.
+- 💾 **Persistência** — o último país usado e todas as preferências são salvos via `chrome.storage.sync`.
 
 ---
 
-## Configurações
+## ⚙️ Configurações
 
 Acesse a página de configurações pelo ícone de engrenagem no popup.
 
 | Opção | Descrição |
 |---|---|
-| Realce automático | Liga/desliga os botões injetados ao lado de links `tel:` nas páginas |
-| Dark mode | Alterna entre tema claro e escuro |
-| Idioma | Inglês (EN-US) ou Português (PT-BR) |
-| País padrão | País pré-selecionado ao abrir o popup (substitui a detecção automática) |
+| 🔗 Realce automático | Liga/desliga os botões injetados ao lado de links `tel:` nas páginas |
+| 🌙 Dark mode | Alterna entre tema claro e escuro |
+| 🌐 Idioma | Inglês (EN-US) ou Português (PT-BR) |
+| 🏳️ País padrão | País pré-selecionado ao abrir o popup (substitui a detecção automática) |
 
 ---
 
-## Como instalar
+## 📦 Como instalar
 
 1. Clone ou baixe este repositório e execute `npm ci` e `npm run build`.
 2. Abra o Chrome e acesse `chrome://extensions`.
@@ -50,7 +52,7 @@ Acesse a página de configurações pelo ícone de engrenagem no popup.
 
 ---
 
-## Como usar
+## 🚀 Como usar
 
 ### Fluxo 1 — Menu de contexto
 
@@ -73,7 +75,7 @@ Acesse a página de configurações pelo ícone de engrenagem no popup.
 
 ---
 
-## Desenvolvimento
+## 🛠️ Desenvolvimento
 
 Instale as dependências:
 
@@ -119,9 +121,21 @@ Execute um arquivo de teste específico:
 npx vitest run tests/phone.test.js
 ```
 
+### 🔄 Pipeline de CI/CD
+
+O repositório usa GitHub Actions com 5 níveis sequenciais. Cada nível precisa passar em todas as plataformas antes do próximo começar.
+
+| Nível | Job | Plataformas |
+|:---:|---|---|
+| 1️⃣ | Testes unitários + lint | Ubuntu · Fedora · macOS · Windows |
+| 2️⃣ | Testes de integração | Ubuntu · Fedora · macOS · Windows |
+| 3️⃣ | Instalação no Chrome | Ubuntu · Fedora · macOS · Windows |
+| 4️⃣ | Validação do pacote Manifest V3 | Ubuntu |
+| 5️⃣ | Publicação da release | Ubuntu *(somente branch `main`)* |
+
 ---
 
-## Tecnologias
+## 🧰 Tecnologias
 
 - **Chrome Extension Manifest V3** com service worker
 - **Vanilla JS** — ES Modules, sem bundler, sem frameworks
@@ -134,6 +148,6 @@ As bandeiras e o ícone de seleção automática usam gráficos [Twemoji](https:
 
 ---
 
-## Privacidade e publicação
+## 🔒 Privacidade e publicação
 
 Os recursos que leem seleção e links `tel:` em páginas são opcionais, ficam desativados por padrão e solicitam permissão no momento da ativação. A extensão não possui backend ou telemetria. Consulte [PRIVACY.md](./PRIVACY.md), [diagnóstico da Chrome Web Store](./docs/STORE_READINESS.md) e [checklist de lançamento](./docs/RELEASE_CHECKLIST.md).
