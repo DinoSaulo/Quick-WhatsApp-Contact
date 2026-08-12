@@ -75,6 +75,17 @@ describe("phone utils", () => {
     expect(isLocalNumberValidForDdi("12345678", "1")).toBe(false);
   });
 
+  it("valida numero local para DDIs que so tinham cobertura automatica antes de contarem com regra", () => {
+    // "93" (Afeganistao) nao tinha regra antes desta mudanca: qualquer numero passava.
+    expect(isLocalNumberValidForDdi("70 123 4567", "93")).toBe(true);
+    expect(isLocalNumberValidForDdi("70 123 456", "93")).toBe(false);
+    expect(isLocalNumberValidForDdi("70 123 45678", "93")).toBe(false);
+
+    // "1-268" (Antigua e Barbuda) normaliza para o DDI "1268".
+    expect(isLocalNumberValidForDdi("464 1234", "1-268")).toBe(false);
+    expect(isLocalNumberValidForDdi("268 464 1234", "1-268")).toBe(true);
+  });
+
   it("accepts the Brazilian mobile number reported by the user", () => {
     expect(isLikelyPhoneText("81 98600 6397")).toBe(true);
     expect(isLocalNumberValidForDdi("81 98600 6397", "55")).toBe(true);
