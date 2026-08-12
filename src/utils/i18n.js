@@ -39,7 +39,18 @@ const DICTIONARY = {
     optionDefaultCountryNone: "— Automatic —",
     optionsSaved: "Settings saved",
     searchCountryPlaceholder: "Search country...",
-    searchCountryNoResults: "No countries found"
+    searchCountryNoResults: "No countries found",
+    donationButtonLabel: "Buy me a coffee",
+    donationModalTitle: "Support this project",
+    donationModalDescription:
+      "Quick WhatsApp Contact is free and open source. If it saved you time, a small tip is always welcome.",
+    donationCloseButton: "Close",
+    donationCopyButton: "Copy",
+    donationCopiedFeedback: "Copied!",
+    donationCopyError: "Could not copy automatically. Select the text and copy it manually.",
+    donationOpenLink: "Open",
+    donationQrAlt: "QR code to donate via {method}",
+    donationUnavailable: "Coming soon"
   },
   "pt-BR": {
     extensionName: "Quick WhatsApp Contact",
@@ -81,7 +92,18 @@ const DICTIONARY = {
     optionDefaultCountryNone: "— Automático —",
     optionsSaved: "Configurações salvas",
     searchCountryPlaceholder: "Buscar país...",
-    searchCountryNoResults: "Nenhum país encontrado"
+    searchCountryNoResults: "Nenhum país encontrado",
+    donationButtonLabel: "Buy me a coffee",
+    donationModalTitle: "Apoie este projeto",
+    donationModalDescription:
+      "O Quick WhatsApp Contact é gratuito e de código aberto. Se ele te poupou tempo, uma contribuição é sempre bem-vinda.",
+    donationCloseButton: "Fechar",
+    donationCopyButton: "Copiar",
+    donationCopiedFeedback: "Copiado!",
+    donationCopyError: "Não foi possível copiar automaticamente. Selecione o texto e copie manualmente.",
+    donationOpenLink: "Abrir",
+    donationQrAlt: "QR code para doar via {method}",
+    donationUnavailable: "Em breve"
   }
 };
 

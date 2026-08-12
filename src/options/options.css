@@ -66,6 +66,171 @@ extension-settings-page {
   color: var(--accent-strong);
 }
 
+.options-footer donation-modal {
+  display: inline-block;
+  margin-top: 10px;
+}
+
+.donation-dialog {
+  width: min(90vw, 420px);
+  max-height: min(85vh, 640px);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 20px;
+  background: var(--panel);
+  color: var(--text);
+  box-shadow: var(--shadow);
+}
+
+.donation-dialog::backdrop {
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.donation-dialog__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.donation-dialog__title {
+  margin: 0;
+  font-size: 20px;
+}
+
+.donation-dialog__close {
+  border: none;
+  background: var(--surface);
+  color: var(--text);
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  flex: none;
+}
+
+.donation-dialog__close:hover {
+  background: var(--surface-strong);
+}
+
+.donation-dialog__description {
+  margin: 10px 0 16px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.donation-tabs {
+  display: flex;
+  gap: 6px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 16px;
+}
+
+.donation-tabs__tab {
+  flex: 1;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  padding: 8px 4px 10px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+}
+
+.donation-tabs__tab[aria-selected="true"] {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+.donation-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  text-align: center;
+}
+
+/* Sem isto, o `hidden` attribute que o JS alterna em cada troca de aba fica sem
+   efeito: a regra `display: flex` acima (nível de autor) tem prioridade sobre o
+   `[hidden] { display: none }` do stylesheet do navegador, então os 3 métodos
+   ficariam todos visíveis ao mesmo tempo, empilhados, independente da aba ativa. */
+.donation-panel[hidden] {
+  display: none !important;
+}
+
+.donation-panel__qr {
+  width: 180px;
+  height: 180px;
+  border-radius: 12px;
+  background: #fff;
+  padding: 8px;
+  border: 1px solid var(--border);
+}
+
+.donation-panel__copy-row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.donation-panel__value {
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+  text-align: left;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 8px 10px;
+  font-size: 11px;
+  font-family: inherit;
+  color: var(--text);
+  cursor: text;
+}
+
+.donation-panel__value:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.donation-panel__link {
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 13px;
+  text-underline-offset: 2px;
+}
+
+.donation-panel__link:hover,
+.donation-panel__link:focus-visible {
+  color: var(--accent-strong);
+}
+
+.donation-panel__unavailable {
+  color: var(--muted);
+  font-size: 13px;
+  padding: 24px 0;
+}
+
+.donation-panel__feedback {
+  min-height: 16px;
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.donation-panel__feedback[data-state="success"] {
+  color: var(--accent);
+}
+
+.donation-panel__feedback[data-state="error"] {
+  color: #b42318;
+}
+
 .option-row {
   display: flex;
   align-items: center;

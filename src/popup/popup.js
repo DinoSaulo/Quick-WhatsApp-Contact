@@ -283,6 +283,15 @@ class WhatsAppMessagePopup extends HTMLElement {
       window.close();
     });
 
+    // O botão de doação fica no <footer> do popup.html, fora deste custom element —
+    // por isso a busca é em document, não em this. O modal com PIX/MB WAY/PayPal só
+    // existe em options.html; aqui só abrimos a página de opções em uma nova aba.
+    const donationButton = document.querySelector("#donation-button");
+    donationButton?.addEventListener("click", async () => {
+      await chrome.runtime.openOptionsPage();
+      window.close();
+    });
+
     const form = this.querySelector("#message-form");
     form?.addEventListener("submit", async (event) => {
       event.preventDefault();

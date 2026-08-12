@@ -276,6 +276,35 @@ body {
   border-bottom-right-radius: 19px;
 }
 
+/* Botão "Buy me a coffee" — base compartilhada por popup.html e options.html
+   (o modal com as 3 seções de doação só existe em options.html, ver options.css). */
+.donation-trigger {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  border-radius: 999px;
+  padding: 10px 16px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 120ms ease, background 120ms ease;
+}
+
+.donation-trigger:hover {
+  transform: translateY(-1px);
+  background: var(--surface-strong);
+}
+
+.donation-trigger--compact {
+  padding: 6px 12px;
+  font-size: 12px;
+}
+
+.popup-footer {
+  padding: 8px 12px 12px;
+  text-align: center;
+}
+
 body.popup-shell {
   width: 360px;
   overflow: hidden;

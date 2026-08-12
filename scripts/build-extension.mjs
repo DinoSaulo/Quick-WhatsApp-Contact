@@ -1,4 +1,4 @@
-import { cpSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { COUNTRIES, getTwemojiAssetName } from "../src/utils/countries.js";
 
@@ -32,6 +32,13 @@ const attribution =
   "Twemoji graphics by Twitter, Inc. and contributors. Licensed under CC-BY 4.0.\nhttps://github.com/jdecked/twemoji\n";
 writeFileSync(resolve(developmentAssetsOutput, "ATTRIBUTION.txt"), attribution, "utf8");
 writeFileSync(resolve(packagedAssetsOutput, "ATTRIBUTION.txt"), attribution, "utf8");
+
+// QR codes de doação: diferente do Twemoji, já ficam versionados em assets/donation-qrcodes
+// (gerados manualmente por scripts/generate-donation-qrcodes.mjs), só precisam ser copiados.
+const donationQrCodesDir = resolve(projectRoot, "assets", "donation-qrcodes");
+if (existsSync(donationQrCodesDir)) {
+  cpSync(donationQrCodesDir, resolve(outputRoot, "assets", "donation-qrcodes"), { recursive: true });
+}
 
 writeFileSync(
   resolve(projectRoot, "dist", "BUILD_INFO.txt"),

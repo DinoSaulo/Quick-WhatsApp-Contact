@@ -430,4 +430,24 @@ describe("popup integration", () => {
     expect(searchInput.value).toBe("");
     expect(options.every((option) => option.style.display === "")).toBe(true);
   });
+
+  it("opens the options page and closes the popup when the donation button is clicked", async () => {
+    if (!customElements.get("whatsapp-message-popup")) {
+      await import("../src/popup/popup.js");
+    }
+    // O botão de doação vive no <footer> de popup.html, fora do custom element — por isso
+    // os dois precisam já estar em document.body quando bindEvents() rodar (dentro do
+    // connectedCallback), já que o listener é anexado com document.querySelector, não this.
+    document.body.innerHTML =
+      '<whatsapp-message-popup></whatsapp-message-popup>' +
+      '<footer><button id="donation-button" type="button">☕ Buy me a coffee</button></footer>';
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    document.querySelector("#donation-button").click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(chrome.runtime.openOptionsPage).toHaveBeenCalled();
+    expect(window.close).toHaveBeenCalled();
+  });
 });

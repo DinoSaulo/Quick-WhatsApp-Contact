@@ -100,6 +100,14 @@ describe("options page integration", () => {
     expect(links.every((link) => link.rel === "noopener noreferrer")).toBe(true);
   });
 
+  it("mounts the donation modal component inside the footer", () => {
+    document.body.innerHTML = optionsHtml;
+    const footer = document.querySelector(".options-footer");
+
+    expect(footer.querySelector("donation-modal")).not.toBeNull();
+    expect(optionsHtml).toContain('<script type="module" src="./donationModal.js"></script>');
+  });
+
   it("loads every saved setting into the options controls", async () => {
     mockStorage.getSettings.mockResolvedValue({
       language: "pt-BR",
