@@ -11,7 +11,8 @@
     "test:integration": "vitest run .integration.test.js",
     "test:install": "npm run build && node tests/installation/extension-install.mjs",
     "validate:extension": "node scripts/validate-extension.mjs",
-    "verify": "npm run lint && npm run validate:extension && npm test && npm run build"
+    "verify": "npm run lint && npm run validate:extension && npm test && npm run build",
+    "ralph": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/ralph-loop.ps1"
   },
   "devDependencies": {
     "@twemoji/svg": "15.0.0",

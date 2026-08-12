@@ -1,0 +1,36 @@
+{
+  "project": "quick-whatsapp-contact",
+  "description": "PRD pequeno para o loop Ralph. Cada história deve ser pequena, reversível e sem risco de publicação ou alteração de permissões.",
+  "createdAt": "2026-08-12",
+  "constraints": {
+    "forbiddenPaths": [
+      "manifest.json",
+      ".github/workflows/**",
+      ".claude/settings*.json"
+    ],
+    "notes": "Só altere os caminhos acima se a história abaixo mencionar isso explicitamente em requiresManifestChange/requiresWorkflowChange."
+  },
+  "stories": [
+    {
+      "id": "country-picker-search-coverage",
+      "priority": 1,
+      "title": "Cobrir casos de busca não testados no seletor de países",
+      "context": "src/popup/popup.js e src/popup/ddi.js implementam, cada um por conta própria, um filterCountries() que casa a query digitada (minúscula, sem acentos) contra um atributo data-search já pré-computado como `${nome} ${code} ${dialCode} +${dialCode} ${flag}` (também sem acentos). tests/popup.integration.test.js e tests/ddi.integration.test.js só cobrem busca por nome completo (\"Brasil\", \"portugal\", \"Alemanha\") e o caso sem resultados. Não há teste cobrindo busca por DDI, por código do país (ISO2) ou por texto acentuado digitado pelo usuário, nem verificação de que os dois arquivos (popup.js e ddi.js) permanecem consistentes entre si.",
+      "requiresManifestChange": false,
+      "requiresWorkflowChange": false,
+      "acceptanceCriteria": [
+        "Existe teste cobrindo busca por DDI com e sem o prefixo '+' (ex.: '55' e '+55' encontram o Brasil) em popup.js e em ddi.js.",
+        "Existe teste cobrindo busca pelo código do país em minúsculas (ex.: 'br' encontra Brasil) em popup.js e em ddi.js.",
+        "Existe teste cobrindo busca com texto acentuado digitado pelo usuário (ex.: 'México' encontra 'Mexico') comprovando que a normalização NFD funciona também para o input do usuário, não só para os dados pré-computados.",
+        "Qualquer divergência de comportamento comprovada entre popup.js e ddi.js (ex.: um aplica style.display/aria-hidden ao esconder opções e o outro não) é corrigida para que os dois fiquem consistentes, só se um teste novo comprovar que a divergência causa uma falha visível ou de acessibilidade — não mudar por preferência estética.",
+        "Nenhum teste existente quebra e nenhuma funcionalidade fora da busca do seletor de países é alterada."
+      ],
+      "outOfScope": [
+        "Extrair a lógica duplicada de filterCountries para um util compartilhado (seria uma refatoração maior; abrir como história separada se fizer sentido)",
+        "Busca por múltiplas palavras fora de ordem (ex.: 'sul africa')",
+        "Qualquer mudança em manifest.json, permissões ou workflows"
+      ],
+      "passes": false
+    }
+  ]
+}
