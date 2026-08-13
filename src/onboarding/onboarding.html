@@ -5,6 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Quick WhatsApp Contact - Tutorial</title>
     <link rel="stylesheet" href="../popup/styles.css" />
+    <!-- The donation-modal dialog/tabs/panel rules live in options.css (see that file's
+         top-of-file comments) — every selector there is scoped to .options-*, .donation-*
+         or the extension-settings-page tag, none of which exist here, so it's safe to
+         reuse without leaking styles into the tutorial layout. -->
+    <link rel="stylesheet" href="../options/options.css" />
     <link rel="stylesheet" href="./onboarding.css" />
   </head>
   <body class="page-shell onboarding-page">
@@ -12,6 +17,10 @@
       <img src="../../icons/logo-generated-512.png" alt="Quick WhatsApp Contact" width="96" height="96" />
     </div>
     <tutorial-page></tutorial-page>
+    <footer class="onboarding-footer">
+      <donation-modal></donation-modal>
+    </footer>
     <script type="module" src="./onboarding.js"></script>
+    <script type="module" src="../options/donationModal.js"></script>
   </body>
 </html>

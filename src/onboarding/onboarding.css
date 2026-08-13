@@ -114,3 +114,12 @@
 .tutorial-skip:focus-visible {
   color: var(--text);
 }
+
+.onboarding-footer donation-modal {
+  /* Same floating bottom-right anchor as .options-footer donation-modal in options.css —
+     keep both in sync (see the comment there). */
+  position: fixed;
+  right: clamp(12px, 3vw, 20px);
+  bottom: clamp(12px, 3vh, 20px);
+  z-index: 20;
+}

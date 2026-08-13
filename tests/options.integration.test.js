@@ -111,6 +111,12 @@ describe("options page integration", () => {
     expect(optionsHtml).toContain('<script type="module" src="./donationModal.js"></script>');
   });
 
+  it("anchors the donation button as a floating control in the bottom-right corner", () => {
+    expect(optionsStyles).toMatch(
+      /\.options-footer donation-modal\s*\{[^}]*position:\s*fixed;[^}]*right:[^}]*bottom:[^}]*\}/s
+    );
+  });
+
   it("loads every saved setting into the options controls", async () => {
     mockStorage.getSettings.mockResolvedValue({
       language: "pt-BR",

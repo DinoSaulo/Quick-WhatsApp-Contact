@@ -1,5 +1,16 @@
 /* @vitest-environment jsdom */
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const onboardingHtml = readFileSync(
+  resolve(import.meta.dirname, "../src/onboarding/onboarding.html"),
+  "utf8"
+);
+const onboardingStyles = readFileSync(
+  resolve(import.meta.dirname, "../src/onboarding/onboarding.css"),
+  "utf8"
+);
 
 const mockStorage = vi.hoisted(() => ({
   getSettings: vi.fn(),
@@ -41,6 +52,30 @@ describe("onboarding tutorial page", () => {
     expect(page.querySelector("#tutorial-finish")).toBeNull();
     expect(page.querySelector(".tutorial-step__image")).toBeNull();
     expect(page.querySelectorAll(".tutorial-dots__dot")[0].getAttribute("aria-current")).toBe("true");
+  });
+
+  it("mounts the donation modal component inside its own footer, outside the tutorial card", () => {
+    document.body.innerHTML = onboardingHtml;
+    const footer = document.querySelector(".onboarding-footer");
+
+    expect(footer).not.toBeNull();
+    expect(footer.querySelector("donation-modal")).not.toBeNull();
+    expect(document.querySelector("tutorial-page").contains(footer)).toBe(false);
+    expect(onboardingHtml).toContain('<script type="module" src="../options/donationModal.js"></script>');
+  });
+
+  it("loads options.css so the donation modal's dialog/tabs/panel rules are styled, not just its trigger button", () => {
+    // The .donation-trigger button rule lives in popup/styles.css (already linked), but the
+    // dialog/tabs/panel rules the modal switches to once opened live only in options.css —
+    // see that file's own top-of-file comment. Without this link the button rendered fine
+    // but the opened modal looked unstyled, which is the regression this guards against.
+    expect(onboardingHtml).toContain('<link rel="stylesheet" href="../options/options.css" />');
+  });
+
+  it("anchors the donation button as a floating control in the bottom-right corner, matching options.html", () => {
+    expect(onboardingStyles).toMatch(
+      /\.onboarding-footer donation-modal\s*\{[^}]*position:\s*fixed;[^}]*right:[^}]*bottom:[^}]*\}/s
+    );
   });
 
   it("advances to the auto-highlight step, showing its screenshot and still offering Next/Skip", async () => {

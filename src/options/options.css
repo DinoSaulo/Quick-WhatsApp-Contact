@@ -67,8 +67,12 @@ extension-settings-page {
 }
 
 .options-footer donation-modal {
-  display: inline-block;
-  margin-top: 10px;
+  /* Anchored to the viewport corner instead of the footer's text flow, so it stays
+     reachable as a floating call-to-action regardless of the rest of the page. */
+  position: fixed;
+  right: clamp(12px, 3vw, 20px);
+  bottom: clamp(12px, 3vh, 20px);
+  z-index: 20;
 }
 
 .donation-dialog {
