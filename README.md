@@ -31,6 +31,11 @@ A interface está disponível em **Inglês (EN-US)** e **Português (PT-BR)**.
 - 📡 **Detecção automática de país** — o país é inferido pelo locale do navegador ou pelo TLD da URL atual.
 - 🚀 **Abertura inteligente** — número com `+` abre o WhatsApp diretamente; número sem DDI abre uma tela para completar o país e o número.
 - 💾 **Persistência** — o último país usado e todas as preferências são salvos via `chrome.storage.sync`.
+- 👋 **Tutorial de boas-vindas** — na primeira instalação, abre um guia ilustrado de seis etapas que apresenta o realce automático, o ícone da extensão, o preenchimento do popup e o envio pelo WhatsApp.
+- 🌐 **Idioma ajustável no tutorial** — alterne entre Inglês e Português na primeira etapa; a escolha é aplicada imediatamente e salva para as demais telas.
+- 🔁 **Tutorial reutilizável** — reabra o guia a qualquer momento pela página de configurações.
+- ☕ **Apoio ao projeto** — o botão "Buy me a coffee" abre opções de contribuição por PIX, MB WAY/Revolut e PayPal, com QR codes locais e ações para copiar ou abrir quando disponíveis.
+- 🛡️ **Renderização protegida** — números vindos de seleções ou parâmetros de URL são normalizados antes de chegar à interface; dados do modal são escapados e links externos de doação aceitam somente HTTPS.
 
 ---
 
@@ -44,6 +49,9 @@ Acesse a página de configurações pelo ícone de engrenagem no popup.
 | 🌙 Dark mode | Alterna entre tema claro e escuro |
 | 🌐 Idioma | Inglês (EN-US) ou Português (PT-BR) |
 | 🏳️ País padrão | País pré-selecionado ao abrir o popup (substitui a detecção automática) |
+| 👋 Tutorial | Reabre o guia ilustrado de uso da extensão |
+
+O botão flutuante **Buy me a coffee** também fica disponível nas configurações e no tutorial. Ao acioná-lo pelo popup, a página de configurações abre diretamente com o modal de contribuição.
 
 ---
 
@@ -78,6 +86,21 @@ Acesse a página de configurações pelo ícone de engrenagem no popup.
 2. Um botão do WhatsApp aparece ao lado de cada link.
 3. Clique no botão para abrir o WhatsApp com aquele número diretamente.
 
+### Fluxo 4 — Tutorial de boas-vindas
+
+1. Após uma instalação nova, o tutorial abre automaticamente em uma nova aba.
+2. Na primeira etapa, escolha **English** ou **Português** se quiser alterar o idioma da extensão.
+3. Navegue pelas seis etapas ilustradas usando **Próximo**, **Voltar** ou os indicadores de etapa.
+4. Use **Pular** para sair antes do fim ou **Entendi** para concluir. O tutorial pode ser aberto novamente em **Configurações → Tutorial**.
+
+### Fluxo 5 — Apoiar o projeto
+
+1. Clique em **Buy me a coffee** no popup, na página de configurações ou no tutorial.
+2. Escolha **PIX**, **MB WAY** ou **PayPal** no modal.
+3. Escaneie o QR code ou use **Copiar**; quando o método oferecer um link, use **Abrir**.
+
+Ao iniciar esse fluxo pelo popup, a extensão abre a página de configurações e exibe o modal de contribuição automaticamente.
+
 ---
 
 ## 🛠️ Desenvolvimento
@@ -108,7 +131,7 @@ npm run test:install
 
 O teste constrói e instala a extensão, confirma o service worker Manifest V3, abre o popup e verifica os assets locais. Em seguida, desinstala a extensão e confirma que seus processos desaparecem e que o popup deixa de ser acessível. Se o navegador não estiver em um caminho padrão, informe `CHROME_PATH` ou `CHROMIUM_PATH` com o caminho do executável.
 
-O build publicável é gerado em `dist/extension` e contém somente o manifesto, o código da extensão, os ícones e os assets Twemoji locais. Para criar o ZIP no Windows:
+O build publicável é gerado em `dist/extension` e contém somente o manifesto, o código da extensão, os ícones e os assets locais de Twemoji, onboarding e doações. Para criar o ZIP no Windows:
 
 ```powershell
 Compress-Archive -Path dist/extension/* -DestinationPath dist/quick-whatsapp-contact.zip -Force
@@ -156,3 +179,12 @@ As bandeiras e o ícone de seleção automática usam gráficos [Twemoji](https:
 ## 🔒 Privacidade e publicação
 
 Os recursos que leem seleção e links `tel:` em páginas são opcionais, ficam desativados por padrão e solicitam permissão no momento da ativação. A extensão não possui backend ou telemetria. Consulte [PRIVACY.md](./PRIVACY.md), [diagnóstico da Chrome Web Store](./docs/STORE_READINESS.md) e [checklist de lançamento](./docs/RELEASE_CHECKLIST.md).
+
+### Segurança
+
+- A Content Security Policy das páginas da extensão bloqueia scripts inseguros e código remoto.
+- Números recebidos por seleção, armazenamento temporário ou parâmetros de URL são reduzidos a dígitos e, quando aplicável, ao prefixo `+` antes da renderização.
+- Conteúdo interpolado no modal de contribuição é escapado para impedir a criação de HTML ou atributos executáveis.
+- Links externos são limitados a HTTPS e abertos com `rel="noopener noreferrer"` para isolar a aba de origem.
+- O manifesto não declara `externally_connectable`; mensagens para o service worker permanecem restritas aos contextos da própria extensão.
+- A validação do pacote e os testes automatizados mantêm essas proteções como verificações de regressão.
