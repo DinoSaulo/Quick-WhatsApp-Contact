@@ -58,6 +58,9 @@ export function detectCountryCodeFromUrl(urlString) {
 
   try {
     const url = new URL(urlString);
+    if (url.protocol !== "http:" && url.protocol !== "https:") {
+      return "";
+    }
     const hostname = url.hostname;
     if (!hostname) {
       return "";

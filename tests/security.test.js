@@ -55,3 +55,12 @@ describe("tabnabbing protection", () => {
     expect(totalBlankTargets).toBeGreaterThan(0);
   });
 });
+
+describe("extension storage isolation", () => {
+  it("does not expose session handoff data to untrusted content-script contexts", () => {
+    const storageSource = readFileSync(resolve(projectRoot, "src/utils/storage.js"), "utf8");
+
+    expect(storageSource).not.toMatch(/storage\.session\.setAccessLevel\s*\(/);
+    expect(storageSource).not.toContain("TRUSTED_AND_UNTRUSTED_CONTEXTS");
+  });
+});

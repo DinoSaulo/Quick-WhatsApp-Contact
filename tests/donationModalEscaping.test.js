@@ -16,7 +16,7 @@ const mockDonation = vi.hoisted(() => ({
       name: '<script>window.qwcPwned="name"</script>',
       copyText: '"><svg onload=alert(1)>',
       link: 'javascript:alert(document.cookie)',
-      qrAsset: "assets/donation-qrcodes/pix.svg"
+      qrAsset: 'assets/donation-qrcodes/pix.svg" onerror="alert(1)'
     }
   ]
 }));
@@ -63,6 +63,7 @@ describe("donation modal escaping (hostile DONATION_METHODS)", () => {
     mockDonation.DONATION_METHODS[0].link = "javascript:alert(document.cookie)";
     mockStorage.getSettings.mockResolvedValue({ language: "en-US" });
     mockStorage.consumePendingDonationOpen.mockResolvedValue(false);
+    global.navigator.clipboard = { writeText: vi.fn().mockResolvedValue() };
     global.chrome = {
       runtime: { getURL: vi.fn((path) => `chrome-extension://options-id/${path}`) }
     };
@@ -82,6 +83,27 @@ describe("donation modal escaping (hostile DONATION_METHODS)", () => {
     const tab = modal.querySelector(".donation-tabs__tab");
     expect(tab.textContent).toContain('<script>window.qwcPwned="name"</script>');
     expect(tab.innerHTML).not.toContain("<script>window.qwcPwned");
+  });
+
+  it("escapes the package URL used by a hostile QR asset path", async () => {
+    const modal = await renderDonationModal();
+    const qrImage = modal.querySelector(".donation-panel__qr");
+
+    expect(qrImage).not.toBeNull();
+    expect(qrImage.getAttribute("onerror")).toBeNull();
+    expect(qrImage.getAttribute("src")).toContain('pix.svg" onerror="alert(1)');
+  });
+
+  it("copies safely even when the method id contains CSS selector metacharacters", async () => {
+    const modal = await renderDonationModal();
+
+    modal.querySelector("[data-copy-method]").click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
+      '"><svg onload=alert(1)>'
+    );
+    expect(modal.querySelector("[data-copy-feedback]").textContent).toBe("Copied!");
   });
 
   it("escapes a hostile method.id even though it drives id/data-* attribute values", async () => {

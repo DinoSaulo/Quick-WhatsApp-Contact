@@ -64,4 +64,18 @@ describe("URL TLD detection", () => {
     expect(detectCountryCodeFromUrl("")).toBe("");
     expect(detectCountryCodeFromUrl(null)).toBe("");
   });
+
+  it.each([
+    "https://trusted.pt.attacker.com",
+    "https://attacker.com/path/site.pt",
+    "https://pt.attacker.invalid",
+    "javascript://trusted.pt/%0Aalert(1)",
+    "data:text/html,https://trusted.pt"
+  ])("does not infer a country from a deceptive URL: %s", (url) => {
+    expect(detectCountryCodeFromUrl(url)).toBe("");
+  });
+
+  it("uses only the parsed hostname, not credentials that resemble a country domain", () => {
+    expect(detectCountryCodeFromUrl("https://trusted.pt@attacker.com/path")).toBe("");
+  });
 });

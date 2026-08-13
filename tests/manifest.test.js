@@ -64,9 +64,21 @@ describe("Chrome Web Store manifest readiness", () => {
     expect(manifest.web_accessible_resources).toEqual([
       {
         resources: ["icons/icon16.png"],
-        matches: ["http://*/*", "https://*/*"]
+        matches: ["http://*/*", "https://*/*"],
+        use_dynamic_url: true
       }
     ]);
+  });
+
+  // Without use_dynamic_url, chrome-extension://<id>/icons/icon16.png is a fixed, guessable
+  // URL — any website can probe it (e.g. via a hidden <img> and onload/onerror) to fingerprint
+  // whether this extension is installed, a known cross-site user-tracking technique. Chrome
+  // 106+ can instead serve web-accessible resources behind a random per-session identifier
+  // that changes on every browser restart, breaking that probe. Nothing in src/ hardcodes
+  // chrome-extension://... URLs (every reference goes through chrome.runtime.getURL()), so
+  // this is safe to enable with no code changes required.
+  it("rotates the web-accessible resource URL instead of exposing a fixed, fingerprintable one", () => {
+    expect(manifest.web_accessible_resources[0].use_dynamic_url).toBe(true);
   });
 
   // Sem externally_connectable, chrome.runtime.onMessage (o listener em background.js que

@@ -10,6 +10,12 @@ function escapeHtml(value) {
     .replace(/"/g, "&quot;");
 }
 
+function findByDataAttribute(root, attributeName, expectedValue) {
+  return Array.from(root.querySelectorAll(`[${attributeName}]`)).find(
+    (element) => element.getAttribute(attributeName) === expectedValue
+  );
+}
+
 class DonationModal extends HTMLElement {
   async connectedCallback() {
     this.activeMethodId = DONATION_METHODS[0]?.id ?? "";
@@ -74,7 +80,7 @@ class DonationModal extends HTMLElement {
         ${method.copyText ? `
           <img
             class="donation-panel__qr"
-            src="${chrome.runtime.getURL(method.qrAsset)}"
+            src="${escapeHtml(chrome.runtime.getURL(method.qrAsset))}"
             alt="${escapeHtml(t(this.messages, "donationQrAlt", { method: method.name }))}"
             width="180"
             height="180"
@@ -171,7 +177,10 @@ class DonationModal extends HTMLElement {
       copyButton.addEventListener("click", async () => {
         const methodId = copyButton.getAttribute("data-copy-method");
         const method = DONATION_METHODS.find((candidate) => candidate.id === methodId);
-        const feedback = this.querySelector(`[data-copy-feedback="${methodId}"]`);
+        // Do not interpolate methodId into a CSS selector. Even escaped HTML attributes are
+        // decoded by getAttribute(), and selector metacharacters in a future data source could
+        // otherwise throw a SyntaxError or select the wrong feedback element.
+        const feedback = findByDataAttribute(this, "data-copy-feedback", methodId);
         if (!method || !feedback) {
           return;
         }

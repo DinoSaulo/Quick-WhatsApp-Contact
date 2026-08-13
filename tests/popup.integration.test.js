@@ -118,6 +118,24 @@ describe("popup integration", () => {
     expect(flagSources.some((source) => /^https?:/.test(source))).toBe(false);
   });
 
+  it("falls back to a known country when synced country settings contain hostile markup", async () => {
+    mockStorage.getSettings.mockResolvedValue({
+      language: "en-US",
+      darkModeEnabled: false,
+      autoHighlightEnabled: true,
+      defaultCountry: '\"><img src=x onerror=alert("x")>'
+    });
+    mockStorage.getLastCountry.mockResolvedValue("");
+    mockLocation.detectCountryCodeFromBrowserLocation.mockReturnValue("");
+
+    const popup = await renderPopup();
+    const hiddenCountry = popup.querySelector("#country-hidden");
+
+    expect(document.querySelector("img[onerror]")).toBeNull();
+    expect(hiddenCountry.value).toMatch(/^[A-Z]{2}(?:-[A-Z0-9]+)?$/);
+    expect(popup.querySelectorAll(".country-picker__option").length).toBeGreaterThanOrEqual(200);
+  });
+
   it("accepts a Brazilian mobile number with DDD and opens WhatsApp", async () => {
     mockStorage.consumePendingContextNumber.mockResolvedValue("81986006397");
     mockStorage.consumePendingContextCountry.mockResolvedValue("BR");
