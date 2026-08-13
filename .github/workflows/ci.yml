@@ -16,8 +16,8 @@ concurrency:
   cancel-in-progress: true
 
 # ─────────────────────────────────────────────────────────────────────────────
-#  Level 1 ▶ Level 2      ▶ Level 3       ▶ Level 4   ▶ Level 5
-#  Unit     ▶ Integration ▶ Installation  ▶ Validate  ▶ Release
+#  Level 1 ▶ Level 2      ▶ Level 3   ▶ Level 4       ▶ Level 5   ▶ Level 6
+#  Unit     ▶ Integration ▶ Security  ▶ Installation  ▶ Validate  ▶ Release
 # ─────────────────────────────────────────────────────────────────────────────
 
 jobs:
@@ -160,10 +160,57 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
-  # ── Level 3: Installation test (all platforms) ─────────────────────────────
-  installation-test:
-    name: "3 · Instalacao no Chrome · ${{ matrix.label }}"
+  # ── Level 3: Security tests (Linux only) ────────────────────────────────────
+  security-tests:
+    name: "3 · Seguranca"
     needs: integration-tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Clonar repositorio
+        uses: actions/checkout@v6
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Verificar versao do Node.js
+        run: node -e "const actual = process.versions.node; const expected = process.env.NODE_VERSION; if (actual !== expected) { console.error('Expected Node.js ' + expected + ', but found ' + actual); process.exit(1); } console.log('Using Node.js ' + actual);"
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Analise estatica de seguranca (SAST)
+        run: npm run lint:sast
+
+      - name: Preparar diretorio de relatorios
+        shell: bash
+        run: mkdir -p reports
+
+      - name: Executar testes de seguranca
+        run: >-
+          npm run test:security --
+          --reporter=default
+          --reporter=github-actions
+          --reporter=junit
+          --outputFile.junit=reports/security.xml
+
+      - name: Anexar relatorio JUnit
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: relatorio-seguranca
+          path: reports/security.xml
+          if-no-files-found: warn
+          retention-days: 14
+
+  # ── Level 4: Installation test (all platforms) ─────────────────────────────
+  installation-test:
+    name: "4 · Instalacao no Chrome · ${{ matrix.label }}"
+    needs: security-tests
     runs-on: ${{ matrix.os }}
     container: ${{ matrix.container }}
     timeout-minutes: 10
@@ -214,9 +261,9 @@ jobs:
       - name: Testar instalacao e desinstalacao no Chrome
         run: npm run test:install
 
-  # ── Level 4: Validate extension package ────────────────────────────────────
+  # ── Level 5: Validate extension package ────────────────────────────────────
   validate-extension:
-    name: "4 · Validar Extensao"
+    name: "5 · Validar Extensao"
     needs: installation-test
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -240,9 +287,9 @@ jobs:
       - name: Validar pacote Manifest V3
         run: npm run validate:extension
 
-  # ── Level 5: Publish release (main branch only) ────────────────────────────
+  # ── Level 6: Publish release (main branch only) ────────────────────────────
   release:
-    name: "5 · Publicar Release"
+    name: "6 · Publicar Release"
     needs: validate-extension
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
