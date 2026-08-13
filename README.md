@@ -123,6 +123,12 @@ Execute a verificação completa de sintaxe, manifesto, testes e build:
 npm run verify
 ```
 
+Valide separadamente os materiais e placeholders necessários para a Chrome Web Store:
+
+```bash
+npm run validate:store
+```
+
 Execute o smoke test do ciclo de instalação e desinstalação em um Chrome ou Chromium real:
 
 ```bash
@@ -178,7 +184,7 @@ As bandeiras e o ícone de seleção automática usam gráficos [Twemoji](https:
 
 ## 🔒 Privacidade e publicação
 
-Os recursos que leem seleção e links `tel:` em páginas são opcionais, ficam desativados por padrão e solicitam permissão no momento da ativação. A extensão não possui backend ou telemetria. Consulte [PRIVACY.md](./PRIVACY.md), [diagnóstico da Chrome Web Store](./docs/STORE_READINESS.md) e [checklist de lançamento](./docs/RELEASE_CHECKLIST.md).
+Os recursos que leem seleção e links `tel:` em páginas são opcionais, ficam desativados por padrão e solicitam permissão no momento da ativação. A extensão não possui backend ou telemetria. Consulte [PRIVACY.md](./PRIVACY.md), [diagnóstico da Chrome Web Store](./docs/STORE_READINESS.md), [materiais da ficha da loja](./docs/STORE_LISTING.md) e [checklist de lançamento](./docs/RELEASE_CHECKLIST.md).
 
 ### Segurança
 

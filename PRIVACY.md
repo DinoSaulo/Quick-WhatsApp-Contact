@@ -40,10 +40,26 @@ A extensão não vende dados, não compartilha dados com anunciantes, não usa d
 
 O uso de informações recebidas das APIs do Chrome observa a Política de Dados do Usuário da Chrome Web Store, incluindo os requisitos de Uso Limitado.
 
+## Apoio voluntário ao projeto
+
+O botão “Buy me a coffee” mostra métodos opcionais para apoiar o desenvolvedor. A extensão apenas exibe dados ou links do destinatário da doação. Ela não vende recursos, não intermedeia pagamentos, não recebe dados de cartão ou conta do usuário e não armazena informações financeiras do doador. Qualquer pagamento é iniciado conscientemente pelo usuário e processado pelo provedor escolhido, sujeito à política desse provedor.
+
+## Declaração de Uso Limitado
+
+O uso das informações recebidas das APIs do Chrome observa a Política de Dados do Usuário da Chrome Web Store, incluindo os requisitos de Uso Limitado. Essas informações são usadas somente para fornecer ou melhorar a finalidade única e visível da extensão; não são vendidas, usadas para publicidade personalizada nem disponibilizadas para leitura humana, salvo quando exigido por lei ou necessário para segurança nos limites permitidos pela política.
+
 ## Segurança
 
 Todo código executável é distribuído dentro do pacote da extensão. A comunicação com o WhatsApp usa HTTPS. Não há carregamento de código remoto.
 
 ## Contato
 
-O proprietário deve informar aqui, antes da publicação, um e-mail de suporte e disponibilizar esta política em uma URL pública e estável.
+<!-- TODO(owner): substituir pelo e-mail de suporte antes de enviar à Chrome Web Store. -->
+E-mail de suporte: **[e-mail a definir]**
+
+## Publicação
+
+Esta política é publicada em [`docs/privacy.html`](./docs/privacy.html) via GitHub Pages, em:
+`https://dinosaulo.github.io/Quick-WhatsApp-Contact/privacy.html`. Ative o GitHub Pages em
+Settings → Pages → Source: **Deploy from a branch** → Branch: **main**, pasta **/docs**. Ao editar
+este arquivo, atualize `docs/privacy.html` junto — são mantidos manualmente em sincronia.

@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Política de Privacidade — Quick WhatsApp Contact</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #f7f4eb;
+        --text: #1f2a1f;
+        --muted: #5f6f5f;
+        --accent: #1f8f55;
+        --border: #d8ccb1;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #11151a;
+          --text: #f0f4f7;
+          --muted: #b3c0cb;
+          --accent: #2ecc71;
+          --border: #3a4756;
+        }
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        line-height: 1.6;
+      }
+      main {
+        max-width: 720px;
+        margin: 0 auto;
+        padding: 40px 20px 64px;
+      }
+      h1 {
+        font-size: 26px;
+        margin-bottom: 4px;
+      }
+      .updated {
+        color: var(--muted);
+        font-size: 14px;
+        margin-top: 0;
+      }
+      h2 {
+        font-size: 18px;
+        margin-top: 32px;
+        border-bottom: 1px solid var(--border);
+        padding-bottom: 6px;
+      }
+      a {
+        color: var(--accent);
+      }
+      ul {
+        padding-left: 20px;
+      }
+      .source-note {
+        margin-top: 48px;
+        padding-top: 16px;
+        border-top: 1px solid var(--border);
+        color: var(--muted);
+        font-size: 13px;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Política de Privacidade — Quick WhatsApp Contact</h1>
+      <p class="updated">Última atualização: 11 de agosto de 2026.</p>
+
+      <h2>Finalidade</h2>
+      <p>
+        O Quick WhatsApp Contact tem uma única finalidade: ajudar o usuário a iniciar, por ação
+        própria, uma conversa no WhatsApp a partir de um número de telefone digitado, selecionado
+        ou presente em um link <code>tel:</code>.
+      </p>
+
+      <h2>Dados tratados</h2>
+      <ul>
+        <li>Números de telefone digitados ou selecionados pelo usuário.</li>
+        <li>Mensagem opcional escrita pelo usuário no popup.</li>
+        <li>Código de país inferido localmente a partir do idioma do navegador ou do domínio da página.</li>
+        <li>Preferências da extensão: idioma, tema, país padrão, último país usado e ativação dos recursos opcionais de página.</li>
+      </ul>
+
+      <h2>Como os dados são usados</h2>
+      <p>
+        Números, mensagens e conteúdo de página são processados localmente no navegador para
+        formatar o telefone e montar a URL do WhatsApp. A extensão não possui backend, conta de
+        usuário, publicidade ou telemetria e não envia dados ao desenvolvedor.
+      </p>
+      <p>
+        Quando o usuário confirma a abertura de uma conversa, o número e a mensagem opcional são
+        enviados ao WhatsApp por uma URL HTTPS (<code>https://wa.me/</code>). Esse envio é
+        necessário para executar a ação solicitada e está sujeito à política de privacidade do
+        WhatsApp.
+      </p>
+
+      <h2>Acesso opcional a sites</h2>
+      <p>
+        Os recursos de página ficam desativados por padrão. Se o usuário os ativar nas
+        configurações, o Chrome solicitará acesso opcional a páginas HTTP e HTTPS. Com esse
+        acesso, a extensão:
+      </p>
+      <ul>
+        <li>procura localmente links <code>tel:</code> para exibir um botão de ação; e</li>
+        <li>identifica texto semelhante a telefone selecionado pelo usuário para exibir um atalho.</li>
+      </ul>
+      <p>
+        A extensão não coleta histórico de navegação, não envia URLs ou conteúdo das páginas ao
+        desenvolvedor e não executa esses recursos sem a permissão opcional.
+      </p>
+
+      <h2>Armazenamento e retenção</h2>
+      <p>
+        Preferências e o último país utilizado são armazenados em <code>chrome.storage.sync</code>,
+        podendo ser sincronizados pelo próprio Chrome entre dispositivos vinculados à conta do
+        usuário. Números pendentes vindos de uma seleção são guardados temporariamente em
+        <code>chrome.storage.session</code> e removidos quando consumidos pelo popup. A extensão
+        não mantém banco de dados externo.
+      </p>
+      <p>
+        O usuário pode remover os dados locais desinstalando a extensão ou limpando seus dados
+        pelo Chrome. O acesso opcional a sites pode ser revogado nas configurações da extensão ou
+        na página de gerenciamento do Chrome.
+      </p>
+
+      <h2>Compartilhamento, venda e publicidade</h2>
+      <p>
+        A extensão não vende dados, não compartilha dados com anunciantes, não usa dados para
+        publicidade e não permite acesso humano ao conteúdo processado. A única transmissão
+        iniciada pela extensão é para o WhatsApp quando o usuário solicita uma conversa.
+      </p>
+      <p>
+        O uso de informações recebidas das APIs do Chrome observa a Política de Dados do Usuário
+        da Chrome Web Store, incluindo os requisitos de Uso Limitado.
+      </p>
+
+      <h2>Apoio voluntário ao projeto</h2>
+      <p>
+        O botão “Buy me a coffee” mostra métodos opcionais para apoiar o desenvolvedor. A extensão
+        apenas exibe dados ou links do destinatário da doação. Ela não vende recursos, não
+        intermedeia pagamentos, não recebe dados de cartão ou conta do usuário e não armazena
+        informações financeiras do doador. Qualquer pagamento é iniciado conscientemente pelo
+        usuário e processado pelo provedor escolhido, sujeito à política desse provedor.
+      </p>
+
+      <h2>Declaração de Uso Limitado</h2>
+      <p>
+        O uso das informações recebidas das APIs do Chrome observa a Política de Dados do Usuário
+        da Chrome Web Store, incluindo os requisitos de Uso Limitado. Essas informações são usadas
+        somente para fornecer ou melhorar a finalidade única e visível da extensão; não são
+        vendidas, usadas para publicidade personalizada nem disponibilizadas para leitura humana,
+        salvo quando exigido por lei ou necessário para segurança nos limites permitidos pela
+        política.
+      </p>
+
+      <h2>Segurança</h2>
+      <p>
+        Todo código executável é distribuído dentro do pacote da extensão. A comunicação com o
+        WhatsApp usa HTTPS. Não há carregamento de código remoto.
+      </p>
+
+      <h2>Contato</h2>
+      <p>
+        <!-- TODO(owner): substituir pelo e-mail de suporte antes de enviar à Chrome Web Store. -->
+        E-mail de suporte: <strong>[e-mail a definir]</strong>
+      </p>
+
+      <p class="source-note">
+        Este documento é publicado a partir de
+        <a href="https://github.com/DinoSaulo/Quick-WhatsApp-Contact/blob/main/PRIVACY.md">PRIVACY.md</a>
+        no repositório do projeto — atualize os dois arquivos juntos.
+      </p>
+    </main>
+  </body>
+</html>
