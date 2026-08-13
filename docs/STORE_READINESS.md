@@ -23,9 +23,11 @@ Permitir que o usuário inicie uma conversa no WhatsApp a partir de um número d
 | Armazenamento durável | Atendido | Baixo | `src/utils/storage.js` | Preferências em `storage.sync`; contexto descartável em `storage.session`. |
 | Transmissão de dados | Atendido com divulgação | Médio | popup/background | Somente número/mensagem para `https://wa.me/` após ação do usuário. |
 | Telemetria e backend | Não existentes | Baixo | projeto completo | Não adicionar sem nova revisão, divulgação e base legal/consentimento aplicável. |
-| Política de privacidade | Conteúdo preparado | Alto até publicar | `PRIVACY.md` | Proprietário deve adicionar contato e hospedar em URL pública. |
+| Política de privacidade | Hospedagem preparada, e-mail pendente | Alto até publicar | `PRIVACY.md`, `docs/privacy.html` | GitHub Pages configurado (`/docs`, `.nojekyll`); falta habilitar em Settings → Pages e preencher o e-mail de contato nos dois arquivos. |
 | Identidade e suporte | Pendente | Alto | Developer Dashboard | Informar e-mail de suporte verificado e identidade do publicador. |
-| Materiais da loja | Pendente | Médio | Developer Dashboard | Preparar descrição, screenshots e imagens promocionais reais. |
+| Materiais da loja | Parcial | Médio | `docs/STORE_LISTING.md`, `store-assets/` | Textos, ícone e small promo obrigatórios prontos; ainda falta ao menos um screenshot real 1280×800 ou 640×400. |
+| Risco de marca | Revisão recomendada | Médio | ícone, nome e materiais | O ícone atual é visualmente próximo ao logotipo do WhatsApp; obter autorização ou substituir por marca própria reduz o risco de rejeição por confusão ou impersonação. |
+| Doações | Divulgado | Médio | extensão, listing, política | O apoio é voluntário; não vende recursos, não processa pagamentos e não armazena dados financeiros do usuário. |
 | Build reproduzível | Atendido | Baixo | `scripts/`, `package.json` | `npm run verify` e `npm run build` geram pacote limpo em `dist/extension`. |
 
 ## Mapa de dados
@@ -47,8 +49,10 @@ Permitir que o usuário inicie uma conversa no WhatsApp a partir de um número d
 
 ## Decisões pendentes do proprietário
 
-1. Definir identidade legal/nome do responsável e e-mail público de suporte.
-2. Hospedar `PRIVACY.md` em URL HTTPS pública, estável e vinculada à página do produto.
+1. Definir identidade legal/nome do responsável e e-mail público de suporte — preencher em `PRIVACY.md`, `docs/privacy.html` e no Developer Dashboard.
+2. Habilitar GitHub Pages (Settings → Pages → Deploy from a branch → `main` → `/docs`) para publicar `docs/privacy.html` em `https://dinosaulo.github.io/Quick-WhatsApp-Contact/privacy.html`.
 3. Confirmar se os helpers devem continuar disponíveis em todos os sites mediante opt-in ou se o produto deve permitir seleção por domínio.
-4. Preencher no Dashboard as declarações de tratamento de telefone, conteúdo de página e preferências locais de forma coerente com esta documentação.
+4. Preencher no Dashboard as declarações de tratamento de telefone, conteúdo de página e preferências locais de forma coerente com esta documentação (ver `docs/STORE_LISTING.md`).
 5. Confirmar territórios de distribuição, categoria, preço e público-alvo.
+6. Capturar ao menos um screenshot real (1280×800 ou 640×400) conforme `store-assets/README.md`.
+7. Decidir se o ícone atual será substituído por identidade visual própria antes da submissão.
