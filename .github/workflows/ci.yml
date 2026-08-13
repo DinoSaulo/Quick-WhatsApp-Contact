@@ -229,7 +229,8 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            label: Ubuntu
+            label: "Chrome 150 - Ubuntu"
+            chromeMajor: "150"
           - os: ubuntu-latest
             label: "Chrome 151 - Fedora"
             container: fedora:latest
@@ -255,9 +256,11 @@ jobs:
             chromeMajor: "151"
             setup: pacman -Syu --noconfirm --needed git curl nodejs npm chromium
           - os: macos-latest
-            label: macOS
+            label: "Chrome 150 - macOS"
+            chromeMajor: "150"
           - os: windows-latest
-            label: Windows
+            label: "Chrome 151 - Windows"
+            chromeMajor: "151"
 
     steps:
       - name: Preparar sistema (container Linux)
@@ -280,16 +283,15 @@ jobs:
         if: matrix.label == 'Chrome 151 - Fedora'
         run: chromium-browser --version
 
+      # Runs on every platform now (Ubuntu/Fedora/Debian/Rocky/Arch/macOS/Windows), not just the
+      # Linux containers — a plain `chromium --version` shell command only reliably works there.
+      # scripts/verify-chrome-version.mjs reuses findBrowserExecutable() from
+      # tests/installation/browser-environment.mjs (the same lookup the real smoke test uses) so
+      # this checks the exact binary puppeteer-core would launch, on every OS, including the
+      # Windows-specific PowerShell fallback for a Chrome singleton already running.
       - name: Verificar versao do Chromium
         if: matrix.chromeMajor != ''
-        shell: bash
-        run: |
-          ACTUAL=$( (chromium --version || chromium-browser --version || google-chrome --version) 2>/dev/null | grep -oE '[0-9]+' | head -1)
-          echo "Chromium instalado: major ${ACTUAL:-desconhecido} (esperado: ${{ matrix.chromeMajor }})"
-          if [ "$ACTUAL" != "${{ matrix.chromeMajor }}" ]; then
-            echo "::error::Versao major do Chromium mudou (esperado ${{ matrix.chromeMajor }}, encontrado ${ACTUAL:-nenhum}). Atualize chromeMajor e o rotulo do job em .github/workflows/ci.yml."
-            exit 1
-          fi
+        run: node scripts/verify-chrome-version.mjs "${{ matrix.chromeMajor }}"
 
       - name: Instalar dependencias
         run: npm ci
