@@ -1,6 +1,6 @@
 import { DONATION_METHODS } from "../utils/donation.js";
 import { getMessages, t } from "../utils/i18n.js";
-import { getSettings } from "../utils/storage.js";
+import { consumePendingDonationOpen, getSettings } from "../utils/storage.js";
 
 function escapeHtml(value) {
   return String(value)
@@ -14,6 +14,18 @@ class DonationModal extends HTMLElement {
   async connectedCallback() {
     this.activeMethodId = DONATION_METHODS[0]?.id ?? "";
     await this.loadAndRender();
+
+    // Consumido uma única vez: se o popup nos mandou aqui via setPendingDonationOpen()
+    // (botão "Buy me a coffee" clicado lá, ver popup.js), abre o modal já na primeira
+    // renderização em vez de deixar o usuário procurar o botão flutuante de novo.
+    const shouldOpenOnLoad = await consumePendingDonationOpen();
+    if (shouldOpenOnLoad) {
+      this.openDialog();
+    }
+  }
+
+  openDialog() {
+    this.querySelector("#donation-dialog")?.showModal();
   }
 
   // Re-lê o idioma do storage e re-renderiza. É chamado tanto na primeira montagem
@@ -108,9 +120,10 @@ class DonationModal extends HTMLElement {
     trigger?.addEventListener("click", async () => {
       // Atualiza os textos para o idioma atual antes de abrir — ver o comentário em
       // loadAndRender(). Isto substitui this.innerHTML, então a referência local
-      // `dialog` (capturada no bindEvents anterior) fica obsoleta; buscamos a nova.
+      // `dialog` (capturada no bindEvents anterior) fica obsoleta; buscamos a nova
+      // dentro de openDialog().
       await this.loadAndRender();
-      this.querySelector("#donation-dialog")?.showModal();
+      this.openDialog();
     });
 
     closeButton?.addEventListener("click", () => {

@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   consumePendingContextCountry,
   consumePendingContextNumber,
+  consumePendingDonationOpen,
   DEFAULT_SETTINGS,
   getAutoHighlightEnabled,
   getDarkModeEnabled,
@@ -17,7 +18,8 @@ import {
   setDefaultCountry,
   setLanguage,
   setPendingContextCountry,
-  setPendingContextNumber
+  setPendingContextNumber,
+  setPendingDonationOpen
 } from "../src/utils/storage.js";
 
 describe("storage utils", () => {
@@ -98,6 +100,28 @@ describe("storage utils", () => {
     chrome.storage.session.get.mockResolvedValue({});
     const consumed = await consumePendingContextCountry();
     expect(consumed).toBe("");
+  });
+
+  it("setPendingDonationOpen e consumePendingDonationOpen funcionam", async () => {
+    await setPendingDonationOpen();
+    expect(chrome.storage.session.set).toHaveBeenCalledWith({
+      "quick-whatsapp-contact.pending-donation-open": true
+    });
+
+    chrome.storage.session.get.mockResolvedValue({
+      "quick-whatsapp-contact.pending-donation-open": true
+    });
+    const consumed = await consumePendingDonationOpen();
+    expect(consumed).toBe(true);
+    expect(chrome.storage.session.remove).toHaveBeenCalledWith(
+      "quick-whatsapp-contact.pending-donation-open"
+    );
+  });
+
+  it("consumePendingDonationOpen retorna false quando nao houver flag pendente", async () => {
+    chrome.storage.session.get.mockResolvedValue({});
+    const consumed = await consumePendingDonationOpen();
+    expect(consumed).toBe(false);
   });
 
   it("getAutoHighlightEnabled uses privacy-preserving default false", async () => {

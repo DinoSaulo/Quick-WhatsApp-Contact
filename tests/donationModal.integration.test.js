@@ -9,6 +9,7 @@ const optionsStyles = readFileSync(
 );
 
 const mockStorage = vi.hoisted(() => ({
+  consumePendingDonationOpen: vi.fn(),
   getSettings: vi.fn()
 }));
 
@@ -59,6 +60,7 @@ describe("donation modal", () => {
     polyfillDialog();
 
     mockStorage.getSettings.mockResolvedValue({ language: "en-US" });
+    mockStorage.consumePendingDonationOpen.mockResolvedValue(false);
     global.chrome = {
       runtime: {
         getURL: vi.fn((path) => `chrome-extension://options-id/${path}`)
@@ -72,6 +74,23 @@ describe("donation modal", () => {
     const trigger = modal.querySelector("#donation-trigger");
 
     expect(trigger?.textContent).toContain("Buy me a coffee");
+  });
+
+  it("stays closed on mount by default (consumePendingDonationOpen resolves false)", async () => {
+    const modal = await renderDonationModal();
+
+    expect(modal.querySelector("#donation-dialog").open).toBe(false);
+    expect(mockStorage.consumePendingDonationOpen).toHaveBeenCalled();
+  });
+
+  // Regressão: clicar em "Buy me a coffee" no popup (popup.js) chama setPendingDonationOpen()
+  // e depois abre options.html — este componente precisa ler e consumir essa flag sozinho
+  // assim que montado, já que popup.js não tem como chamar nada diretamente nele.
+  it("auto-opens the dialog on mount when a donation open was flagged pending (opened from the popup)", async () => {
+    mockStorage.consumePendingDonationOpen.mockResolvedValue(true);
+    const modal = await renderDonationModal();
+
+    expect(modal.querySelector("#donation-dialog").open).toBe(true);
   });
 
   it("opens the dialog with PIX, MB WAY and PayPal tabs, PIX active by default", async () => {

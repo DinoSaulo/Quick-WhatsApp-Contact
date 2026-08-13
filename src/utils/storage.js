@@ -1,6 +1,7 @@
 const LAST_COUNTRY_STORAGE_KEY = "quick-whatsapp-contact.last-country";
 const PENDING_CONTEXT_NUMBER_KEY = "quick-whatsapp-contact.pending-context-number";
 const PENDING_CONTEXT_COUNTRY_KEY = "quick-whatsapp-contact.pending-context-country";
+const PENDING_DONATION_OPEN_KEY = "quick-whatsapp-contact.pending-donation-open";
 const AUTO_HIGHLIGHT_ENABLED_KEY = "quick-whatsapp-contact.auto-highlight-enabled";
 const DARK_MODE_ENABLED_KEY = "quick-whatsapp-contact.dark-mode-enabled";
 const LANGUAGE_KEY = "quick-whatsapp-contact.language";
@@ -44,6 +45,20 @@ export async function consumePendingContextCountry() {
   const result = await chrome.storage.session.get(PENDING_CONTEXT_COUNTRY_KEY);
   await chrome.storage.session.remove(PENDING_CONTEXT_COUNTRY_KEY);
   return result[PENDING_CONTEXT_COUNTRY_KEY] ?? "";
+}
+
+// Sinaliza para a página de opções, prestes a ser aberta a partir do popup, que ela deve
+// abrir o modal de doação assim que carregar — mesmo padrão "consumir uma vez" usado acima
+// para o número/país pendentes do fluxo de DDI, com chrome.storage.session (não sync, para
+// não sobreviver além desta navegação nem sincronizar entre dispositivos).
+export async function setPendingDonationOpen() {
+  await chrome.storage.session.set({ [PENDING_DONATION_OPEN_KEY]: true });
+}
+
+export async function consumePendingDonationOpen() {
+  const result = await chrome.storage.session.get(PENDING_DONATION_OPEN_KEY);
+  await chrome.storage.session.remove(PENDING_DONATION_OPEN_KEY);
+  return Boolean(result[PENDING_DONATION_OPEN_KEY]);
 }
 
 export async function getAutoHighlightEnabled() {

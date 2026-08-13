@@ -13,7 +13,8 @@ const mockStorage = vi.hoisted(() => ({
   consumePendingContextNumber: vi.fn(),
   getLastCountry: vi.fn(),
   getSettings: vi.fn(),
-  saveLastCountry: vi.fn()
+  saveLastCountry: vi.fn(),
+  setPendingDonationOpen: vi.fn()
 }));
 
 const mockLocation = vi.hoisted(() => ({
@@ -48,6 +49,7 @@ describe("popup integration", () => {
     mockStorage.consumePendingContextCountry.mockResolvedValue("");
     mockStorage.getLastCountry.mockResolvedValue("US");
     mockStorage.saveLastCountry.mockResolvedValue();
+    mockStorage.setPendingDonationOpen.mockResolvedValue();
     mockLocation.detectCountryCodeFromBrowserLocation.mockReturnValue("US");
 
     global.chrome = {
@@ -431,7 +433,7 @@ describe("popup integration", () => {
     expect(options.every((option) => option.style.display === "")).toBe(true);
   });
 
-  it("opens the options page and closes the popup when the donation button is clicked", async () => {
+  it("flags the donation modal to auto-open, then opens the options page and closes the popup when the donation button is clicked", async () => {
     if (!customElements.get("whatsapp-message-popup")) {
       await import("../src/popup/popup.js");
     }
@@ -447,7 +449,13 @@ describe("popup integration", () => {
     document.querySelector("#donation-button").click();
     await new Promise((resolve) => setTimeout(resolve, 0));
 
+    // setPendingDonationOpen() precisa resolver ANTES de abrirmos a página de opções,
+    // senão donationModal.js pode montar e ler o storage antes da flag existir.
+    expect(mockStorage.setPendingDonationOpen).toHaveBeenCalled();
     expect(chrome.runtime.openOptionsPage).toHaveBeenCalled();
     expect(window.close).toHaveBeenCalled();
+    expect(mockStorage.setPendingDonationOpen.mock.invocationCallOrder[0]).toBeLessThan(
+      chrome.runtime.openOptionsPage.mock.invocationCallOrder[0]
+    );
   });
 });

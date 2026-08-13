@@ -19,7 +19,14 @@ import {
   joinCountryCodeAndNumber,
   normalizeSelectedNumber
 } from "../utils/phone.js";
-import { consumePendingContextCountry, consumePendingContextNumber, getLastCountry, getSettings, saveLastCountry } from "../utils/storage.js";
+import {
+  consumePendingContextCountry,
+  consumePendingContextNumber,
+  getLastCountry,
+  getSettings,
+  saveLastCountry,
+  setPendingDonationOpen
+} from "../utils/storage.js";
 
 class WhatsAppMessagePopup extends HTMLElement {
   async connectedCallback() {
@@ -285,9 +292,12 @@ class WhatsAppMessagePopup extends HTMLElement {
 
     // O botão de doação fica no <footer> do popup.html, fora deste custom element —
     // por isso a busca é em document, não em this. O modal com PIX/MB WAY/PayPal só
-    // existe em options.html; aqui só abrimos a página de opções em uma nova aba.
+    // existe em options.html; aqui sinalizamos (via storage.session, consumido uma
+    // única vez por donationModal.js) que o modal deve abrir sozinho assim que a
+    // página de opções carregar, em vez de só levar o usuário até a página parada.
     const donationButton = document.querySelector("#donation-button");
     donationButton?.addEventListener("click", async () => {
+      await setPendingDonationOpen();
       await chrome.runtime.openOptionsPage();
       window.close();
     });
