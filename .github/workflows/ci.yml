@@ -211,12 +211,19 @@ jobs:
           retention-days: 14
 
   # ── Level 4: Installation test (all platforms) ─────────────────────────────
+  # Linux entries run in a bare distro container on ubuntu-latest (same technique as the
+  # pre-existing Fedora entry): `setup` bootstraps git/curl/nodejs/npm (needed before
+  # actions/checkout and actions/setup-node can even run inside a bare container) plus a
+  # browser, and `chromeMajor` is the expected installed Chromium major version, asserted by
+  # the "Verificar versao do Chromium" step below so a job silently drifting to a different
+  # browser version fails loudly instead of quietly testing something else than the label says.
+  # Package/version pairs confirmed live via chromiumdash.appspot.com and repology.org.
   installation-test:
-    name: "4 · Instalacao no Chrome · ${{ matrix.label }}"
+    name: "4 · Instalacao · ${{ matrix.label }}"
     needs: security-tests
     runs-on: ${{ matrix.os }}
     container: ${{ matrix.container }}
-    timeout-minutes: 10
+    timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
@@ -224,17 +231,38 @@ jobs:
           - os: ubuntu-latest
             label: Ubuntu
           - os: ubuntu-latest
-            label: Fedora
+            label: "Chrome 151 - Fedora"
             container: fedora:latest
+            chromeMajor: "151"
+            setup: dnf install -y --setopt=install_weak_deps=False git curl nodejs npm chromium
+          - os: ubuntu-latest
+            label: "Chrome 151 - Debian"
+            container: debian:bookworm
+            chromeMajor: "151"
+            setup: >-
+              apt-get update && apt-get install -y --no-install-recommends
+              git curl ca-certificates nodejs npm chromium
+          - os: ubuntu-latest
+            label: "Chrome 151 - Rocky Linux"
+            container: rockylinux:9
+            chromeMajor: "151"
+            setup: >-
+              dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm &&
+              dnf install -y --setopt=install_weak_deps=False git curl nodejs npm chromium
+          - os: ubuntu-latest
+            label: "Chrome 151 - Arch Linux"
+            container: archlinux:latest
+            chromeMajor: "151"
+            setup: pacman -Syu --noconfirm --needed git curl nodejs npm chromium
           - os: macos-latest
             label: macOS
           - os: windows-latest
             label: Windows
 
     steps:
-      - name: Instalar dependencias do sistema (Fedora)
-        if: matrix.label == 'Fedora'
-        run: dnf install -y --setopt=install_weak_deps=False git curl nodejs npm chromium
+      - name: Preparar sistema (container Linux)
+        if: matrix.setup != ''
+        run: ${{ matrix.setup }}
 
       - name: Clonar repositorio
         uses: actions/checkout@v6
@@ -248,9 +276,16 @@ jobs:
       - name: Verificar versao do Node.js
         run: node -e "const actual = process.versions.node; const expected = process.env.NODE_VERSION; if (actual !== expected) { console.error('Expected Node.js ' + expected + ', but found ' + actual); process.exit(1); } console.log('Using Node.js ' + actual);"
 
-      - name: Verificar Chromium no Fedora
-        if: matrix.label == 'Fedora'
-        run: chromium-browser --version
+      - name: Verificar versao do Chromium
+        if: matrix.chromeMajor != ''
+        shell: bash
+        run: |
+          ACTUAL=$( (chromium --version || chromium-browser --version || google-chrome --version) 2>/dev/null | grep -oE '[0-9]+' | head -1)
+          echo "Chromium instalado: major ${ACTUAL:-desconhecido} (esperado: ${{ matrix.chromeMajor }})"
+          if [ "$ACTUAL" != "${{ matrix.chromeMajor }}" ]; then
+            echo "::error::Versao major do Chromium mudou (esperado ${{ matrix.chromeMajor }}, encontrado ${ACTUAL:-nenhum}). Atualize chromeMajor e o rotulo do job em .github/workflows/ci.yml."
+            exit 1
+          fi
 
       - name: Instalar dependencias
         run: npm ci
