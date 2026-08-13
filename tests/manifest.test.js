@@ -14,6 +14,10 @@ describe("Chrome Web Store manifest readiness", () => {
     });
   });
 
+  it("points homepage_url at the public source repository", () => {
+    expect(manifest.homepage_url).toBe("https://github.com/DinoSaulo/Quick-WhatsApp-Contact");
+  });
+
   it("requests only the required API permissions", () => {
     expect(manifest.permissions).toEqual(["contextMenus", "scripting", "storage"]);
     expect(manifest.permissions).not.toContain("tabs");
