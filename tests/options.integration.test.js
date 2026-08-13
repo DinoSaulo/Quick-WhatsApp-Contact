@@ -61,6 +61,9 @@ describe("options page integration", () => {
         contains: vi.fn().mockResolvedValue(true),
         request: vi.fn().mockResolvedValue(true),
         remove: vi.fn().mockResolvedValue(true)
+      },
+      tabs: {
+        create: vi.fn().mockResolvedValue({})
       }
     };
   });
@@ -357,6 +360,31 @@ describe("options page integration", () => {
 
     expect(toggle.checked).toBe(true);
     expect(mockStorage.setAutoHighlightEnabled).not.toHaveBeenCalled();
+  });
+
+  it("opens the tutorial page in a new tab when the tutorial button is clicked", async () => {
+    const page = await renderOptionsPage();
+    const tutorialButton = page.querySelector("#tutorial-button");
+
+    expect(tutorialButton.textContent).toBe("View tutorial");
+    tutorialButton.click();
+
+    expect(chrome.tabs.create).toHaveBeenCalledWith({
+      url: "chrome-extension://options-id/src/onboarding/onboarding.html"
+    });
+  });
+
+  it("labels the tutorial button in Portuguese when that is the saved language", async () => {
+    mockStorage.getSettings.mockResolvedValue({
+      language: "pt-BR",
+      darkModeEnabled: false,
+      autoHighlightEnabled: true,
+      defaultCountry: ""
+    });
+
+    const page = await renderOptionsPage();
+
+    expect(page.querySelector("#tutorial-button").textContent).toBe("Ver tutorial");
   });
 
   it("associates the page access disclosure with the permission toggle", async () => {

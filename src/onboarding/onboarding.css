@@ -35,6 +35,33 @@
   margin-top: 12px;
 }
 
+.tutorial-language {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.tutorial-language__label {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.tutorial-language__select {
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--text);
+  border-radius: 10px;
+  padding: 8px 10px;
+  font-size: 13px;
+}
+
+:root[data-theme="dark"] .tutorial-language__select {
+  background: #202a34;
+}
+
 .tutorial-step__image {
   display: block;
   width: 100%;

@@ -1,13 +1,13 @@
 import { TUTORIAL_STEPS } from "../utils/tutorial.js";
 import { getMessages, t } from "../utils/i18n.js";
-import { getSettings } from "../utils/storage.js";
+import { getSettings, setLanguage } from "../utils/storage.js";
 
 class TutorialPage extends HTMLElement {
   async connectedCallback() {
-    const settings = await getSettings();
-    this.messages = getMessages(settings.language);
-    document.documentElement.setAttribute("lang", settings.language);
-    document.documentElement.dataset.theme = settings.darkModeEnabled ? "dark" : "light";
+    this.settings = await getSettings();
+    this.messages = getMessages(this.settings.language);
+    document.documentElement.setAttribute("lang", this.settings.language);
+    document.documentElement.dataset.theme = this.settings.darkModeEnabled ? "dark" : "light";
 
     this.stepIndex = 0;
     this.render();
@@ -37,6 +37,16 @@ class TutorialPage extends HTMLElement {
       />
     ` : "";
 
+    const languagePickerMarkup = isFirstStep ? `
+      <div class="tutorial-language">
+        <label class="tutorial-language__label" for="tutorial-language">${this.messages.optionLanguage}</label>
+        <select class="tutorial-language__select" id="tutorial-language">
+          <option value="en-US" ${this.settings.language === "en-US" ? "selected" : ""}>${this.messages.optionLanguageEnglish}</option>
+          <option value="pt-BR" ${this.settings.language === "pt-BR" ? "selected" : ""}>${this.messages.optionLanguagePortuguese}</option>
+        </select>
+      </div>
+    ` : "";
+
     const dotsMarkup = TUTORIAL_STEPS.map((_, index) => `
       <button
         class="tutorial-dots__dot"
@@ -52,6 +62,7 @@ class TutorialPage extends HTMLElement {
         <section class="card tutorial-card">
           <div class="card__content">
             <div class="eyebrow">${this.messages.extensionName}</div>
+            ${languagePickerMarkup}
             <h1 class="title">${this.messages[step.titleKey]}</h1>
             <p class="description">${this.messages[step.descriptionKey]}</p>
             ${imageMarkup}
@@ -84,6 +95,16 @@ class TutorialPage extends HTMLElement {
   }
 
   bindEvents() {
+    this.querySelector("#tutorial-language")?.addEventListener("change", async (event) => {
+      const language = event.target.value;
+      await setLanguage(language);
+      this.settings.language = language;
+      this.messages = getMessages(language);
+      document.documentElement.setAttribute("lang", language);
+      this.render();
+      this.bindEvents();
+    });
+
     this.querySelector("#tutorial-back")?.addEventListener("click", () => {
       this.goToStep(this.stepIndex - 1);
     });

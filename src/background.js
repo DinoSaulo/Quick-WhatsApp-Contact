@@ -12,6 +12,7 @@ import {
   setPendingContextCountry,
   setPendingContextNumber
 } from "./utils/storage.js";
+import { ONBOARDING_PAGE_PATH } from "./utils/tutorial.js";
 
 const CONTEXT_MENU_ID = "quick-whatsapp-contact.send";
 const PROCESS_SELECTION_MESSAGE = "quick-whatsapp-contact.process-selection";
@@ -112,7 +113,7 @@ async function openWhatsAppTab(url) {
 }
 
 async function openOnboardingTab() {
-  return chrome.tabs.create({ url: chrome.runtime.getURL("src/onboarding/onboarding.html") });
+  return chrome.tabs.create({ url: chrome.runtime.getURL(ONBOARDING_PAGE_PATH) });
 }
 
 async function syncPageHelpersRegistration() {

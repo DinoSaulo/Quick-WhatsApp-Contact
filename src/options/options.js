@@ -13,6 +13,7 @@ import {
   setDarkModeEnabled,
   setLanguage
 } from "../utils/storage.js";
+import { ONBOARDING_PAGE_PATH } from "../utils/tutorial.js";
 
 const PAGE_ORIGINS = ["http://*/*", "https://*/*"];
 
@@ -136,6 +137,13 @@ class ExtensionSettingsPage extends HTMLElement {
               <label class="option-label" for="country-trigger">${this.messages.optionDefaultCountry}</label>
               <div class="option-control">
                 ${this.buildCountryPickerMarkup(this.settings.defaultCountry)}
+              </div>
+            </div>
+
+            <div class="option-row">
+              <label class="option-label" for="tutorial-button">${this.messages.optionTutorial}</label>
+              <div class="option-control">
+                <button class="donation-trigger" id="tutorial-button" type="button">${this.messages.optionTutorialButton}</button>
               </div>
             </div>
 
@@ -267,6 +275,11 @@ class ExtensionSettingsPage extends HTMLElement {
     const darkModeInput = this.querySelector("#dark-mode");
     const languageInput = this.querySelector("#language");
     const hiddenCountryInput = this.querySelector("#default-country-hidden");
+    const tutorialButton = this.querySelector("#tutorial-button");
+
+    tutorialButton?.addEventListener("click", () => {
+      chrome.tabs.create({ url: chrome.runtime.getURL(ONBOARDING_PAGE_PATH) });
+    });
 
     autoHighlightInput?.addEventListener("change", async () => {
       const wantsPageHelpers = Boolean(autoHighlightInput.checked);

@@ -37,6 +37,8 @@ const DICTIONARY = {
     optionLanguagePortuguese: "Portuguese (PT-BR)",
     optionDefaultCountry: "Default country",
     optionDefaultCountryNone: "— Automatic —",
+    optionTutorial: "Tutorial",
+    optionTutorialButton: "View tutorial",
     optionsSaved: "Settings saved",
     searchCountryPlaceholder: "Search country...",
     searchCountryNoResults: "No countries found",
@@ -58,6 +60,22 @@ const DICTIONARY = {
     tutorialAutoHighlightDescription:
       "On any website, click the WhatsApp button that appears next to a phone number to open a conversation instantly — no copy-pasting required.",
     tutorialAutoHighlightImageAlt: "A WhatsApp button next to a phone number on a website",
+    tutorialToolbarIconTitle: "Or open it from the toolbar",
+    tutorialToolbarIconDescription:
+      "Click the Quick WhatsApp Contact icon in your browser toolbar to open the popup from anywhere, even on pages without a phone number.",
+    tutorialToolbarIconImageAlt: "The extension icon highlighted in the browser toolbar",
+    tutorialPopupFormTitle: "Fill in the number and message",
+    tutorialPopupFormDescription:
+      "Pick a country, type the phone number, add an optional message, then click Send.",
+    tutorialPopupFormImageAlt: "The popup form with country, phone number and message filled in",
+    tutorialWhatsappRedirectTitle: "Choose how to open WhatsApp",
+    tutorialWhatsappRedirectDescription:
+      "WhatsApp opens in a new tab. Pick Open app to use the desktop app, or Continue to WhatsApp Web to stay in the browser.",
+    tutorialWhatsappRedirectImageAlt:
+      "WhatsApp's page asking to open the desktop app or continue on WhatsApp Web",
+    tutorialWhatsappMessageTitle: "Send your message",
+    tutorialWhatsappMessageDescription: "Your message is ready in the chat — just press send.",
+    tutorialWhatsappMessageImageAlt: "A WhatsApp chat with the message ready to be sent",
     tutorialStepIndicator: "Step {current} of {total}",
     tutorialBackButton: "Back",
     tutorialNextButton: "Next",
@@ -102,6 +120,8 @@ const DICTIONARY = {
     optionLanguagePortuguese: "Português (PT-BR)",
     optionDefaultCountry: "País padrão",
     optionDefaultCountryNone: "— Automático —",
+    optionTutorial: "Tutorial",
+    optionTutorialButton: "Ver tutorial",
     optionsSaved: "Configurações salvas",
     searchCountryPlaceholder: "Buscar país...",
     searchCountryNoResults: "Nenhum país encontrado",
@@ -123,6 +143,22 @@ const DICTIONARY = {
     tutorialAutoHighlightDescription:
       "Em qualquer site, clique no botão do WhatsApp que aparece ao lado de um número de telefone para abrir uma conversa na hora — sem precisar copiar e colar.",
     tutorialAutoHighlightImageAlt: "Um botão do WhatsApp ao lado de um número de telefone em um site",
+    tutorialToolbarIconTitle: "Ou abra pela barra de ferramentas",
+    tutorialToolbarIconDescription:
+      "Clique no ícone do Quick WhatsApp Contact na barra de ferramentas do navegador para abrir o popup de qualquer lugar, mesmo em páginas sem número de telefone.",
+    tutorialToolbarIconImageAlt: "O ícone da extensão em destaque na barra de ferramentas do navegador",
+    tutorialPopupFormTitle: "Preencha o número e a mensagem",
+    tutorialPopupFormDescription:
+      "Escolha o país, digite o número de telefone, adicione uma mensagem opcional e clique em Enviar.",
+    tutorialPopupFormImageAlt: "O formulário do popup com país, número de telefone e mensagem preenchidos",
+    tutorialWhatsappRedirectTitle: "Escolha como abrir o WhatsApp",
+    tutorialWhatsappRedirectDescription:
+      "O WhatsApp abre em uma nova aba. Escolha Open app para usar o aplicativo do computador, ou Continue to WhatsApp Web para continuar no navegador.",
+    tutorialWhatsappRedirectImageAlt:
+      "Página do WhatsApp perguntando se deseja abrir o aplicativo ou continuar no WhatsApp Web",
+    tutorialWhatsappMessageTitle: "Envie sua mensagem",
+    tutorialWhatsappMessageDescription: "Sua mensagem já está pronta na conversa — basta enviar.",
+    tutorialWhatsappMessageImageAlt: "Uma conversa do WhatsApp com a mensagem pronta para ser enviada",
     tutorialStepIndicator: "Passo {current} de {total}",
     tutorialBackButton: "Voltar",
     tutorialNextButton: "Próximo",
