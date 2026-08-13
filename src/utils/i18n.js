@@ -50,7 +50,19 @@ const DICTIONARY = {
     donationCopyError: "Could not copy automatically. Select the text and copy it manually.",
     donationOpenLink: "Open",
     donationQrAlt: "QR code to donate via {method}",
-    donationUnavailable: "Coming soon"
+    donationUnavailable: "Coming soon",
+    tutorialWelcomeTitle: "Welcome to Quick WhatsApp Contact!",
+    tutorialWelcomeDescription:
+      "Thanks for installing the extension. Here's a quick look at how to start chatting on WhatsApp faster.",
+    tutorialAutoHighlightTitle: "Start a chat from any phone number",
+    tutorialAutoHighlightDescription:
+      "On any website, click the WhatsApp button that appears next to a phone number to open a conversation instantly — no copy-pasting required.",
+    tutorialAutoHighlightImageAlt: "A WhatsApp button next to a phone number on a website",
+    tutorialStepIndicator: "Step {current} of {total}",
+    tutorialBackButton: "Back",
+    tutorialNextButton: "Next",
+    tutorialSkipButton: "Skip",
+    tutorialFinishButton: "Got it"
   },
   "pt-BR": {
     extensionName: "Quick WhatsApp Contact",
@@ -103,7 +115,19 @@ const DICTIONARY = {
     donationCopyError: "Não foi possível copiar automaticamente. Selecione o texto e copie manualmente.",
     donationOpenLink: "Abrir",
     donationQrAlt: "QR code para doar via {method}",
-    donationUnavailable: "Em breve"
+    donationUnavailable: "Em breve",
+    tutorialWelcomeTitle: "Bem-vindo ao Quick WhatsApp Contact!",
+    tutorialWelcomeDescription:
+      "Obrigado por instalar a extensão. Veja rapidamente como conversar no WhatsApp mais rápido.",
+    tutorialAutoHighlightTitle: "Inicie uma conversa a partir de qualquer número",
+    tutorialAutoHighlightDescription:
+      "Em qualquer site, clique no botão do WhatsApp que aparece ao lado de um número de telefone para abrir uma conversa na hora — sem precisar copiar e colar.",
+    tutorialAutoHighlightImageAlt: "Um botão do WhatsApp ao lado de um número de telefone em um site",
+    tutorialStepIndicator: "Passo {current} de {total}",
+    tutorialBackButton: "Voltar",
+    tutorialNextButton: "Próximo",
+    tutorialSkipButton: "Pular",
+    tutorialFinishButton: "Entendi"
   }
 };
 

@@ -35,7 +35,8 @@ describe("background selection security integration", () => {
       runtime: {
         onInstalled: eventFor("installed"),
         onStartup: eventFor("startup"),
-        onMessage: eventFor("message")
+        onMessage: eventFor("message"),
+        getURL: vi.fn((path) => `chrome-extension://background-id/${path}`)
       },
       storage: { onChanged: eventFor("storageChanged") },
       permissions: {
@@ -147,6 +148,22 @@ describe("background selection security integration", () => {
     await handlers.installed();
 
     expect(chrome.scripting.registerContentScripts).not.toHaveBeenCalled();
+  });
+
+  it("opens the tutorial tab on a fresh install", async () => {
+    await handlers.installed({ reason: "install" });
+
+    expect(chrome.tabs.create).toHaveBeenCalledWith({
+      url: "chrome-extension://background-id/src/onboarding/onboarding.html"
+    });
+  });
+
+  it("does not reopen the tutorial tab on an update or browser update", async () => {
+    await handlers.installed({ reason: "update" });
+    await handlers.installed({ reason: "chrome_update" });
+    await handlers.installed();
+
+    expect(chrome.tabs.create).not.toHaveBeenCalled();
   });
 
   it("unregisters stale page helpers when the feature is disabled", async () => {

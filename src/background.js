@@ -20,8 +20,11 @@ const AUTO_HIGHLIGHT_ENABLED_KEY = "quick-whatsapp-contact.auto-highlight-enable
 const PAGE_HELPERS_SCRIPT_ID = "quick-whatsapp-contact.page-helpers";
 const PAGE_ORIGINS = ["http://*/*", "https://*/*"];
 
-chrome.runtime.onInstalled.addListener(async () => {
+chrome.runtime.onInstalled.addListener(async (details = {}) => {
   await Promise.all([refreshContextMenu(), syncPageHelpersRegistration()]);
+  if (details.reason === "install") {
+    await openOnboardingTab();
+  }
 });
 
 chrome.runtime.onStartup.addListener(async () => {
@@ -106,6 +109,10 @@ async function processSelection(selectionText, urlString) {
 
 async function openWhatsAppTab(url) {
   return chrome.tabs.create({ url, active: true });
+}
+
+async function openOnboardingTab() {
+  return chrome.tabs.create({ url: chrome.runtime.getURL("src/onboarding/onboarding.html") });
 }
 
 async function syncPageHelpersRegistration() {

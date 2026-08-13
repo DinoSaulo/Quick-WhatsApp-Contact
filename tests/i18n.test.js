@@ -34,4 +34,11 @@ describe("i18n utils", () => {
       "Formato inválido para +55. Use: "
     );
   });
+
+  it("mantem as mesmas chaves nos dois idiomas (nenhuma traducao esquecida)", () => {
+    const enKeys = Object.keys(getMessages("en-US")).sort();
+    const ptKeys = Object.keys(getMessages("pt-BR")).sort();
+
+    expect(ptKeys).toEqual(enKeys);
+  });
 });

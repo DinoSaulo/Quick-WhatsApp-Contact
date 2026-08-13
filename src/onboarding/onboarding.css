@@ -1,0 +1,89 @@
+.onboarding-page {
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.onboarding-brand {
+  display: flex;
+  justify-content: center;
+  margin: clamp(16px, 4vh, 32px) auto 0;
+}
+
+.onboarding-brand img {
+  display: block;
+  width: 96px;
+  height: 96px;
+  border-radius: 20px;
+  box-shadow: var(--shadow);
+}
+
+.tutorial-shell {
+  width: min(100%, 480px);
+  padding: 24px 20px 40px;
+  margin: 0 auto;
+}
+
+.tutorial-card {
+  width: 100%;
+  text-align: center;
+}
+
+.tutorial-card .title {
+  margin-top: 12px;
+}
+
+.tutorial-step__image {
+  display: block;
+  width: 100%;
+  max-width: 360px;
+  margin: 16px auto;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+}
+
+.tutorial-dots {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin: 20px 0;
+}
+
+.tutorial-dots__dot {
+  width: 8px;
+  height: 8px;
+  padding: 0;
+  border: none;
+  border-radius: 999px;
+  background: var(--surface-strong);
+  cursor: pointer;
+}
+
+.tutorial-dots__dot[aria-current="true"] {
+  background: var(--accent);
+  width: 22px;
+}
+
+.tutorial-actions {
+  margin-top: 8px;
+}
+
+.tutorial-skip {
+  display: block;
+  margin: 14px auto 0;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-size: 13px;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.tutorial-skip:hover,
+.tutorial-skip:focus-visible {
+  color: var(--text);
+}

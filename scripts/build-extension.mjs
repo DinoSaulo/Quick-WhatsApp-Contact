@@ -33,11 +33,13 @@ const attribution =
 writeFileSync(resolve(developmentAssetsOutput, "ATTRIBUTION.txt"), attribution, "utf8");
 writeFileSync(resolve(packagedAssetsOutput, "ATTRIBUTION.txt"), attribution, "utf8");
 
-// QR codes de doação: diferente do Twemoji, já ficam versionados em assets/donation-qrcodes
-// (gerados manualmente por scripts/generate-donation-qrcodes.mjs), só precisam ser copiados.
-const donationQrCodesDir = resolve(projectRoot, "assets", "donation-qrcodes");
-if (existsSync(donationQrCodesDir)) {
-  cpSync(donationQrCodesDir, resolve(outputRoot, "assets", "donation-qrcodes"), { recursive: true });
+// Pastas de assets estáticos versionadas normalmente (diferente do Twemoji, que é
+// gerado a partir de node_modules): só precisam ser copiadas pro pacote final.
+for (const staticAssetsDir of ["donation-qrcodes", "onboarding"]) {
+  const sourceDir = resolve(projectRoot, "assets", staticAssetsDir);
+  if (existsSync(sourceDir)) {
+    cpSync(sourceDir, resolve(outputRoot, "assets", staticAssetsDir), { recursive: true });
+  }
 }
 
 writeFileSync(
