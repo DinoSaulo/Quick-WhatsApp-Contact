@@ -276,6 +276,10 @@ jobs:
       - name: Verificar versao do Node.js
         run: node -e "const actual = process.versions.node; const expected = process.env.NODE_VERSION; if (actual !== expected) { console.error('Expected Node.js ' + expected + ', but found ' + actual); process.exit(1); } console.log('Using Node.js ' + actual);"
 
+      - name: Verificar Chromium no Fedora
+        if: matrix.label == 'Chrome 151 - Fedora'
+        run: chromium-browser --version
+
       - name: Verificar versao do Chromium
         if: matrix.chromeMajor != ''
         shell: bash
