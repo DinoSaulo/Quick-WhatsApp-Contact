@@ -129,6 +129,12 @@ Valide separadamente os materiais e placeholders necessários para a Chrome Web 
 npm run validate:store
 ```
 
+Rode só a análise estática de segurança (SAST — sinks de DOM XSS e padrões de risco):
+
+```bash
+npm run lint:sast
+```
+
 Execute o smoke test do ciclo de instalação e desinstalação em um Chrome ou Chromium real:
 
 ```bash
@@ -157,15 +163,16 @@ npx vitest run tests/phone.test.js
 
 ### 🔄 Pipeline de CI/CD
 
-O repositório usa GitHub Actions com 5 níveis sequenciais. Cada nível precisa passar em todas as plataformas antes do próximo começar.
+O repositório usa GitHub Actions com 6 níveis sequenciais. Cada nível precisa passar em todas as plataformas antes do próximo começar.
 
 | Nível | Job | Plataformas |
 |:---:|---|---|
 | 1️⃣ | Testes unitários + lint | Ubuntu · Fedora · macOS · Windows |
 | 2️⃣ | Testes de integração | Ubuntu · Fedora · macOS · Windows |
-| 3️⃣ | Instalação no Chrome | Ubuntu · Fedora · macOS · Windows |
-| 4️⃣ | Validação do pacote Manifest V3 | Ubuntu |
-| 5️⃣ | Publicação da release | Ubuntu *(somente branch `main`)* |
+| 3️⃣ | Segurança (SAST + testes de segurança) | Ubuntu |
+| 4️⃣ | Instalação no Chrome | Ubuntu · Fedora · macOS · Windows |
+| 5️⃣ | Validação do pacote Manifest V3 | Ubuntu |
+| 6️⃣ | Publicação da release | Ubuntu *(somente branch `main`)* |
 
 ---
 
@@ -184,7 +191,7 @@ As bandeiras e o ícone de seleção automática usam gráficos [Twemoji](https:
 
 ## 🔒 Privacidade e publicação
 
-Os recursos que leem seleção e links `tel:` em páginas são opcionais, ficam desativados por padrão e solicitam permissão no momento da ativação. A extensão não possui backend ou telemetria. Consulte [PRIVACY.md](./PRIVACY.md), [diagnóstico da Chrome Web Store](./docs/STORE_READINESS.md), [materiais da ficha da loja](./docs/STORE_LISTING.md) e [checklist de lançamento](./docs/RELEASE_CHECKLIST.md).
+Os recursos que leem seleção e links `tel:` em páginas são opcionais, ficam desativados por padrão e solicitam permissão no momento da ativação. A extensão não possui backend ou telemetria. Consulte [PRIVACY.md](./PRIVACY.md), [modelo de ameaças e auditoria de segurança](./docs/THREAT_MODEL.md), [diagnóstico da Chrome Web Store](./docs/STORE_READINESS.md), [materiais da ficha da loja](./docs/STORE_LISTING.md) e [checklist de lançamento](./docs/RELEASE_CHECKLIST.md).
 
 ### Segurança
 
