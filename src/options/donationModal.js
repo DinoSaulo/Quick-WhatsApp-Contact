@@ -47,20 +47,28 @@ class DonationModal extends HTMLElement {
         class="donation-tabs__tab"
         type="button"
         role="tab"
-        id="donation-tab-${method.id}"
-        aria-controls="donation-panel-${method.id}"
+        id="donation-tab-${escapeHtml(method.id)}"
+        aria-controls="donation-panel-${escapeHtml(method.id)}"
         aria-selected="${method.id === this.activeMethodId}"
-        data-method-id="${method.id}"
+        data-method-id="${escapeHtml(method.id)}"
       >${escapeHtml(method.name)}</button>
     `).join("");
 
-    const panelsMarkup = DONATION_METHODS.map((method) => `
+    const panelsMarkup = DONATION_METHODS.map((method) => {
+      // escapeHtml() only neutralizes HTML syntax (<, >, ", &) — it says nothing about the
+      // URL *scheme*, so an unescaped "javascript:" or "data:" value would still render as a
+      // real, clickable href. method.link is developer-authored today, but buildWhatsAppUrl()
+      // (src/utils/phone.js) already treats scheme validation as mandatory for any URL this
+      // codebase hands to the browser, so donation links get the same https-only allow-list.
+      const hasSafeLink = typeof method.link === "string" && /^https:\/\//i.test(method.link);
+
+      return `
       <div
         class="donation-panel"
         role="tabpanel"
-        id="donation-panel-${method.id}"
-        aria-labelledby="donation-tab-${method.id}"
-        data-method-panel="${method.id}"
+        id="donation-panel-${escapeHtml(method.id)}"
+        aria-labelledby="donation-tab-${escapeHtml(method.id)}"
+        data-method-panel="${escapeHtml(method.id)}"
         ${method.id === this.activeMethodId ? "" : "hidden"}
       >
         ${method.copyText ? `
@@ -78,23 +86,24 @@ class DonationModal extends HTMLElement {
               value="${escapeHtml(method.copyText)}"
               readonly
               aria-label="${escapeHtml(method.name)}"
-              data-value-input="${method.id}"
+              data-value-input="${escapeHtml(method.id)}"
             />
-            <button class="button button--small button--secondary" type="button" data-copy-method="${method.id}">
+            <button class="button button--small button--secondary" type="button" data-copy-method="${escapeHtml(method.id)}">
               ${this.messages.donationCopyButton}
             </button>
           </div>
-          ${method.link ? `
+          ${hasSafeLink ? `
             <a class="donation-panel__link" href="${escapeHtml(method.link)}" target="_blank" rel="noopener noreferrer">
               ${this.messages.donationOpenLink} ↗
             </a>
           ` : ""}
-          <p class="donation-panel__feedback" data-copy-feedback="${method.id}" aria-live="polite"></p>
+          <p class="donation-panel__feedback" data-copy-feedback="${escapeHtml(method.id)}" aria-live="polite"></p>
         ` : `
           <p class="donation-panel__unavailable">${this.messages.donationUnavailable}</p>
         `}
       </div>
-    `).join("");
+    `;
+    }).join("");
 
     this.innerHTML = `
       <button class="button button--secondary donation-trigger" id="donation-trigger" type="button">

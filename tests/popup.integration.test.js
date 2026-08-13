@@ -139,6 +139,28 @@ describe("popup integration", () => {
     expect(phoneInput.validationMessage).toBe("");
   });
 
+  // render() interpolates this.pendingContextNumber straight into value="${...}", unescaped
+  // (see popup.js). In real usage it always comes from normalizeSelectedNumber() already
+  // (background.js's own storage read), but this proves the render layer's OWN call to
+  // normalizeSelectedNumber() — not just background.js's upstream gate, already covered in
+  // background.integration.test.js — is what actually keeps the phone input's HTML safe,
+  // even if a hostile value ever reached storage some other way (e.g. a future bug upstream).
+  it("neutralizes an HTML/script payload in the pending context number before rendering it", async () => {
+    // alert("x") deliberately has no digits (unlike alert(1)) — normalizeSelectedNumber() keeps
+    // every digit it sees, including ones inside an attack payload, so a numeral there would
+    // legitimately survive sanitization and throw off the expected number below on its own.
+    mockStorage.consumePendingContextNumber.mockResolvedValue(
+      '"><img src=x onerror=alert("x")>+351912345678'
+    );
+
+    const popup = await renderPopup();
+    const phoneInput = popup.querySelector("#phone");
+
+    expect(document.querySelector("img[onerror]")).toBeNull();
+    expect(phoneInput.value).toBe("+351912345678");
+    expect(phoneInput.value).toMatch(/^\+?\d*$/);
+  });
+
   it("nao concatena novamente quando numero ja possui +DDI", async () => {
     const popup = await renderPopup();
     const phoneInput = popup.querySelector("#phone");

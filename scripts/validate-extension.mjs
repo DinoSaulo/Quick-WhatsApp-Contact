@@ -32,6 +32,10 @@ assert(
   !manifest.content_security_policy?.extension_pages?.includes("unsafe-eval"),
   "unsafe-eval is forbidden"
 );
+assert(
+  manifest.externally_connectable === undefined,
+  "externally_connectable would let arbitrary websites message the background service worker"
+);
 
 const referencedPaths = [
   manifest.background?.service_worker,

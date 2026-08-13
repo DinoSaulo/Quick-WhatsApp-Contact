@@ -68,4 +68,15 @@ describe("Chrome Web Store manifest readiness", () => {
       }
     ]);
   });
+
+  // Sem externally_connectable, chrome.runtime.onMessage (o listener em background.js que
+  // processa PROCESS_SELECTION_MESSAGE) só é alcançável pelos próprios contextos da extensão
+  // (content scripts registrados, popup, options) — nenhuma página web arbitrária consegue
+  // chamar chrome.runtime.sendMessage(extensionId, ...) contra ele. Declarar essa chave no
+  // futuro (ex.: para alguma integração externa) reabriria esse listener para a web pública,
+  // então isto é um guard-rail: qualquer PR que adicione externally_connectable precisa
+  // revisar deliberadamente o handler em background.js antes que este teste seja atualizado.
+  it("does not declare externally_connectable, keeping runtime.onMessage internal-only", () => {
+    expect(manifest.externally_connectable).toBeUndefined();
+  });
 });
