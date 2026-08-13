@@ -248,7 +248,7 @@ jobs:
             chromeMajor: "151"
             setup: >-
               dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm &&
-              dnf install -y --setopt=install_weak_deps=False git curl nodejs npm chromium
+              dnf install -y --allowerasing --setopt=install_weak_deps=False git curl nodejs npm chromium
           - os: ubuntu-latest
             label: "Chrome 151 - Arch Linux"
             container: archlinux:latest
