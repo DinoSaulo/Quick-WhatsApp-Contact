@@ -46,7 +46,10 @@ extension-settings-page {
 .options-footer {
   padding: 8px 20px 12px;
   text-align: center;
-  color: var(--muted);
+  /* Same variable the donation dialog itself uses for its base text color (see
+     .donation-dialog below) — so the footer credits follow the exact same light/dark
+     swap as the modal instead of the dimmer --muted tone used for secondary text. */
+  color: var(--text);
   font-size: 12px;
   line-height: 1.4;
 }

@@ -103,6 +103,15 @@ describe("options page integration", () => {
     expect(links.every((link) => link.rel === "noopener noreferrer")).toBe(true);
   });
 
+  it("matches the footer text color to the donation modal's, keeping links green in both themes", () => {
+    // .options-footer must share --text with .donation-dialog (not --muted) so the footer
+    // credits follow the same light/dark swap as the modal; the links stay on --accent
+    // (green in both themes) independently of that.
+    expect(optionsStyles).toMatch(/\.options-footer\s*\{[^}]*color:\s*var\(--text\);[^}]*\}/s);
+    expect(optionsStyles).toMatch(/\.donation-dialog\s*\{[^}]*color:\s*var\(--text\);[^}]*\}/s);
+    expect(optionsStyles).toMatch(/\.options-footer a\s*\{[^}]*color:\s*var\(--accent\);[^}]*\}/s);
+  });
+
   it("mounts the donation modal component inside the footer", () => {
     document.body.innerHTML = optionsHtml;
     const footer = document.querySelector(".options-footer");
