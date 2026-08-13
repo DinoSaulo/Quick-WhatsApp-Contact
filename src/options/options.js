@@ -113,10 +113,10 @@ class ExtensionSettingsPage extends HTMLElement {
             <p class="privacy-note" id="page-access-disclosure">${this.messages.optionAutoHighlightDisclosure}</p>
 
             <div class="option-row">
-              <label class="option-label" for="dark-mode">${this.messages.optionDarkMode}</label>
-              <label class="toggle option-control">
-                <input id="dark-mode" type="checkbox" ${this.settings.darkModeEnabled ? "checked" : ""} />
-              </label>
+              <label class="option-label" for="country-trigger">${this.messages.optionDefaultCountry}</label>
+              <div class="option-control">
+                ${this.buildCountryPickerMarkup(this.settings.defaultCountry)}
+              </div>
             </div>
 
             <div class="option-row">
@@ -134,10 +134,10 @@ class ExtensionSettingsPage extends HTMLElement {
             </div>
 
             <div class="option-row">
-              <label class="option-label" for="country-trigger">${this.messages.optionDefaultCountry}</label>
-              <div class="option-control">
-                ${this.buildCountryPickerMarkup(this.settings.defaultCountry)}
-              </div>
+              <label class="option-label" for="dark-mode">${this.messages.optionDarkMode}</label>
+              <label class="toggle option-control">
+                <input id="dark-mode" type="checkbox" ${this.settings.darkModeEnabled ? "checked" : ""} />
+              </label>
             </div>
 
             <div class="option-row">

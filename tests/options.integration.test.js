@@ -103,13 +103,29 @@ describe("options page integration", () => {
     expect(links.every((link) => link.rel === "noopener noreferrer")).toBe(true);
   });
 
-  it("matches the footer text color to the donation modal's, keeping links green in both themes", () => {
-    // .options-footer must share --text with .donation-dialog (not --muted) so the footer
-    // credits follow the same light/dark swap as the modal; the links stay on --accent
-    // (green in both themes) independently of that.
-    expect(optionsStyles).toMatch(/\.options-footer\s*\{[^}]*color:\s*var\(--text\);[^}]*\}/s);
-    expect(optionsStyles).toMatch(/\.donation-dialog\s*\{[^}]*color:\s*var\(--text\);[^}]*\}/s);
+  it("keeps the footer text a fixed dark color in both themes, while links stay green", () => {
+    // Unlike the rest of the page, .options-footer must NOT react to
+    // :root[data-theme="dark"] — it's pinned to a literal color, not a var(--token), so
+    // dark mode can't lighten it. Links are the one exception: they stay on var(--accent),
+    // which is still some shade of green in both themes.
+    expect(optionsStyles).toMatch(/\.options-footer\s*\{[^}]*color:\s*#1f2a1f;[^}]*\}/s);
+    expect(optionsStyles).not.toMatch(/\.options-footer\s*\{[^}]*color:\s*var\(--[^)]+\);[^}]*\}/s);
     expect(optionsStyles).toMatch(/\.options-footer a\s*\{[^}]*color:\s*var\(--accent\);[^}]*\}/s);
+  });
+
+  it("orders the settings rows: phone helpers, default country, language, dark mode, tutorial", async () => {
+    const page = await renderOptionsPage();
+    const rowLabelIds = [...page.querySelectorAll(".option-row .option-label")].map((label) =>
+      label.getAttribute("for")
+    );
+
+    expect(rowLabelIds).toEqual([
+      "auto-highlight",
+      "country-trigger",
+      "language",
+      "dark-mode",
+      "tutorial-button"
+    ]);
   });
 
   it("mounts the donation modal component inside the footer", () => {
