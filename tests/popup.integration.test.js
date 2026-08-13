@@ -132,6 +132,10 @@ describe("popup integration", () => {
     const hiddenCountry = popup.querySelector("#country-hidden");
 
     expect(document.querySelector("img[onerror]")).toBeNull();
+    // Flagged by the conservative safe-regex heuristic, but this is a bounded, anchored,
+    // non-backtracking pattern (a single optional group, no nested quantifiers) matching a
+    // short fixed string, not user input fed into the regex itself.
+    // eslint-disable-next-line security/detect-unsafe-regex
     expect(hiddenCountry.value).toMatch(/^[A-Z]{2}(?:-[A-Z0-9]+)?$/);
     expect(popup.querySelectorAll(".country-picker__option").length).toBeGreaterThanOrEqual(200);
   });

@@ -60,6 +60,13 @@ class WhatsAppMessagePopup extends HTMLElement {
       ? this.messages.popupDescriptionNeedsCountry
       : this.messages.popupDescriptionDefault;
 
+    // this.messages is the static i18n DICTIONARY (i18n.js). initialNumber is
+    // this.pendingContextNumber, which connectedCallback already ran through
+    // normalizeSelectedNumber() (strips everything except [0-9+]) — see the "neutralizes an
+    // HTML/script payload in the pending context number..." test in popup.integration.test.js.
+    // buildCountryPickerMarkup() below only ever derives attributes from the resolved country
+    // object, never a raw string.
+    // eslint-disable-next-line no-unsanitized/property
     this.innerHTML = `
       <main class="panel">
         <section class="card">
@@ -244,6 +251,10 @@ class WhatsAppMessagePopup extends HTMLElement {
           hiddenInput.value = selectedCountry.code;
         }
         if (trigger) {
+          // selectedCountry comes from getCountryByCode(code), where code is a
+          // data-country-code attribute this same render pass generated from the static
+          // COUNTRIES array — never raw user input.
+          // eslint-disable-next-line no-unsanitized/property
           trigger.innerHTML = `
             <span class="country-picker__flag">${renderCountryFlagHtml(selectedCountry)}</span>
             <span class="country-picker__name">${selectedCountry.name}</span>

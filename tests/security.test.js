@@ -64,3 +64,35 @@ describe("extension storage isolation", () => {
     expect(storageSource).not.toContain("TRUSTED_AND_UNTRUSTED_CONTEXTS");
   });
 });
+
+// This extension has no backend and no user accounts, so it should never need to hold an API
+// key, access token, or private key in source — chrome.storage.sync/session here only ever
+// holds the user's own preferences and a short-lived phone-number handoff (see storage.js).
+// This is a regression guard, not a finding: it fails loudly if a future change (e.g. wiring
+// up an analytics or crash-reporting SDK) introduces a credential that belongs in a build-time
+// secret instead of committed, plaintext source.
+describe("no hardcoded secrets in shipped source", () => {
+  const secretPatterns = [
+    { pattern: /-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/, label: "PEM private key" },
+    { pattern: /\bAKIA[0-9A-Z]{16}\b/, label: "AWS access key ID" },
+    {
+      pattern: /\b(?:api[_-]?key|secret[_-]?key|access[_-]?token|client[_-]?secret|auth[_-]?token)\s*[:=]\s*["'][^"']{8,}["']/i,
+      label: "hardcoded credential assignment"
+    }
+  ];
+
+  it("finds no committed API keys, tokens, or private key material in src/", () => {
+    const offenders = [];
+
+    for (const file of sourceFiles) {
+      const source = readFileSync(file, "utf8");
+      for (const { pattern, label } of secretPatterns) {
+        if (pattern.test(source)) {
+          offenders.push(`${relative(projectRoot, file)}: ${label}`);
+        }
+      }
+    }
+
+    expect(offenders).toEqual([]);
+  });
+});

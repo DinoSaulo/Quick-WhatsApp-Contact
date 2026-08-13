@@ -111,6 +111,10 @@ class DonationModal extends HTMLElement {
     `;
     }).join("");
 
+    // Every DONATION_METHODS field and every i18n string above is passed through escapeHtml()
+    // (or the https-only hasSafeLink allow-list for the one raw href) before landing here; see
+    // tests/donationModalEscaping.test.js.
+    // eslint-disable-next-line no-unsanitized/property
     this.innerHTML = `
       <button class="button button--secondary donation-trigger" id="donation-trigger" type="button">
         ☕ ${this.messages.donationButtonLabel}

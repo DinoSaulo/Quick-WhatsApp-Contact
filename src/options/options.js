@@ -73,7 +73,9 @@ class ExtensionSettingsPage extends HTMLElement {
 
     return `
       <div class="country-picker" id="country-picker">
-        <input id="default-country-hidden" name="defaultCountry" type="hidden" value="${selectedCode || ""}" />
+        <input id="default-country-hidden" name="defaultCountry" type="hidden" value="${
+          isAutomatic ? "" : selectedCountry.code
+        }" />
         <button class="country-picker__trigger" id="country-trigger" type="button" aria-expanded="false">
           ${triggerFlagMarkup}
           <span class="country-picker__name">${triggerNameMarkup}</span>
@@ -94,6 +96,12 @@ class ExtensionSettingsPage extends HTMLElement {
   }
 
   render() {
+    // this.messages is the static i18n DICTIONARY (i18n.js) and this.settings values are all
+    // normalized before this point (Boolean()/normalizeLanguage() in storage.js);
+    // buildCountryPickerMarkup() below derives every attribute from the resolved country object,
+    // never a raw storage string — see the regression test "neutralizes hostile markup in the
+    // synced default country...".
+    // eslint-disable-next-line no-unsanitized/property
     this.innerHTML = `
       <main class="panel options-shell">
         <section class="card">
@@ -244,6 +252,11 @@ class ExtensionSettingsPage extends HTMLElement {
             ? ""
             : `+${selectedCountry.dialCode}`;
 
+          // code comes from a data-country-code attribute this same render pass generated from
+          // the static COUNTRIES array (countries.js), then round-tripped through
+          // getCountryByCode(), which always returns a known, static entry — never raw user or
+          // storage input.
+          // eslint-disable-next-line no-unsanitized/property
           trigger.innerHTML = `
             ${flagMarkup}
             <span class="country-picker__name">${nameMarkup}</span>

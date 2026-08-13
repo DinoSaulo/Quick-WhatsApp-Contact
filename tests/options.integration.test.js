@@ -280,6 +280,33 @@ describe("options page integration", () => {
     );
   });
 
+  // Regression test for a real finding from the SAST audit (see docs/THREAT_MODEL.md): unlike
+  // popup.js and ddi.js, which always build the hidden country input's value from the resolved,
+  // always-valid country object, options.js used to interpolate the raw defaultCountry setting
+  // straight from chrome.storage.sync into that same attribute. chrome.storage.sync is not
+  // exclusively written by this extension's own UI (manual devtools edits, a corrupted sync,
+  // or a future bug elsewhere could all leave hostile text there), so this must degrade safely
+  // just like popup.js already does — see its "falls back to a known country when synced
+  // country settings contain hostile markup" test.
+  it("neutralizes hostile markup in the synced default country instead of injecting it", async () => {
+    mockStorage.getSettings.mockResolvedValue({
+      language: "en-US",
+      darkModeEnabled: false,
+      autoHighlightEnabled: true,
+      defaultCountry: '"><img src=x onerror=alert("x")>'
+    });
+
+    const page = await renderOptionsPage();
+
+    expect(document.querySelector("img[onerror]")).toBeNull();
+    // Flagged by the conservative safe-regex heuristic, but this is a bounded, anchored,
+    // non-backtracking pattern (a single optional group, no nested quantifiers) matching a
+    // short fixed string, not user input fed into the regex itself — see the identical pattern
+    // and comment in popup.integration.test.js.
+    // eslint-disable-next-line security/detect-unsafe-regex
+    expect(page.querySelector("#default-country-hidden").value).toMatch(/^[A-Z]{2}(?:-[A-Z0-9]+)?$/);
+  });
+
   it("renders every country option from the extension origin", async () => {
     const page = await renderOptionsPage();
     const flagSources = Array.from(

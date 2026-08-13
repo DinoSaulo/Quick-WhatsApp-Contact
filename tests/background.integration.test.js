@@ -18,11 +18,17 @@ function eventFor(name) {
   return { addListener: vi.fn((handler) => { handlers[name] = handler; }) };
 }
 
+const EXTENSION_ID = "quick-whatsapp-contact-test-id";
+
+function senderFromTab(pageUrl) {
+  return { id: EXTENSION_ID, tab: { url: pageUrl } };
+}
+
 async function sendSelection(selectionText, pageUrl = "https://example.pt") {
   const sendResponse = vi.fn();
   const keepsChannelOpen = handlers.message(
     { type: "quick-whatsapp-contact.process-selection", selectionText },
-    { tab: { url: pageUrl } },
+    senderFromTab(pageUrl),
     sendResponse
   );
   await vi.waitFor(() => expect(sendResponse).toHaveBeenCalled());
@@ -33,6 +39,7 @@ describe("background selection security integration", () => {
   beforeAll(async () => {
     global.chrome = {
       runtime: {
+        id: EXTENSION_ID,
         onInstalled: eventFor("installed"),
         onStartup: eventFor("startup"),
         onMessage: eventFor("message"),
@@ -78,7 +85,37 @@ describe("background selection security integration", () => {
   it("ignores messages outside the extension's selection protocol", () => {
     const result = handlers.message(
       { type: "attacker.control", selectionText: "+351912345678" },
-      { tab: { url: "https://example.pt" } },
+      senderFromTab("https://example.pt"),
+      vi.fn()
+    );
+
+    expect(result).toBeUndefined();
+    expect(chrome.tabs.create).not.toHaveBeenCalled();
+    expect(chrome.action.openPopup).not.toHaveBeenCalled();
+  });
+
+  // chrome.runtime.onMessage is already unreachable from outside this extension today (no
+  // externally_connectable — see tests/manifest.test.js), but that is a manifest-level
+  // guarantee, not something this listener enforces on its own. These two tests exercise the
+  // listener's own sender.id/sender.tab checks directly, so a future manifest change (or a bug
+  // in a mock/polyfill during testing) can't silently make this handler trust an untrusted
+  // sender again without a test failing here first.
+  it("ignores a message whose sender.id does not match this extension", () => {
+    const result = handlers.message(
+      { type: "quick-whatsapp-contact.process-selection", selectionText: "+351 912 345 678" },
+      { id: "some-other-extension-id", tab: { url: "https://example.pt" } },
+      vi.fn()
+    );
+
+    expect(result).toBeUndefined();
+    expect(chrome.tabs.create).not.toHaveBeenCalled();
+    expect(chrome.action.openPopup).not.toHaveBeenCalled();
+  });
+
+  it("ignores a same-extension message that did not come from a content script tab", () => {
+    const result = handlers.message(
+      { type: "quick-whatsapp-contact.process-selection", selectionText: "+351 912 345 678" },
+      { id: EXTENSION_ID },
       vi.fn()
     );
 

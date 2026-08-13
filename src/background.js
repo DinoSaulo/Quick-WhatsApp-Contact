@@ -56,6 +56,16 @@ chrome.contextMenus.onClicked.addListener(async (info) => {
 });
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  // Defense in depth: this listener is already unreachable from arbitrary web pages or other
+  // extensions today, because the manifest declares no externally_connectable (see
+  // tests/manifest.test.js). These two checks mean that guarantee doesn't have to keep holding
+  // for this handler to stay safe — sender.id is only ever absent/different when a message truly
+  // did not originate from this extension's own contexts, and sender.tab is only populated for
+  // content scripts, never for a message this extension's own popup/options pages would send.
+  if (sender.id !== chrome.runtime.id || !sender.tab) {
+    return;
+  }
+
   if (!message || message.type !== PROCESS_SELECTION_MESSAGE) {
     return;
   }
