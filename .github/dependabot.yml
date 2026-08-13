@@ -1,0 +1,27 @@
+version: 2
+
+updates:
+  # npm devDependencies (vitest, eslint + security plugins, puppeteer-core, etc.) — the
+  # project has zero runtime dependencies (enforced by scripts/validate-extension.mjs), so
+  # this only ever touches devDependencies, but keeps them current and lets Dependabot
+  # security alerts flag known-vulnerable versions (e.g. the puppeteer-core/extract-zip
+  # advisory already tracked in docs/THREAT_MODEL.md) as soon as a fix is available.
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+
+  # Keeps the third-party actions used in .github/workflows/ci.yml (checkout, setup-node,
+  # upload/download-artifact, action-gh-release) current — including bumping any commit-SHA
+  # pins, so pinning for supply-chain safety doesn't mean manually tracking new releases.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "ci"
+      include: "scope"

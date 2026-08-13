@@ -183,6 +183,9 @@ jobs:
       - name: Instalar dependencias
         run: npm ci
 
+      - name: Auditar dependencias de producao
+        run: npm audit --omit=dev
+
       - name: Analise estatica de seguranca (SAST)
         run: npm run lint:sast
 

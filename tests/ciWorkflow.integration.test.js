@@ -88,6 +88,16 @@ describe("GitHub Actions cross-platform runtime integration", () => {
     expect(packageJson.scripts["test:security"]).toContain("tests/security.test.js");
   });
 
+  // Production dependencies are, and must stay, empty (see validate-extension.mjs), so this
+  // step passes trivially today — its value is as a regression guard: the moment a real
+  // runtime dependency is ever added, a known vulnerability in it fails the pipeline instead
+  // of only being caught by someone running `npm audit` by hand (see docs/THREAT_MODEL.md §6).
+  it("audits production dependencies for known vulnerabilities in the security job", () => {
+    const security = jobSource("security-tests", "installation-test");
+
+    expect(security).toContain("run: npm audit --omit=dev");
+  });
+
   it("orders the pipeline as Unit -> Integration -> Security -> Installation -> Validate -> Release", () => {
     const jobIds = [
       "unit-tests",
@@ -105,5 +115,18 @@ describe("GitHub Actions cross-platform runtime integration", () => {
     for (let i = 1; i < positions.length; i++) {
       expect(positions[i]).toBeGreaterThan(positions[i - 1]);
     }
+  });
+});
+
+describe("Dependabot configuration", () => {
+  const dependabot = readFileSync(
+    resolve(projectRoot, ".github", "dependabot.yml"),
+    "utf8",
+  );
+
+  it("keeps npm devDependencies and GitHub Actions pins on a weekly update schedule", () => {
+    expect(dependabot).toContain('package-ecosystem: "npm"');
+    expect(dependabot).toContain('package-ecosystem: "github-actions"');
+    expect(dependabot.match(/interval: "weekly"/g)).toHaveLength(2);
   });
 });
