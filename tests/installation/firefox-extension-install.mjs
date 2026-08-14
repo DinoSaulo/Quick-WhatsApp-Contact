@@ -169,6 +169,22 @@ assert.ok(
 
 const biDiPort = await getAvailablePort();
 
+// Hypothesis, not a confirmed root cause (no raw CI log was available to verify against): recent
+// Ubuntu (23.10+, which is what GitHub's ubuntu-latest runner currently is) restricts unprivileged
+// processes from creating user namespaces via AppArmor unless the binary has a registered profile
+// — apt/snap-packaged Firefox gets one from the OS, but a manually downloaded tarball extracted to
+// an arbitrary path (see scripts/install-firefox-version.mjs) does not. Firefox's own content-
+// process sandbox needs exactly that syscall, and Docker's default seccomp profile restricts the
+// same thing for root-in-container Firefox too — a plausible single explanation covering both a
+// non-root bare-runner failure and a root-in-container failure reported against this file. Content
+// sandboxing only protects against a compromised *web page's* renderer process; it has no bearing
+// on this test's own security-relevant assertions (which run in Node, driving the browser, not in
+// page content), so disabling it here is a test-harness-only concession — it must never be applied
+// to how end users actually run this extension.
+if (process.platform === "linux") {
+  process.env.MOZ_DISABLE_CONTENT_SANDBOX = "1";
+}
+
 let extensionRunner;
 let browser;
 
