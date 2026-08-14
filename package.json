@@ -12,6 +12,7 @@
     "test:integration": "vitest run .integration.test.js",
     "test:security": "vitest run tests/security.test.js tests/networkSecurity.test.js tests/manifest.test.js tests/donationModalEscaping.test.js",
     "test:install": "npm run build && node tests/installation/extension-install.mjs",
+    "test:install:firefox": "npm run build && node tests/installation/firefox-extension-install.mjs",
     "validate:extension": "node scripts/validate-extension.mjs",
     "validate:store": "node scripts/validate-store-readiness.mjs",
     "generate:donation-qrcodes": "node scripts/generate-donation-qrcodes.mjs",
@@ -27,6 +28,7 @@
     "jsdom": "^30.0.1",
     "puppeteer-core": "24.8.1",
     "qrcode": "^1.5.4",
-    "vitest": "^4.1.10"
+    "vitest": "^4.1.10",
+    "web-ext": "10.6.0"
   }
 }

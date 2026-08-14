@@ -23,9 +23,9 @@ function jobSource(jobName, nextJobName) {
 describe("GitHub Actions cross-platform runtime integration", () => {
   it("pins the same exact Node.js version in every job", () => {
     expect(workflow).toContain('NODE_VERSION: "22.23.2"');
-    expect(workflow.match(/actions\/setup-node@v6/g)).toHaveLength(8);
-    expect(workflow.match(/node-version: \$\{\{ env\.NODE_VERSION \}\}/g)).toHaveLength(8);
-    expect(workflow.match(/name: Verificar versao do Node\.js/g)).toHaveLength(8);
+    expect(workflow.match(/actions\/setup-node@v6/g)).toHaveLength(11);
+    expect(workflow.match(/node-version: \$\{\{ env\.NODE_VERSION \}\}/g)).toHaveLength(11);
+    expect(workflow.match(/name: Verificar versao do Node\.js/g)).toHaveLength(11);
   });
 
   it("uses Node 24 runtime releases for every official JavaScript action", () => {
@@ -41,8 +41,9 @@ describe("GitHub Actions cross-platform runtime integration", () => {
     const unit = jobSource("unit-tests", "integration-tests");
     const integration = jobSource("integration-tests", "security-tests");
     const installation = jobSource("installation-test", "resolve-chrome-versions");
+    const installationFirefox = jobSource("installation-test-firefox", "resolve-firefox-versions");
 
-    for (const source of [unit, integration, installation]) {
+    for (const source of [unit, integration, installation, installationFirefox]) {
       expect(source).toMatch(
         /dnf install -y --setopt=install_weak_deps=False git curl nodejs npm/,
       );
@@ -60,6 +61,20 @@ describe("GitHub Actions cross-platform runtime integration", () => {
     expect(installation).toContain("run: chromium-browser --version");
   });
 
+  it("installs Fedora/Debian/Rocky/Arch Firefox packages with live-confirmed expected majors", () => {
+    const installationFirefox = jobSource("installation-test-firefox", "resolve-firefox-versions");
+
+    expect(installationFirefox).toContain("nodejs npm firefox");
+    expect(installationFirefox).toContain("firefox-esr");
+    // The rapid-release train (Fedora/Arch) and the ESR train (Debian/Rocky) sit many majors
+    // apart on purpose — see the comment above installation-test-firefox in ci.yml.
+    expect(installationFirefox).toContain('firefoxMajor: "153"');
+    expect(installationFirefox).toContain('firefoxMajor: "140"');
+    // Ubuntu/macOS/Windows rely on the runner's preinstalled Firefox and carry no firefoxMajor,
+    // so the strict-assertion step must stay conditional instead of running unconditionally.
+    expect(installationFirefox).toContain("if: matrix.firefoxMajor != ''");
+  });
+
   it("connects the workflow step to the real browser lifecycle runner", () => {
     const installation = jobSource("installation-test", "resolve-chrome-versions");
 
@@ -72,7 +87,7 @@ describe("GitHub Actions cross-platform runtime integration", () => {
 
   it("resolves and pins installation-test-pinned's matrix to the last 3 Chrome majors dynamically", () => {
     const resolveJob = jobSource("resolve-chrome-versions", "installation-test-pinned");
-    const pinnedJob = jobSource("installation-test-pinned", "validate-extension");
+    const pinnedJob = jobSource("installation-test-pinned", "installation-test-firefox");
 
     expect(resolveJob).toContain("needs: security-tests");
     expect(resolveJob).toContain("outputs:");
@@ -90,10 +105,37 @@ describe("GitHub Actions cross-platform runtime integration", () => {
     expect(pinnedJob).not.toContain("macos-latest");
   });
 
-  it("gates validate-extension on both the distro-diversity and exact-version installation jobs", () => {
+  it("resolves and pins installation-test-firefox-pinned's matrix to the last 3 Firefox majors dynamically", () => {
+    const resolveJob = jobSource("resolve-firefox-versions", "installation-test-firefox-pinned");
+    const pinnedJob = jobSource("installation-test-firefox-pinned", "validate-extension");
+
+    expect(resolveJob).toContain("needs: security-tests");
+    expect(resolveJob).toContain("outputs:");
+    expect(resolveJob).toContain("versions: ${{ steps.resolve.outputs.versions }}");
+    expect(resolveJob).toContain('run: node scripts/resolve-firefox-versions.mjs >> "$GITHUB_OUTPUT"');
+
+    expect(pinnedJob).toContain("needs: [security-tests, resolve-firefox-versions]");
+    expect(pinnedJob).toContain("fromJson(needs.resolve-firefox-versions.outputs.versions)");
+    expect(pinnedJob).toContain("run: npm run test:install:firefox");
+    expect(pinnedJob).toContain("scripts/install-firefox-version.mjs");
+    expect(pinnedJob).toContain("scripts/verify-firefox-version.mjs");
+    expect(pinnedJob).not.toContain("windows-latest");
+    expect(pinnedJob).not.toContain("macos-latest");
+  });
+
+  it("connects the Firefox workflow steps to the real Firefox lifecycle runner", () => {
+    expect(packageJson.scripts["test:install:firefox"]).toBe(
+      "npm run build && node tests/installation/firefox-extension-install.mjs",
+    );
+    expect(packageJson.devDependencies["web-ext"]).toBe("10.6.0");
+  });
+
+  it("gates validate-extension on every installation job, Chrome and Firefox alike", () => {
     const validate = jobSource("validate-extension", "release");
 
-    expect(workflow).toContain("needs: [installation-test, installation-test-pinned]");
+    expect(workflow).toContain(
+      "needs: [installation-test, installation-test-pinned, installation-test-firefox, installation-test-firefox-pinned]",
+    );
     expect(validate).toContain("run: npm run validate:extension");
   });
 
@@ -125,7 +167,7 @@ describe("GitHub Actions cross-platform runtime integration", () => {
     expect(security).toContain("run: npm audit --omit=dev");
   });
 
-  it("orders the pipeline as Unit -> Integration -> Security -> Installation (distro + pinned) -> Validate -> Release", () => {
+  it("orders the pipeline as Unit -> Integration -> Security -> Installation (Chrome + Firefox, distro + pinned) -> Validate -> Release", () => {
     const jobIds = [
       "unit-tests",
       "integration-tests",
@@ -133,6 +175,9 @@ describe("GitHub Actions cross-platform runtime integration", () => {
       "installation-test",
       "resolve-chrome-versions",
       "installation-test-pinned",
+      "installation-test-firefox",
+      "resolve-firefox-versions",
+      "installation-test-firefox-pinned",
       "validate-extension",
       "release",
     ];

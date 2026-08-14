@@ -17,8 +17,9 @@ concurrency:
 
 # ─────────────────────────────────────────────────────────────────────────────
 #  Level 1 ▶ Level 2      ▶ Level 3   ▶ Level 4                              ▶ Level 5   ▶ Level 6
-#  Unit     ▶ Integration ▶ Security  ▶ Installation (OS/distro diversity +  ▶ Validate  ▶ Release
-#                                       Chrome N/N-1/N-2 exact-version pins)
+#  Unit     ▶ Integration ▶ Security  ▶ Installation, Chrome AND Firefox     ▶ Validate  ▶ Release
+#                                       (OS/distro diversity + N/N-1/N-2
+#                                       exact-version pins, per browser)
 # ─────────────────────────────────────────────────────────────────────────────
 
 jobs:
@@ -385,10 +386,169 @@ jobs:
       - name: Testar instalacao e desinstalacao no Chrome
         run: npm run test:install
 
+  # ── Level 4c: Installation test (Firefox, OS/distro diversity) ─────────────
+  # Firefox counterpart of installation-test above. Package-manager versions were confirmed live
+  # (packages.fedoraproject.org, Debian's own security-announce list, repology.org) for the 4
+  # container entries below, which is why only those carry a strict firefoxMajor assertion —
+  # Ubuntu/macOS/Windows rely on whatever their GitHub-hosted runner image preinstalls, which
+  # isn't practical to pin to an exact number here, so they're left unasserted (the
+  # install/uninstall test itself still fails loudly if Firefox is missing or broken there, just
+  # not if its version silently drifts). Debian and Rocky ship Firefox's ESR train, which trails
+  # the rapid-release major Fedora/Arch carry by many versions — a real, expected split, not a
+  # mismatch between entries.
+  installation-test-firefox:
+    name: "4c · Instalacao Firefox · ${{ matrix.label }}"
+    needs: security-tests
+    runs-on: ${{ matrix.os }}
+    container: ${{ matrix.container }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            label: "Firefox - Ubuntu"
+          - os: ubuntu-latest
+            label: "Firefox 153 - Fedora"
+            container: fedora:latest
+            firefoxMajor: "153"
+            setup: dnf install -y --setopt=install_weak_deps=False git curl nodejs npm firefox
+          - os: ubuntu-latest
+            label: "Firefox 140 (ESR) - Debian"
+            container: debian:bookworm
+            firefoxMajor: "140"
+            setup: >-
+              apt-get update && apt-get install -y --no-install-recommends
+              git curl ca-certificates nodejs npm firefox-esr
+          - os: ubuntu-latest
+            label: "Firefox 140 (ESR) - Rocky Linux"
+            container: rockylinux:9
+            firefoxMajor: "140"
+            setup: >-
+              dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm &&
+              dnf install -y --allowerasing --setopt=install_weak_deps=False git curl nodejs npm firefox
+          - os: ubuntu-latest
+            label: "Firefox 153 - Arch Linux"
+            container: archlinux:latest
+            firefoxMajor: "153"
+            setup: pacman -Syu --noconfirm --needed git curl nodejs npm firefox
+          - os: macos-latest
+            label: "Firefox - macOS"
+          - os: windows-latest
+            label: "Firefox - Windows"
+
+    steps:
+      - name: Preparar sistema (container Linux)
+        if: matrix.setup != ''
+        run: ${{ matrix.setup }}
+
+      - name: Clonar repositorio
+        uses: actions/checkout@v6
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Verificar versao do Node.js
+        run: node -e "const actual = process.versions.node; const expected = process.env.NODE_VERSION; if (actual !== expected) { console.error('Expected Node.js ' + expected + ', but found ' + actual); process.exit(1); } console.log('Using Node.js ' + actual);"
+
+      - name: Verificar versao do Firefox
+        if: matrix.firefoxMajor != ''
+        run: node scripts/verify-firefox-version.mjs "${{ matrix.firefoxMajor }}"
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Baixar build da etapa anterior
+        uses: actions/download-artifact@v7
+        with:
+          name: extension-build
+          path: dist/extension/
+
+      - name: Testar instalacao e desinstalacao no Firefox
+        run: npm run test:install:firefox
+
+  # ── Level 4d: Resolve the 3 most recent Firefox majors (N, N-1, N-2) ───────
+  # Firefox counterpart of resolve-chrome-versions above, against Mozilla's own release-history
+  # API instead of Chrome for Testing.
+  resolve-firefox-versions:
+    name: "4d · Resolver versoes do Firefox"
+    needs: security-tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      versions: ${{ steps.resolve.outputs.versions }}
+
+    steps:
+      - name: Clonar repositorio
+        uses: actions/checkout@v6
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Verificar versao do Node.js
+        run: node -e "const actual = process.versions.node; const expected = process.env.NODE_VERSION; if (actual !== expected) { console.error('Expected Node.js ' + expected + ', but found ' + actual); process.exit(1); } console.log('Using Node.js ' + actual);"
+
+      - name: Resolver as 3 versoes major mais recentes do Firefox
+        id: resolve
+        run: node scripts/resolve-firefox-versions.mjs >> "$GITHUB_OUTPUT"
+
+  # ── Level 4e: Installation test pinned to Firefox N / N-1 / N-2 ────────────
+  # Firefox counterpart of installation-test-pinned above: downloads each exact major straight
+  # from Mozilla's release archive rather than through any OS package manager. Ubuntu-only, same
+  # reasoning as the Chrome pinned job — precise version coverage, not OS diversity.
+  installation-test-firefox-pinned:
+    name: "4e · Instalacao Firefox ${{ matrix.firefoxVersion }}"
+    needs: [security-tests, resolve-firefox-versions]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        firefoxVersion: ${{ fromJson(needs.resolve-firefox-versions.outputs.versions) }}
+
+    steps:
+      - name: Clonar repositorio
+        uses: actions/checkout@v6
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Verificar versao do Node.js
+        run: node -e "const actual = process.versions.node; const expected = process.env.NODE_VERSION; if (actual !== expected) { console.error('Expected Node.js ' + expected + ', but found ' + actual); process.exit(1); } console.log('Using Node.js ' + actual);"
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Baixar build da etapa anterior
+        uses: actions/download-artifact@v7
+        with:
+          name: extension-build
+          path: dist/extension/
+
+      - name: Baixar Firefox ${{ matrix.firefoxVersion }}
+        run: |
+          EXEC_PATH=$(node scripts/install-firefox-version.mjs "${{ matrix.firefoxVersion }}")
+          echo "FIREFOX_PATH=$EXEC_PATH" >> "$GITHUB_ENV"
+
+      - name: Verificar versao do Firefox baixado
+        run: node scripts/verify-firefox-version.mjs "$(echo '${{ matrix.firefoxVersion }}' | cut -d. -f1)"
+
+      - name: Testar instalacao e desinstalacao no Firefox
+        run: npm run test:install:firefox
+
   # ── Level 5: Validate extension package ────────────────────────────────────
   validate-extension:
     name: "5 · Validar Extensao"
-    needs: [installation-test, installation-test-pinned]
+    needs: [installation-test, installation-test-pinned, installation-test-firefox, installation-test-firefox-pinned]
     runs-on: ubuntu-latest
     timeout-minutes: 5
 

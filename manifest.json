@@ -5,6 +5,12 @@
   "version": "1.0.0",
   "homepage_url": "https://github.com/DinoSaulo/Quick-WhatsApp-Contact",
   "minimum_chrome_version": "127",
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "quick-whatsapp-contact@dinosaulo.github.io",
+      "strict_min_version": "121.0"
+    }
+  },
   "permissions": ["contextMenus", "scripting", "storage"],
   "optional_host_permissions": ["http://*/*", "https://*/*"],
   "content_security_policy": {
@@ -12,6 +18,7 @@
   },
   "background": {
     "service_worker": "src/background.js",
+    "scripts": ["src/background.js"],
     "type": "module"
   },
   "icons": {

@@ -8,8 +8,12 @@ const manifest = JSON.parse(readFileSync(resolve(projectRoot, "manifest.json"), 
 describe("Chrome Web Store manifest readiness", () => {
   it("uses Manifest V3 with a module service worker", () => {
     expect(manifest.manifest_version).toBe(3);
+    // `scripts` is Firefox's key (it never reads service_worker — see
+    // tests/manifest.test.js's Firefox readiness block below); Chrome (127+, per
+    // minimum_chrome_version below) ignores the extra key and uses service_worker.
     expect(manifest.background).toEqual({
       service_worker: "src/background.js",
+      scripts: ["src/background.js"],
       type: "module"
     });
   });
@@ -94,5 +98,27 @@ describe("Chrome Web Store manifest readiness", () => {
   // revisar deliberadamente o handler em background.js antes que este teste seja atualizado.
   it("does not declare externally_connectable, keeping runtime.onMessage internal-only", () => {
     expect(manifest.externally_connectable).toBeUndefined();
+  });
+});
+
+describe("Firefox readiness", () => {
+  // Firefox needs browser_specific_settings.gecko.id to install the extension at all (it's how
+  // Firefox identifies "this is the same extension across updates" — without it, a signed/self-
+  // distributed install is rejected outright; see MDN's browser_specific_settings docs). The
+  // gecko id format below (an email-shaped string, not a real address) is MDN's documented
+  // convention for extensions that don't have a dedicated domain.
+  it("declares a gecko id in the documented email-like format", () => {
+    expect(manifest.browser_specific_settings.gecko.id).toMatch(
+      /^[a-zA-Z0-9-._]{1,80}@[a-zA-Z0-9-._]+$/,
+    );
+  });
+
+  // Confirmed via MDN's background.json compatibility notes: Firefox never reads
+  // background.service_worker (bug 1573659) and, before Firefox 121, ignored background.scripts
+  // entirely whenever service_worker was also present (bug 1860304) — so 121.0 is the actual
+  // functional floor for this manifest's dual service_worker/scripts background key to work in
+  // Firefox at all, not an arbitrary choice.
+  it("sets strict_min_version to the first Firefox release that honors background.scripts alongside service_worker", () => {
+    expect(manifest.browser_specific_settings.gecko.strict_min_version).toBe("121.0");
   });
 });
