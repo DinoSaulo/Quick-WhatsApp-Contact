@@ -65,6 +65,27 @@ try {
     { timeout: 20_000 },
   );
 
+  // O contextMenus permission só vale algo se o item realmente for registrado no worker de
+  // fundo na instalação. update() com um id inexistente popula chrome.runtime.lastError sem
+  // lançar — é a única forma de "consultar" um menu de contexto pela API, já que MV3 não expõe
+  // um getAll(). A metade "removido na desinstalação" não precisa de uma checagem própria: uma
+  // vez desinstalada, o worker que hospedava esse menu deixa de existir, o que as verificações
+  // de desinstalação abaixo (service worker consumindo `startsWith(extensionOrigin)`) já cobrem.
+  const worker = await workerTarget.worker();
+  const contextMenuRegistered = await worker.evaluate(
+    () =>
+      new Promise((resolveCheck) => {
+        chrome.contextMenus.update("quick-whatsapp-contact.send", {}, () => {
+          resolveCheck(!chrome.runtime.lastError);
+        });
+      }),
+  );
+  assert.equal(
+    contextMenuRegistered,
+    true,
+    "O item de menu de contexto não foi registrado na instalação.",
+  );
+
   const popupUrl = `${extensionOrigin}/${expectedManifest.action.default_popup}`;
 
   const popup = await browser.newPage();
@@ -250,11 +271,89 @@ try {
     "O popup ainda pode ser acessado após a desinstalação.",
   );
 
+  // Reinstala no mesmo perfil para confirmar dois pontos que o ciclo acima não cobre: (1) a
+  // desinstalação não deixa nenhum registro (worker, storage) que impeça uma nova instalação
+  // limpa, e (2) chrome.storage.sync é escopado por instalação — as configurações setadas antes
+  // da desinstalação não devem "ressuscitar" na reinstalação.
+  const reinstalledExtensionId = await browser.installExtension(extensionPath);
+  assert.match(reinstalledExtensionId, /^[a-p]{32}$/);
+
+  const reinstalledOrigin = `chrome-extension://${reinstalledExtensionId}`;
+
+  await browser.waitForTarget(
+    (target) =>
+      target.type() === "service_worker" &&
+      target.url().startsWith(reinstalledOrigin) &&
+      target.url().endsWith("/src/background.js"),
+    { timeout: 20_000 },
+  );
+
+  const reinstalledOptions = await browser.newPage();
+  await reinstalledOptions.goto(
+    `${reinstalledOrigin}/${expectedManifest.options_ui.page}`,
+    { waitUntil: "domcontentloaded", timeout: 20_000 },
+  );
+  await reinstalledOptions.waitForSelector("extension-settings-page #country-trigger", {
+    timeout: 10_000,
+  });
+
+  const reinstalledSettings = await reinstalledOptions.evaluate(() => ({
+    autoHighlight: document.querySelector("#auto-highlight")?.checked,
+    darkMode: document.querySelector("#dark-mode")?.checked,
+    language: document.querySelector("#language")?.value,
+    defaultCountry: document.querySelector("#default-country-hidden")?.value,
+  }));
+
+  assert.equal(
+    reinstalledSettings.autoHighlight,
+    false,
+    "auto-highlight não voltou ao padrão após reinstalar; configurações antigas ressuscitaram.",
+  );
+  assert.equal(
+    reinstalledSettings.darkMode,
+    false,
+    "dark-mode não voltou ao padrão após reinstalar; configurações antigas ressuscitaram.",
+  );
+  assert.equal(
+    reinstalledSettings.language,
+    "en-US",
+    "O idioma não voltou ao padrão após reinstalar; configurações antigas ressuscitaram.",
+  );
+  assert.equal(
+    reinstalledSettings.defaultCountry,
+    "",
+    "O país padrão não voltou ao padrão após reinstalar; configurações antigas ressuscitaram.",
+  );
+
+  // Segundo ciclo de desinstalação, desta vez deliberadamente com o popup E a página de opções
+  // ainda abertos — o caminho mais realista (um usuário não fecha suas abas antes de remover a
+  // extensão em chrome://extensions), e diferente do primeiro ciclo acima, que fecha o popup
+  // antes de desinstalar.
+  const reinstalledPopup = await browser.newPage();
+  await reinstalledPopup.goto(`${reinstalledOrigin}/${expectedManifest.action.default_popup}`, {
+    waitUntil: "domcontentloaded",
+    timeout: 20_000,
+  });
+  await reinstalledPopup.waitForSelector("whatsapp-message-popup #country-trigger", {
+    timeout: 10_000,
+  });
+
+  await browser.uninstallExtension(reinstalledExtensionId);
+
+  await waitUntil(
+    () => reinstalledPopup.isClosed() && reinstalledOptions.isClosed(),
+    "O popup e/ou a página de opções não foram fechados automaticamente ao desinstalar com as abas abertas.",
+  );
+
   console.log("Chrome/Chromium extension lifecycle smoke test passed.");
   console.log(`Browser: ${await browser.version()}`);
   console.log(`Extension ID: ${extensionId}`);
   console.log("Install validation: passed");
   console.log("Uninstall validation: passed");
+  console.log("Context menu registration validation: passed");
+  console.log("Reinstall validation: passed");
+  console.log("Settings-not-resurrected validation: passed");
+  console.log("Uninstall-with-pages-open validation: passed");
 } finally {
   await browser?.close();
 }

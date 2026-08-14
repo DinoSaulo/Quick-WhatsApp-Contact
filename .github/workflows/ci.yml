@@ -16,8 +16,9 @@ concurrency:
   cancel-in-progress: true
 
 # ─────────────────────────────────────────────────────────────────────────────
-#  Level 1 ▶ Level 2      ▶ Level 3   ▶ Level 4       ▶ Level 5   ▶ Level 6
-#  Unit     ▶ Integration ▶ Security  ▶ Installation  ▶ Validate  ▶ Release
+#  Level 1 ▶ Level 2      ▶ Level 3   ▶ Level 4                              ▶ Level 5   ▶ Level 6
+#  Unit     ▶ Integration ▶ Security  ▶ Installation (OS/distro diversity +  ▶ Validate  ▶ Release
+#                                       Chrome N/N-1/N-2 exact-version pins)
 # ─────────────────────────────────────────────────────────────────────────────
 
 jobs:
@@ -305,10 +306,89 @@ jobs:
       - name: Testar instalacao e desinstalacao no Chrome
         run: npm run test:install
 
+  # ── Level 4a: Resolve the 3 most recent Chrome majors (N, N-1, N-2) ────────
+  # Feeds installation-test-pinned's matrix below via fromJson, so pinning to "the last 3 major
+  # Chrome versions" is computed fresh on every run instead of being 3 numbers someone has to
+  # remember to bump by hand (unlike installation-test's chromeMajor labels above, which track
+  # whatever each OS/distro package manager ships and are only asserted, not chosen).
+  resolve-chrome-versions:
+    name: "4a · Resolver versoes do Chrome"
+    needs: security-tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      versions: ${{ steps.resolve.outputs.versions }}
+
+    steps:
+      - name: Clonar repositorio
+        uses: actions/checkout@v6
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Verificar versao do Node.js
+        run: node -e "const actual = process.versions.node; const expected = process.env.NODE_VERSION; if (actual !== expected) { console.error('Expected Node.js ' + expected + ', but found ' + actual); process.exit(1); } console.log('Using Node.js ' + actual);"
+
+      - name: Resolver as 3 versoes major mais recentes do Chrome
+        id: resolve
+        run: node scripts/resolve-chrome-versions.mjs >> "$GITHUB_OUTPUT"
+
+  # ── Level 4b: Installation test pinned to Chrome N / N-1 / N-2 ─────────────
+  # Runs the same lifecycle smoke test as installation-test above, but against the 3 exact Chrome
+  # majors resolve-chrome-versions just resolved, downloaded straight from Chrome for Testing
+  # rather than through any OS package manager. Ubuntu-only: this job's purpose is precise version
+  # coverage, not OS/package-manager diversity — installation-test's Fedora/Debian/Rocky/Arch
+  # entries already cover that, deliberately, alongside this one.
+  installation-test-pinned:
+    name: "4b · Instalacao Chrome ${{ matrix.chromeVersion }}"
+    needs: [security-tests, resolve-chrome-versions]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        chromeVersion: ${{ fromJson(needs.resolve-chrome-versions.outputs.versions) }}
+
+    steps:
+      - name: Clonar repositorio
+        uses: actions/checkout@v6
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Verificar versao do Node.js
+        run: node -e "const actual = process.versions.node; const expected = process.env.NODE_VERSION; if (actual !== expected) { console.error('Expected Node.js ' + expected + ', but found ' + actual); process.exit(1); } console.log('Using Node.js ' + actual);"
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Baixar build da etapa anterior
+        uses: actions/download-artifact@v7
+        with:
+          name: extension-build
+          path: dist/extension/
+
+      - name: Baixar Chrome for Testing ${{ matrix.chromeVersion }}
+        run: |
+          EXEC_PATH=$(node scripts/install-chrome-version.mjs "${{ matrix.chromeVersion }}")
+          echo "CHROME_PATH=$EXEC_PATH" >> "$GITHUB_ENV"
+
+      - name: Verificar versao do Chrome baixado
+        run: node scripts/verify-chrome-version.mjs "$(echo '${{ matrix.chromeVersion }}' | cut -d. -f1)"
+
+      - name: Testar instalacao e desinstalacao no Chrome
+        run: npm run test:install
+
   # ── Level 5: Validate extension package ────────────────────────────────────
   validate-extension:
     name: "5 · Validar Extensao"
-    needs: installation-test
+    needs: [installation-test, installation-test-pinned]
     runs-on: ubuntu-latest
     timeout-minutes: 5
 
