@@ -66,6 +66,34 @@ async function connectWithRetries(browserWSEndpoint, { attempts = 20, delay = 25
   return undefined;
 }
 
+// Firefox's WebDriver BiDi implementation rejects a browsingContext.navigate command whose target
+// uses a privileged scheme — page.goto("moz-extension://...") fails with a ProtocolError
+// ("Navigation to ... is not allowed in this context"). That restriction is specifically on
+// navigation *issued by the WebDriver client*; once a page's own script changes
+// window.location.href, Firefox treats it as an ordinary top-level navigation (the same thing
+// that happens if a user types the URL into the address bar), which isn't blocked. So every
+// moz-extension:// page below is reached by first goto()-ing about:blank (an unprivileged target)
+// and then triggering the real navigation from inside the page via evaluate().
+//
+// That in-page navigation tears down the JS realm the evaluate() script was running in while its
+// result is still in flight, which Puppeteer can surface as the evaluate() call itself hanging or
+// rejecting (a known gotcha independent of Firefox) — so that promise is deliberately not trusted
+// as the "navigation happened" signal. waitUntil() polling page.url() below is what actually
+// confirms the navigation completed.
+async function navigateToExtensionPage(page, url, timeout = 20_000) {
+  await page.goto("about:blank", { waitUntil: "domcontentloaded" });
+  await page
+    .evaluate((targetUrl) => {
+      window.location.href = targetUrl;
+    }, url)
+    .catch(() => {});
+  await waitUntil(
+    () => page.url() === url,
+    `Timed out waiting for the page-initiated navigation to ${url}.`,
+    timeout,
+  );
+}
+
 assert.ok(
   existsSync(manifestPath),
   `Build da extensão não encontrado em ${manifestPath}. Execute "npm run build" antes do smoke test.`,
@@ -112,7 +140,7 @@ try {
   popup.on("pageerror", (error) => pageErrors.push(String(error)));
 
   await popup.setViewport({ width: 360, height: 600, deviceScaleFactor: 1 });
-  await popup.goto(popupUrl, { waitUntil: "domcontentloaded", timeout: 20_000 });
+  await navigateToExtensionPage(popup, popupUrl);
   await popup.waitForSelector("whatsapp-message-popup #country-trigger", { timeout: 10_000 });
   await popup.waitForSelector("#country-trigger .country-picker__flag-img", { timeout: 10_000 });
 
@@ -169,10 +197,7 @@ try {
 
   const optionsPage = await browser.newPage();
   await optionsPage.setViewport({ width: 1200, height: 800, deviceScaleFactor: 1 });
-  await optionsPage.goto(`${extensionOrigin}/${expectedManifest.options_ui.page}`, {
-    waitUntil: "domcontentloaded",
-    timeout: 20_000,
-  });
+  await navigateToExtensionPage(optionsPage, `${extensionOrigin}/${expectedManifest.options_ui.page}`);
   await optionsPage.waitForSelector("extension-settings-page #country-trigger", {
     timeout: 10_000,
   });
