@@ -157,3 +157,36 @@ Ao adicionar qualquer novo sink de renderização (`innerHTML`, nova rota de men
 campo de storage exposto a uma página), rode `npm run verify` antes de commitar — o SAST
 (`lint:sast`) falha imediatamente se o novo código não estiver revisado, e a suíte de
 testes acima cobre os pontos de entrada já mapeados neste documento.
+
+## 8. Security Invariants
+
+Regras estruturais que qualquer mudança futura deve preservar — quebrar uma delas exige
+atualizar deliberadamente o teste de regressão associado, nunca apenas remover a checagem:
+
+1. **Sem `externally_connectable` e sem `optional_permissions`.** `chrome.runtime.onMessage`
+   só é alcançável pelos próprios contextos da extensão; nenhuma API opcional além do acesso
+   a host (`optional_host_permissions`, já revisado) pode ser solicitada em runtime sem
+   revisão explícita. Guardado por `tests/manifest.test.js` e `scripts/validate-extension.mjs`.
+2. **Todo handler de mensagem privilegiado valida `sender.id` e a origem esperada** (ex.:
+   `sender.tab` para mensagens de content script) antes de agir — nunca confia apenas na
+   ausência de `externally_connectable` no manifesto. Guardado por
+   `tests/background.integration.test.js`.
+3. **Nenhum dado de rede sai da extensão fora de `https://wa.me/...`, iniciado pelo usuário.**
+   Sem `fetch`/`XMLHttpRequest`, sem telemetria, sem backend. Guardado por
+   `tests/networkSecurity.test.js`.
+4. **Todo sink de `innerHTML`/`outerHTML`/`insertAdjacentHTML` interpola apenas dado
+   estático (i18n, `COUNTRIES`, `TUTORIAL_STEPS`, `DONATION_METHODS`) ou dado já resolvido
+   por uma allow-list** (`getCountryByCode`, `normalizeSelectedNumber`, `escapeHtml()`) —
+   nunca uma string bruta de `chrome.storage`, query string ou seleção de página. Guardado
+   por `eslint-plugin-no-unsanitized` (`npm run lint:sast`) e pelos testes de integração de
+   cada tela (`popup`, `ddi`, `options`, `donationModal`).
+5. **Nenhuma credencial privada é distribuída no pacote da extensão.** Os únicos dados
+   estáticos de contato em `src/utils/donation.js` (e-mail PayPal, payload PIX, link
+   Revolut) são informação de recebimento intencionalmente pública, nunca um segredo de
+   API/serviço. Guardado por `tests/security.test.js` (`no hardcoded secrets in shipped
+   source`).
+6. **Toda mudança de segurança ganha um teste de regressão** no arquivo de teste
+   correspondente ao componente alterado — não apenas uma correção silenciosa.
+
+Ao adicionar uma nova skill/feature: rode `npm run verify` (inclui `lint`, `lint:sast`,
+`validate:extension`, a suíte inteira de testes e o build) antes de abrir um PR.

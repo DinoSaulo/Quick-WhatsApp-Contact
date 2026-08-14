@@ -99,6 +99,16 @@ describe("Chrome Web Store manifest readiness", () => {
   it("does not declare externally_connectable, keeping runtime.onMessage internal-only", () => {
     expect(manifest.externally_connectable).toBeUndefined();
   });
+
+  // `permissions` and `optional_host_permissions` above are both pinned with exact-equality
+  // assertions, so a silent addition to either already fails this suite. `optional_permissions`
+  // (a *different* manifest key, for non-host APIs like clipboardRead/clipboardWrite, tabs,
+  // nativeMessaging, management, debugger, identity, proxy, webRequest) has no such guard today
+  // because the manifest has never declared it — this test exists so introducing that key for the
+  // first time is a deliberate, reviewed choice instead of an unnoticed permission-scope increase.
+  it("does not declare optional_permissions, keeping every requestable API on the reviewed allowlist", () => {
+    expect(manifest.optional_permissions).toBeUndefined();
+  });
 });
 
 describe("Firefox readiness", () => {

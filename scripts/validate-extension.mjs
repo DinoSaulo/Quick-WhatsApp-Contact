@@ -36,6 +36,10 @@ assert(
   manifest.externally_connectable === undefined,
   "externally_connectable would let arbitrary websites message the background service worker"
 );
+assert(
+  manifest.optional_permissions === undefined,
+  "optional_permissions must be deliberately reviewed before being requested at runtime"
+);
 
 const referencedPaths = [
   manifest.background?.service_worker,
