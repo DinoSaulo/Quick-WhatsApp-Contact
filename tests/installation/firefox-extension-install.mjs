@@ -7,18 +7,38 @@
 //    reloadAllExtensions()/reloadExtensionBySourceDir()/exit() — there is no standalone
 //    "uninstall" call for a temporary add-on the way Chrome's Extensions.uninstall CDP command
 //    gives puppeteer. "Uninstall" here is therefore exit(): closing the runner is the only
-//    supported way to remove a temporary add-on, so this test asserts the runner (and the
-//    moz-extension:// pages it owned) are gone afterward, rather than "extension removed, browser
-//    and other tabs stay up" the way the Chrome test can.
+//    supported way to remove a temporary add-on, so this test asserts Firefox itself is gone
+//    afterward, rather than "extension removed, browser and other tabs stay up" the way the
+//    Chrome test can. Confirmed directly: extensionRunner.exit() does not actually terminate
+//    Firefox while this script's own BiDi connection (`browser`) is still attached — Firefox
+//    stayed fully alive and responsive to BiDi commands 75+ seconds after exit() resolved in that
+//    order. Disconnecting `browser` *before* calling exit() instead lets Firefox quit within
+//    about a second — see the comment at that call site.
 //  - Page-level checks (does the popup render, do settings apply, does the options page fit its
 //    viewport): web-ext has no page-scripting API at all. This connects puppeteer-core to the
 //    *same* Firefox process via WebDriver BiDi (Firefox's `--remote-debugging-port` flag) to
 //    drive moz-extension:// pages, alongside web-ext handling the extension lifecycle.
-//  - The moz-extension:// origin's UUID is normally random per install and per profile, which
-//    would make it undiscoverable before the fact. It's pinned deterministically here by
-//    pre-seeding the `extensions.webextensions.uuids` profile preference with a UUID this script
-//    already knows, mapped to this extension's browser_specific_settings.gecko.id (manifest.json)
-//    — the same technique Selenium's own Firefox extension-testing guide documents.
+//  - The moz-extension:// origin's UUID is normally random per install and per profile. This
+//    script *attempts* to pin it deterministically by pre-seeding the
+//    `extensions.webextensions.uuids` profile preference with a UUID it already knows, mapped to
+//    this extension's browser_specific_settings.gecko.id (manifest.json) — the same technique
+//    Selenium's own Firefox extension-testing guide documents. In practice that pref has been
+//    observed to not always take effect against a fresh temporary profile (web-ext's install
+//    model), so nothing below *trusts* EXTENSION_UUID — the real origin is always read back from
+//    an actual open extension page instead (see driverPage below). The pref is left in place only
+//    because it's harmless and may still help in environments where it does take effect.
+//  - Neither Puppeteer nor a foreign page can navigate a tab to a moz-extension:// page that isn't
+//    web-accessible: page.goto("moz-extension://...") is rejected outright by Firefox's WebDriver
+//    BiDi implementation ("Navigation to ... is not allowed in this context"), and even a script
+//    already running in the browser (e.g. `window.location.href = "moz-extension://..."` from
+//    about:blank) is denied by Firefox's WebExtension isolation ("Location.href setter: Access to
+//    '...' from script denied") — the same protection that stops an arbitrary website from loading
+//    a non-web-accessible extension page. The one thing that *is* always allowed is the
+//    extension's own privileged code opening its own pages, via chrome.tabs.create() — exactly
+//    what this extension's background.js already does for its onboarding tab (see
+//    openOnboardingTab()). So every moz-extension:// page below is opened by calling
+//    chrome.tabs.create() from inside that already-open onboarding tab, not by driving navigation
+//    through Puppeteer — see openExtensionTab() below.
 //
 // Scenarios NOT covered here, and why: context-menu registration (Firefox exposes no
 // programmatic way to query an installed context menu item from outside the background context,
@@ -66,32 +86,44 @@ async function connectWithRetries(browserWSEndpoint, { attempts = 20, delay = 25
   return undefined;
 }
 
-// Firefox's WebDriver BiDi implementation rejects a browsingContext.navigate command whose target
-// uses a privileged scheme — page.goto("moz-extension://...") fails with a ProtocolError
-// ("Navigation to ... is not allowed in this context"). That restriction is specifically on
-// navigation *issued by the WebDriver client*; once a page's own script changes
-// window.location.href, Firefox treats it as an ordinary top-level navigation (the same thing
-// that happens if a user types the URL into the address bar), which isn't blocked. So every
-// moz-extension:// page below is reached by first goto()-ing about:blank (an unprivileged target)
-// and then triggering the real navigation from inside the page via evaluate().
+// Opens `url` (a moz-extension:// page belonging to this same extension) by asking the extension
+// itself to do it — evaluate()-ing chrome.tabs.create() inside `driverPage`, an already-open
+// extension-origin page — rather than driving navigation through Puppeteer (see the file-level
+// comment above for why the obvious approaches don't work). `onPageFound`, if given, runs against
+// the new tab as soon as it's detected, before this function waits for it to finish loading —
+// use it to attach listeners (e.g. "pageerror") that need to be in place before/while the page's
+// own scripts run, or to set its viewport before layout-dependent content settles.
 //
-// That in-page navigation tears down the JS realm the evaluate() script was running in while its
-// result is still in flight, which Puppeteer can surface as the evaluate() call itself hanging or
-// rejecting (a known gotcha independent of Firefox) — so that promise is deliberately not trusted
-// as the "navigation happened" signal. waitUntil() polling page.url() below is what actually
-// confirms the navigation completed.
-async function navigateToExtensionPage(page, url, timeout = 20_000) {
-  await page.goto("about:blank", { waitUntil: "domcontentloaded" });
-  await page
-    .evaluate((targetUrl) => {
-      window.location.href = targetUrl;
-    }, url)
-    .catch(() => {});
+// One wrinkle confirmed by direct inspection (document.location.href, document.readyState,
+// document.title, and waitForSelector() all behave correctly on the returned page): a tab opened
+// this way is invisible to Puppeteer's own navigation bookkeeping, so page.url() on it stays
+// "about:blank" forever even after it has fully loaded — Puppeteer only updates that cache for
+// navigations it initiated itself. The tab's actual content and interactivity are unaffected;
+// page.url() specifically just isn't a trustworthy signal for it, so nothing here or below reads
+// it. Readiness is instead confirmed the same way real page content would be: evaluate()-ing
+// document.readyState inside the tab itself.
+async function openExtensionTab(driverPage, browser, url, { onPageFound } = {}) {
+  const pagesBefore = await browser.pages();
+
+  await driverPage.evaluate(async (targetUrl) => {
+    await chrome.tabs.create({ url: targetUrl });
+  }, url);
+
+  let newPage;
+  await waitUntil(async () => {
+    const pagesNow = await browser.pages();
+    newPage = pagesNow.find((candidate) => !pagesBefore.includes(candidate));
+    return Boolean(newPage);
+  }, `Timed out waiting for a new tab to open for ${url}.`);
+
+  await onPageFound?.(newPage);
+
   await waitUntil(
-    () => page.url() === url,
-    `Timed out waiting for the page-initiated navigation to ${url}.`,
-    timeout,
+    () => newPage.evaluate(() => document.readyState === "complete"),
+    `Timed out waiting for ${url} to finish loading.`,
   );
+
+  return newPage;
 }
 
 assert.ok(
@@ -112,7 +144,6 @@ assert.ok(
 );
 
 const biDiPort = await getAvailablePort();
-const extensionOrigin = `moz-extension://${EXTENSION_UUID}`;
 
 let extensionRunner;
 let browser;
@@ -133,14 +164,32 @@ try {
 
   browser = await connectWithRetries(`ws://127.0.0.1:${biDiPort}/session`);
 
+  // background.js's onInstalled listener opens an onboarding tab on a fresh install (see
+  // openOnboardingTab() there). That tab is this test's entry point into the extension's own
+  // privileged context — see the file-level comment above for why it's needed — and its origin is
+  // read back from it directly rather than assumed from EXTENSION_UUID/the pref above.
+  let driverPage;
+  await waitUntil(async () => {
+    const pages = await browser.pages();
+    driverPage = pages.find((candidate) => candidate.url().startsWith("moz-extension://"));
+    return Boolean(driverPage);
+  }, "Timed out waiting for the extension's onboarding tab to open after install.");
+
+  const extensionId = new URL(driverPage.url()).host;
+  const extensionOrigin = `moz-extension://${extensionId}`;
   const popupUrl = `${extensionOrigin}/${expectedManifest.action.default_popup}`;
 
-  const popup = await browser.newPage();
   const pageErrors = [];
-  popup.on("pageerror", (error) => pageErrors.push(String(error)));
-
+  const popup = await openExtensionTab(driverPage, browser, popupUrl, {
+    onPageFound: (page) => page.on("pageerror", (error) => pageErrors.push(String(error))),
+  });
+  // setViewport() on a tab opened out-of-band (see openExtensionTab's comment) has to wait until
+  // after the tab has actually finished loading — called any earlier, Firefox's BiDi
+  // implementation throws ("can't access property clientHeight, browser is null") because the
+  // browsing context's underlying browser-window reference isn't attached yet. CSS layout still
+  // recomputes correctly against the new viewport regardless of when it's set relative to load,
+  // so this doesn't affect the layout assertions below.
   await popup.setViewport({ width: 360, height: 600, deviceScaleFactor: 1 });
-  await navigateToExtensionPage(popup, popupUrl);
   await popup.waitForSelector("whatsapp-message-popup #country-trigger", { timeout: 10_000 });
   await popup.waitForSelector("#country-trigger .country-picker__flag-img", { timeout: 10_000 });
 
@@ -167,7 +216,13 @@ try {
     };
   });
 
-  assert.equal(installedState.runtimeId, EXTENSION_UUID);
+  // Unlike Chrome (where chrome.runtime.id and the chrome-extension:// host are the same value),
+  // Firefox's chrome.runtime.id/browser.runtime.id returns the manifest-declared, stable
+  // browser_specific_settings.gecko.id — not the moz-extension:// origin's UUID, which is random
+  // per profile and only used for resource URLs. extensionId (the UUID, asserted implicitly by
+  // every moz-extension://${extensionId}/... page having loaded above) and geckoId (this
+  // extension's actual identity) are two different, both-correct values.
+  assert.equal(installedState.runtimeId, geckoId);
   assert.equal(installedState.manifest.name, expectedManifest.name);
   assert.equal(installedState.manifest.version, expectedManifest.version);
   assert.ok(installedState.title, "O popup não possui título.");
@@ -195,9 +250,13 @@ try {
     });
   });
 
-  const optionsPage = await browser.newPage();
+  const optionsPage = await openExtensionTab(
+    driverPage,
+    browser,
+    `${extensionOrigin}/${expectedManifest.options_ui.page}`,
+  );
+  // See the comment on the equivalent popup.setViewport() call above — must run after load.
   await optionsPage.setViewport({ width: 1200, height: 800, deviceScaleFactor: 1 });
-  await navigateToExtensionPage(optionsPage, `${extensionOrigin}/${expectedManifest.options_ui.page}`);
   await optionsPage.waitForSelector("extension-settings-page #country-trigger", {
     timeout: 10_000,
   });
@@ -235,12 +294,31 @@ try {
   // "Uninstall": popup and optionsPage are deliberately left open (mirrors the Chrome test's
   // second, pages-still-open uninstall cycle) — exit() is the only teardown web-ext's temporary
   // add-on model supports, so it's exercised the harder way, not with tabs pre-closed.
+  //
+  // This script's own `browser` connection has to be disconnected *before* calling
+  // extensionRunner.exit(), not after: a lingering BiDi client keeps Firefox from actually
+  // quitting even once exit() asks it to (confirmed directly — leaving `browser` connected across
+  // exit() left Firefox fully alive and still answering BiDi commands 75+ seconds later; calling
+  // browser.disconnect() first instead makes it quit within about a second). That also means
+  // browser.connected can't be used to confirm the uninstall — it's this script's own flag, not a
+  // signal about the remote process, and disconnecting it first makes it false immediately by
+  // construction either way. A fresh connection attempt to the same endpoint failing is what
+  // actually proves the process is gone.
+  await browser.disconnect();
   await extensionRunner.exit();
 
-  await waitUntil(
-    () => browser.connected === false,
-    "A conexão com o Firefox continuou ativa após exit() do runner (desinstalação).",
-  );
+  await waitUntil(async () => {
+    try {
+      const stillRunning = await puppeteer.connect({
+        browserWSEndpoint: `ws://127.0.0.1:${biDiPort}/session`,
+        protocol: "webDriverBiDi",
+      });
+      await stillRunning.disconnect();
+      return false;
+    } catch {
+      return true;
+    }
+  }, "O Firefox continuou respondendo ao WebDriver BiDi após exit() do runner (desinstalação).");
 
   console.log("Firefox extension lifecycle smoke test passed.");
   console.log(`Extension origin: ${extensionOrigin}`);
