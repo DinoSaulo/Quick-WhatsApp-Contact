@@ -74,7 +74,7 @@ async function waitUntil(predicate, failureMessage, timeout = 10_000) {
   assert.fail(failureMessage);
 }
 
-async function connectWithRetries(browserWSEndpoint, { attempts = 20, delay = 250 } = {}) {
+async function connectWithRetries(browserWSEndpoint, { attempts = 30, delay = 300 } = {}) {
   for (let attempt = 1; attempt <= attempts; attempt++) {
     try {
       return await puppeteer.connect({ browserWSEndpoint, protocol: "webDriverBiDi" });
@@ -84,6 +84,30 @@ async function connectWithRetries(browserWSEndpoint, { attempts = 20, delay = 25
     }
   }
   return undefined;
+}
+
+// web-ext already captures the Firefox child process's own stdout/stderr internally (see
+// node_modules/web-ext/lib/firefox/index.js) and would log it via its own logger — but only at
+// debug/trace level, which stays silent unless web-ext's *CLI* --verbose flag is used; the
+// programmatic webExt.cmd.run() API this script calls has no equivalent switch. So this attaches
+// a second, independent listener directly to the same child process (extensionRunner is a
+// MultiExtensionRunner wrapping one FirefoxDesktopExtensionRunner per browser instance — both are
+// plain, public fields on the pinned web-ext@10.6.0 this repo uses, not officially documented
+// API, so this is diagnostics-only and never anything this test's pass/fail depends on) purely so
+// that if Firefox itself ever fails or crashes, the *actual* Firefox-side error ends up in the CI
+// log instead of only the generic ECONNREFUSED our own WebSocket connection attempt sees.
+function captureFirefoxProcessOutput(extensionRunner) {
+  const lines = [];
+  const firefoxProcess = extensionRunner?.extensionRunners?.[0]?.runningInfo?.firefox;
+
+  if (!firefoxProcess) {
+    return { lines, firefoxProcess: null };
+  }
+
+  firefoxProcess.stdout?.on("data", (chunk) => lines.push(`[firefox stdout] ${chunk}`));
+  firefoxProcess.stderr?.on("data", (chunk) => lines.push(`[firefox stderr] ${chunk}`));
+
+  return { lines, firefoxProcess };
 }
 
 // Opens `url` (a moz-extension:// page belonging to this same extension) by asking the extension
@@ -162,7 +186,21 @@ try {
     { shouldExitProgram: false },
   );
 
-  browser = await connectWithRetries(`ws://127.0.0.1:${biDiPort}/session`);
+  const { lines: firefoxOutputLines, firefoxProcess } = captureFirefoxProcessOutput(extensionRunner);
+
+  try {
+    browser = await connectWithRetries(`ws://127.0.0.1:${biDiPort}/session`);
+  } catch (error) {
+    const processState = firefoxProcess
+      ? `Firefox child process: exitCode=${firefoxProcess.exitCode} signalCode=${firefoxProcess.signalCode} killed=${firefoxProcess.killed}`
+      : "Firefox child process handle unavailable (web-ext's internal shape may have changed).";
+    const outputTail = firefoxOutputLines.slice(-60).join("") || "(nothing captured)";
+    throw new Error(
+      `Could not connect to Firefox's WebDriver BiDi endpoint at ws://127.0.0.1:${biDiPort}/session ` +
+        `after retrying. ${processState}\n--- last Firefox stdout/stderr lines ---\n${outputTail}` +
+        `\n--- original connection error ---\n${error?.stack ?? error}`,
+    );
+  }
 
   // background.js's onInstalled listener opens an onboarding tab on a fresh install (see
   // openOnboardingTab() there). That tab is this test's entry point into the extension's own
