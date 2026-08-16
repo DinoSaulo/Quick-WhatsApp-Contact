@@ -8,6 +8,17 @@ export const STANDARD_BROWSER_ARGS = [
   "--disable-gpu", // Disable GPU for headless CI
 ];
 
+// --disable-extensions must NOT be in this list: extension-install.mjs — the only caller that
+// feeds createBrowserArgs()'s output into a real browser launch — always passes
+// enableExtensions: true precisely so it can load and test our own extension, and Chrome's
+// --disable-extensions has no "re-enable" counterpart a later flag can undo (see the matching
+// comment in puppeteer-helpers.mjs's launchBrowserWithStabilityFlags(), which had the exact same
+// flag duplicated and was fixed first). This copy was missed in that pass because isCI here
+// defaults from the real process.env.CI, which is only "true" inside actual CI — a local run
+// (isCI false by default) never exercises this list at all, so the fix looked complete against
+// local verification alone and only broke again once it reached GitHub Actions, where CI=true
+// unconditionally. Confirmed as the cause of a repeat "waiting for service worker" 30s timeout in
+// CI, after the first fix, on already-fixed code.
 export const CI_STABILITY_FLAGS = [
   "--disable-background-networking",
   "--disable-breakpad",
@@ -15,7 +26,6 @@ export const CI_STABILITY_FLAGS = [
   "--disable-component-extensions-with-background-pages",
   "--disable-component-update",
   "--disable-default-apps",
-  "--disable-extensions",
   "--disable-features=ChromeHeadless",
   "--disable-geolocation",
   "--disable-metrics",

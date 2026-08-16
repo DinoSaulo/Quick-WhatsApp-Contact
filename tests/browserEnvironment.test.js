@@ -70,13 +70,25 @@ describe("installation browser environment", () => {
     expect(args).toEqual(
       expect.arrayContaining([
         "--disable-background-networking",
-        "--disable-extensions",
         "--enable-features=NetworkService,NetworkServiceInProcess",
       ]),
     );
     expect(createBrowserArgs({ isRoot: false, isCI: false })).not.toContain(
       "--disable-background-networking",
     );
+  });
+
+  it("never adds --disable-extensions, in CI or not", () => {
+    // extension-install.mjs always launches with enableExtensions: true specifically to load and
+    // test our own extension. --disable-extensions has no "re-enable" counterpart a later flag
+    // can undo, so its mere presence anywhere on the command line silently defeats
+    // enableExtensions — the extension "installs" (Puppeteer's CDP bookkeeping doesn't check
+    // whether Chrome actually loaded it) but its service worker never starts, and
+    // browser.waitForTarget() for it times out. This exact flag was accidentally reintroduced
+    // once already via this file's CI_STABILITY_FLAGS after being removed from
+    // puppeteer-helpers.mjs's separate copy — a real, confirmed CI regression, not a hypothetical.
+    expect(createBrowserArgs({ isRoot: true, isCI: true })).not.toContain("--disable-extensions");
+    expect(createBrowserArgs({ isRoot: false, isCI: true })).not.toContain("--disable-extensions");
   });
 
   it("returns a fresh argument array for every browser launch", () => {
