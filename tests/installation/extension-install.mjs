@@ -85,6 +85,21 @@ try {
   // de desinstalação abaixo (service worker consumindo `startsWith(extensionOrigin)`) já cobrem.
   console.log("🔍 Verifying context menu registration...");
   const worker = await workerTarget.worker();
+
+  // CDP can attach to and evaluate against a service worker target before Chrome has actually
+  // finished initializing that worker's global scope — a confirmed, Won't-Fix Chromium bug
+  // (https://issues.chromium.org/issues/341213355). Evaluating too early here doesn't throw a
+  // useful error; it silently sees a bare worker global with no extension APIs injected yet
+  // (confirmed directly: chrome.runtime undefined, chrome.contextMenus undefined, only the
+  // ambient chrome.csi/chrome.loadTimes every page/worker gets), so `chrome.contextMenus.update`
+  // below would throw "Cannot read properties of undefined" — not because the permission is
+  // missing, but because of this race. Poll for chrome.runtime's presence first; verified locally
+  // this resolves in ~100-150ms (2 polls), consistently across repeated runs.
+  await waitUntil(
+    () => worker.evaluate(() => typeof chrome !== "undefined" && typeof chrome.runtime !== "undefined"),
+    "Timed out waiting for the service worker's extension APIs (chrome.runtime) to initialize.",
+  );
+
   let contextMenuRegistered = false;
   try {
     contextMenuRegistered = await worker.evaluate(
