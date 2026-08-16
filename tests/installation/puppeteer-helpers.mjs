@@ -227,10 +227,23 @@ export async function waitUntilWithDiagnostics(
  */
 export function launchBrowserWithStabilityFlags(options = {}) {
   // CI-specific stability improvements
+  //
+  // --disable-extensions must NOT be in this list: extension-install.mjs — this helper's only
+  // caller — always passes enableExtensions: true precisely so it can load and test our own
+  // extension. Puppeteer-core's ChromeLauncher reads that flag itself and pushes
+  // --enable-unsafe-extension-debugging ahead of these args (see
+  // node_modules/puppeteer-core/lib/esm/puppeteer/node/ChromeLauncher.js's
+  // computeLaunchArguments()), then appends this function's `args` *after* it. Chrome's
+  // --disable-extensions has no "re-enable" counterpart a later flag can undo, so its mere
+  // presence anywhere on the command line disables the extensions system outright — silently
+  // overriding --enable-unsafe-extension-debugging regardless of order. The extension still
+  // "installs" successfully (Puppeteer's own CDP-level bookkeeping doesn't check whether Chrome
+  // actually loaded it), but its service worker never starts, and browser.waitForTarget(...) for
+  // it times out after 30s. Confirmed as the cause of that exact timeout — reproduced both in CI
+  // (Windows) and locally, since this is a Chrome flag conflict, not an OS-specific issue.
   const defaultArgs = [
     "--disable-dev-shm-usage", // Prevent /dev/shm issues in Docker/CI
     "--disable-gpu", // Disable GPU acceleration for CI
-    "--disable-extensions", // Disable other extensions
     "--disable-plugins", // Disable browser plugins
     "--disable-sync", // Disable Chrome sync
     "--metrics-recording-only", // Reduce background work
