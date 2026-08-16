@@ -272,7 +272,13 @@ try {
         "extensions.webextensions.uuids": JSON.stringify({ [geckoId]: EXTENSION_UUID }),
       },
       args: ["--headless", `--remote-debugging-port=${biDiPort}`],
-      reload: false,
+      // web-ext's actual option is noReload, not reload — the previous `reload: false` here was
+      // silently ignored (unrecognized key), leaving the file watcher active. Confirmed as the
+      // cause of a real CI failure: it fired a spurious reload right after install (mtime noise
+      // from the `npm run build` step moments earlier making dist/extension/{assets,icons} look
+      // "changed"), tearing down the extension's background context before this script's wait for
+      // the onboarding tab could see it, and turning a working install into a timeout.
+      noReload: true,
     },
     { shouldExitProgram: false },
   );
