@@ -47,12 +47,16 @@ describe("installation browser environment", () => {
     expect(createBrowserArgs({ isRoot: true })).toEqual([
       "--no-first-run",
       "--no-default-browser-check",
+      "--disable-dev-shm-usage",
+      "--disable-gpu",
       "--no-sandbox",
       "--disable-setuid-sandbox",
     ]);
     expect(createBrowserArgs({ isRoot: false })).toEqual([
       "--no-first-run",
       "--no-default-browser-check",
+      "--disable-dev-shm-usage",
+      "--disable-gpu",
     ]);
   });
 

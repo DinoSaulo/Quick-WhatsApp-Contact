@@ -6,20 +6,27 @@ import {
   createBrowserArgs,
   findBrowserExecutable,
 } from "./browser-environment.mjs";
+import {
+  launchBrowserWithStabilityFlags,
+  safeBrowserClose,
+  safePageClose,
+  safeEvaluate,
+  safeGoto,
+  safeWaitForSelector,
+  waitUntilWithDiagnostics,
+  captureBrowserDiagnostics,
+} from "./puppeteer-helpers.mjs";
 
 const projectRoot = resolve(import.meta.dirname, "../..");
 const extensionPath = resolve(projectRoot, "dist", "extension");
 const manifestPath = resolve(extensionPath, "manifest.json");
 
 async function waitUntil(predicate, failureMessage, timeout = 10_000) {
-  const deadline = Date.now() + timeout;
-
-  while (Date.now() < deadline) {
-    if (await predicate()) return;
-    await new Promise((resolvePromise) => setTimeout(resolvePromise, 100));
+  try {
+    await waitUntilWithDiagnostics(predicate, failureMessage, { timeout });
+  } catch (error) {
+    assert.fail(error.message);
   }
-
-  assert.fail(failureMessage);
 }
 
 assert.ok(
@@ -43,26 +50,31 @@ try {
   // remains the isolation boundary in this CI-only scenario.
   const browserArgs = createBrowserArgs();
 
-  browser = await puppeteer.launch({
+  const launchOptions = launchBrowserWithStabilityFlags({
     executablePath,
     headless: true,
     pipe: true,
     enableExtensions: true,
-    timeout: 30_000,
     args: browserArgs,
   });
 
+  console.log("🚀 Launching browser with stability flags...");
+  browser = await puppeteer.launch(launchOptions);
+
+  console.log("📦 Installing extension...");
   const extensionId = await browser.installExtension(extensionPath);
   const extensionOrigin = `chrome-extension://${extensionId}`;
 
   assert.match(extensionId, /^[a-p]{32}$/);
+  console.log(`✅ Extension installed: ${extensionId}`);
 
+  console.log("⏳ Waiting for service worker target...");
   const workerTarget = await browser.waitForTarget(
     (target) =>
       target.type() === "service_worker" &&
       target.url().startsWith(extensionOrigin) &&
       target.url().endsWith("/src/background.js"),
-    { timeout: 20_000 },
+    { timeout: 30_000 },
   );
 
   // O contextMenus permission só vale algo se o item realmente for registrado no worker de
@@ -71,15 +83,27 @@ try {
   // um getAll(). A metade "removido na desinstalação" não precisa de uma checagem própria: uma
   // vez desinstalada, o worker que hospedava esse menu deixa de existir, o que as verificações
   // de desinstalação abaixo (service worker consumindo `startsWith(extensionOrigin)`) já cobrem.
+  console.log("🔍 Verifying context menu registration...");
   const worker = await workerTarget.worker();
-  const contextMenuRegistered = await worker.evaluate(
-    () =>
-      new Promise((resolveCheck) => {
-        chrome.contextMenus.update("quick-whatsapp-contact.send", {}, () => {
-          resolveCheck(!chrome.runtime.lastError);
-        });
-      }),
-  );
+  let contextMenuRegistered = false;
+  try {
+    contextMenuRegistered = await worker.evaluate(
+      () =>
+        new Promise((resolveCheck) => {
+          chrome.contextMenus.update("quick-whatsapp-contact.send", {}, () => {
+            resolveCheck(!chrome.runtime.lastError);
+          });
+        }),
+    );
+  } catch (error) {
+    console.error(`⚠️  Context menu check failed: ${error.message}`);
+    // Log diagnostics before re-throwing
+    if (browser) {
+      const diag = await captureBrowserDiagnostics(browser);
+      console.error(`Browser state: ${JSON.stringify(diag, null, 2)}`);
+    }
+    throw error;
+  }
   assert.equal(
     contextMenuRegistered,
     true,
@@ -88,24 +112,27 @@ try {
 
   const popupUrl = `${extensionOrigin}/${expectedManifest.action.default_popup}`;
 
+  console.log("📄 Opening popup page...");
   const popup = await browser.newPage();
   const pageErrors = [];
   popup.on("pageerror", (error) => pageErrors.push(String(error)));
 
   await popup.setViewport({ width: 360, height: 600, deviceScaleFactor: 1 });
 
-  await popup.goto(popupUrl, {
+  await safeGoto(popup, popupUrl, {
     waitUntil: "domcontentloaded",
-    timeout: 20_000,
+    timeout: 30_000,
   });
-  await popup.waitForSelector("whatsapp-message-popup #country-trigger", {
+  console.log("⏳ Waiting for popup content selectors...");
+  await safeWaitForSelector(popup, "whatsapp-message-popup #country-trigger", {
     timeout: 10_000,
   });
-  await popup.waitForSelector("#country-trigger .country-picker__flag-img", {
+  await safeWaitForSelector(popup, "#country-trigger .country-picker__flag-img", {
     timeout: 10_000,
   });
 
-  const installedState = await popup.evaluate(() => {
+  console.log("🔍 Evaluating popup state...");
+  const installedState = await safeEvaluate(popup, () => {
     const flag = document.querySelector("#country-trigger .country-picker__flag-img");
     const panel = document.querySelector(".panel");
     const panelBounds = panel?.getBoundingClientRect();
@@ -154,7 +181,8 @@ try {
   );
   assert.deepEqual(pageErrors, [], `Erros no popup: ${pageErrors.join("; ")}`);
 
-  await popup.evaluate(async () => {
+  console.log("💾 Setting storage preferences...");
+  await safeEvaluate(popup, async () => {
     await chrome.storage.sync.set({
       "quick-whatsapp-contact.auto-highlight-enabled": false,
       "quick-whatsapp-contact.dark-mode-enabled": true,
@@ -163,17 +191,19 @@ try {
     });
   });
 
+  console.log("📄 Opening options page...");
   const optionsPage = await browser.newPage();
   await optionsPage.setViewport({ width: 1200, height: 800, deviceScaleFactor: 1 });
-  await optionsPage.goto(
-    `${extensionOrigin}/${expectedManifest.options_ui.page}`,
-    { waitUntil: "domcontentloaded", timeout: 20_000 },
-  );
-  await optionsPage.waitForSelector("extension-settings-page #country-trigger", {
+  await safeGoto(optionsPage, `${extensionOrigin}/${expectedManifest.options_ui.page}`, {
+    waitUntil: "domcontentloaded",
+    timeout: 30_000,
+  });
+  await safeWaitForSelector(optionsPage, "extension-settings-page #country-trigger", {
     timeout: 10_000,
   });
 
-  const optionsState = await optionsPage.evaluate(() => {
+  console.log("🔍 Evaluating options page state...");
+  const optionsState = await safeEvaluate(optionsPage, () => {
     const shell = document.querySelector(".options-shell");
     const bounds = shell?.getBoundingClientRect();
     const brand = document.querySelector(".options-brand img");
@@ -226,11 +256,14 @@ try {
     "https://github.com/DinoSaulo/Quick-WhatsApp-Contact",
   );
   assert.equal(optionsState.authorUrl, "https://github.com/DinoSaulo");
-  await optionsPage.close();
+  
+  console.log("🔒 Closing pages...");
+  await safePageClose(optionsPage);
+  await safePageClose(popup);
 
   // A página aberta também é um alvo da extensão; feche-a para que somente os
   // processos mantidos pela instalação sejam considerados na desinstalação.
-  await popup.close();
+  console.log("🗑️  Uninstalling extension...");
   await browser.uninstallExtension(extensionId);
 
   await waitUntil(
@@ -275,29 +308,33 @@ try {
   // desinstalação não deixa nenhum registro (worker, storage) que impeça uma nova instalação
   // limpa, e (2) chrome.storage.sync é escopado por instalação — as configurações setadas antes
   // da desinstalação não devem "ressuscitar" na reinstalação.
+  console.log("📦 Reinstalling extension to verify clean state...");
   const reinstalledExtensionId = await browser.installExtension(extensionPath);
   assert.match(reinstalledExtensionId, /^[a-p]{32}$/);
 
   const reinstalledOrigin = `chrome-extension://${reinstalledExtensionId}`;
 
+  console.log("⏳ Waiting for reinstalled service worker...");
   await browser.waitForTarget(
     (target) =>
       target.type() === "service_worker" &&
       target.url().startsWith(reinstalledOrigin) &&
       target.url().endsWith("/src/background.js"),
-    { timeout: 20_000 },
+    { timeout: 30_000 },
   );
 
   const reinstalledOptions = await browser.newPage();
-  await reinstalledOptions.goto(
+  console.log("📄 Verifying clean settings on reinstalled extension...");
+  await safeGoto(
+    reinstalledOptions,
     `${reinstalledOrigin}/${expectedManifest.options_ui.page}`,
-    { waitUntil: "domcontentloaded", timeout: 20_000 },
+    { waitUntil: "domcontentloaded", timeout: 30_000 },
   );
-  await reinstalledOptions.waitForSelector("extension-settings-page #country-trigger", {
+  await safeWaitForSelector(reinstalledOptions, "extension-settings-page #country-trigger", {
     timeout: 10_000,
   });
 
-  const reinstalledSettings = await reinstalledOptions.evaluate(() => ({
+  const reinstalledSettings = await safeEvaluate(reinstalledOptions, () => ({
     autoHighlight: document.querySelector("#auto-highlight")?.checked,
     darkMode: document.querySelector("#dark-mode")?.checked,
     language: document.querySelector("#language")?.value,
@@ -329,12 +366,13 @@ try {
   // ainda abertos — o caminho mais realista (um usuário não fecha suas abas antes de remover a
   // extensão em chrome://extensions), e diferente do primeiro ciclo acima, que fecha o popup
   // antes de desinstalar.
+  console.log("🔄 Testing uninstall with open pages...");
   const reinstalledPopup = await browser.newPage();
-  await reinstalledPopup.goto(`${reinstalledOrigin}/${expectedManifest.action.default_popup}`, {
+  await safeGoto(reinstalledPopup, `${reinstalledOrigin}/${expectedManifest.action.default_popup}`, {
     waitUntil: "domcontentloaded",
-    timeout: 20_000,
+    timeout: 30_000,
   });
-  await reinstalledPopup.waitForSelector("whatsapp-message-popup #country-trigger", {
+  await safeWaitForSelector(reinstalledPopup, "whatsapp-message-popup #country-trigger", {
     timeout: 10_000,
   });
 
@@ -345,7 +383,7 @@ try {
     "O popup e/ou a página de opções não foram fechados automaticamente ao desinstalar com as abas abertas.",
   );
 
-  console.log("Chrome/Chromium extension lifecycle smoke test passed.");
+  console.log("✅ Chrome/Chromium extension lifecycle smoke test passed.");
   console.log(`Browser: ${await browser.version()}`);
   console.log(`Extension ID: ${extensionId}`);
   console.log("Install validation: passed");
@@ -354,6 +392,18 @@ try {
   console.log("Reinstall validation: passed");
   console.log("Settings-not-resurrected validation: passed");
   console.log("Uninstall-with-pages-open validation: passed");
+} catch (error) {
+  console.error("❌ Test failed:", error);
+  if (browser) {
+    try {
+      const diag = await captureBrowserDiagnostics(browser);
+      console.error("Browser diagnostics:", JSON.stringify(diag, null, 2));
+    } catch (diagError) {
+      console.error("Failed to capture diagnostics:", diagError);
+    }
+  }
+  throw error;
 } finally {
-  await browser?.close();
+  console.log("🔒 Closing browser...");
+  await safeBrowserClose(browser);
 }
