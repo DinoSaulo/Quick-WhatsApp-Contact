@@ -52,7 +52,21 @@ import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import puppeteer from "puppeteer-core";
 import webExt from "web-ext";
+import { consoleStream as webExtConsoleStream } from "web-ext/util/logger";
 import { findFirefoxExecutable, getAvailablePort } from "./firefox-environment.mjs";
+
+// web-ext logs Firefox's own launch args and every stdout/stderr line it receives from the
+// Firefox child process via log.debug() (node_modules/web-ext/lib/firefox/index.js) — but that
+// stream stays at "info" level and drops debug/trace lines unless something calls
+// consoleStream.makeVerbose(), which the CLI only does for its own --verbose flag
+// (node_modules/web-ext/lib/program.js's enableVerboseMode()). The programmatic webExt.cmd.run()
+// API this script uses has no equivalent option, but consoleStream is a plain singleton exported
+// from web-ext's own public "./util/logger" subpath — the same instance web-ext's internal
+// logger already writes through — so flipping it here reaches the same effect. This is what
+// finally gets Firefox's real stdout/stderr into CI output for a run where the crash happens
+// before webExt.cmd.run() resolves, i.e. before captureFirefoxProcessOutput() below ever gets a
+// chance to attach its own listeners.
+webExtConsoleStream.makeVerbose();
 
 const projectRoot = resolve(import.meta.dirname, "../..");
 const extensionPath = resolve(projectRoot, "dist", "extension");
