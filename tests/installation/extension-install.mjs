@@ -276,6 +276,18 @@ try {
   await safePageClose(optionsPage);
   await safePageClose(popup);
 
+  // Evaluating in the service worker earlier (the context-menu check, and the readiness poll
+  // before it) attached a CDP debugger session to it — and, confirmed directly, a service worker
+  // with a debugger still attached does not stop just because uninstallExtension() removes the
+  // extension: the target lingered indefinitely (still present 15s later) until this was added.
+  // CdpWebWorker.close()'s own source comment names this exactly: "For service and shared workers
+  // we need to close the target and detach to allow the worker to stop"
+  // (node_modules/puppeteer-core/lib/esm/puppeteer/cdp/WebWorker.js). Must run before
+  // uninstallExtension(), not after — verified closing first makes the target disappear within
+  // 0-1ms; the reverse order was never tested to help, since the whole point is releasing the
+  // debugger session that's keeping it pinned alive.
+  await worker.close();
+
   // A página aberta também é um alvo da extensão; feche-a para que somente os
   // processos mantidos pela instalação sejam considerados na desinstalação.
   console.log("🗑️  Uninstalling extension...");
