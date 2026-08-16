@@ -216,11 +216,16 @@ export async function waitUntilWithDiagnostics(
 }
 
 /**
- * Creates a browser with improved stability configuration for CI environments.
+ * Merges the given Puppeteer launch options with CI-stability args (defaults first, so callers
+ * can still override any of them). Synchronous by design — it does no I/O, it just builds an
+ * options object for the caller to pass to puppeteer.launch() itself. It must stay synchronous:
+ * every call site (and every doc example) calls it without `await`, so marking it `async` would
+ * silently hand callers a Promise instead of the options object, dropping fields like
+ * executablePath without any error until puppeteer.launch() rejects far downstream.
  * @param {Object} options - Puppeteer launch options
- * @returns {Promise<Browser>} The browser instance
+ * @returns {Object} Merged Puppeteer launch options
  */
-export async function launchBrowserWithStabilityFlags(options = {}) {
+export function launchBrowserWithStabilityFlags(options = {}) {
   // CI-specific stability improvements
   const defaultArgs = [
     "--disable-dev-shm-usage", // Prevent /dev/shm issues in Docker/CI
