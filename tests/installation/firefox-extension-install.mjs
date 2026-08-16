@@ -96,18 +96,29 @@ async function connectWithRetries(browserWSEndpoint, { attempts = 30, delay = 30
 // API, so this is diagnostics-only and never anything this test's pass/fail depends on) purely so
 // that if Firefox itself ever fails or crashes, the *actual* Firefox-side error ends up in the CI
 // log instead of only the generic ECONNREFUSED our own WebSocket connection attempt sees.
+//
+// Held at module scope (rather than returned to the caller) because the uncaughtException
+// safety net below also needs to read it, from a context that isn't downstream of the call that
+// originally captured it — see the comment on that handler for why.
+const firefoxDiagnostics = { lines: [], firefoxProcess: null };
+
 function captureFirefoxProcessOutput(extensionRunner) {
-  const lines = [];
   const firefoxProcess = extensionRunner?.extensionRunners?.[0]?.runningInfo?.firefox;
+  firefoxDiagnostics.firefoxProcess = firefoxProcess ?? null;
 
-  if (!firefoxProcess) {
-    return { lines, firefoxProcess: null };
-  }
+  if (!firefoxProcess) return;
 
-  firefoxProcess.stdout?.on("data", (chunk) => lines.push(`[firefox stdout] ${chunk}`));
-  firefoxProcess.stderr?.on("data", (chunk) => lines.push(`[firefox stderr] ${chunk}`));
+  firefoxProcess.stdout?.on("data", (chunk) => firefoxDiagnostics.lines.push(`[firefox stdout] ${chunk}`));
+  firefoxProcess.stderr?.on("data", (chunk) => firefoxDiagnostics.lines.push(`[firefox stderr] ${chunk}`));
+}
 
-  return { lines, firefoxProcess };
+function formatFirefoxDiagnostics() {
+  const { lines, firefoxProcess } = firefoxDiagnostics;
+  const processState = firefoxProcess
+    ? `Firefox child process: exitCode=${firefoxProcess.exitCode} signalCode=${firefoxProcess.signalCode} killed=${firefoxProcess.killed}`
+    : "Firefox child process handle unavailable (web-ext's internal shape may have changed, or it crashed before web-ext exposed it).";
+  const outputTail = lines.slice(-60).join("") || "(nothing captured)";
+  return `${processState}\n--- last Firefox stdout/stderr lines ---\n${outputTail}`;
 }
 
 // Opens `url` (a moz-extension:// page belonging to this same extension) by asking the extension
@@ -188,6 +199,39 @@ if (process.platform === "linux") {
 let extensionRunner;
 let browser;
 
+// Safety net for a specific, confirmed web-ext@10.6.0 failure mode: its internal Firefox RDP
+// client (used to install the temporary add-on — a different connection from this script's own
+// BiDi one below) wraps only its *first* connection attempt in a Node `domain`, so an initial
+// ECONNREFUSED becomes an ordinary rejection its own retry loop handles
+// (node_modules/web-ext/lib/firefox/remote.js's connectWithMaxRetries). A *later* socket error on
+// an already-open RDP connection — e.g. Firefox crashing sometime after connecting — re-emits
+// 'error' from a raw socket callback that isn't part of any promise chain this script awaits, and
+// EventEmitter throws synchronously when 'error' has no listener. No try/catch here can intercept
+// that: it doesn't reject anything this script is holding onto. Confirmed in CI as a bare
+// "Emitted 'error' event on FirefoxRDPClient instance" crash with no application stack frames at
+// all — this handler is what turns that into a readable diagnostic instead.
+//
+// Registering this listener also suppresses Node's own default "print stack, exit(1)" behavior
+// for uncaught exceptions, so *this* handler now owns exiting the process — it must call
+// process.exit() itself or the run would hang.
+process.once("uncaughtException", async (error) => {
+  console.error(
+    "Firefox extension lifecycle smoke test crashed outside this script's own error handling " +
+      "(web-ext's internal Firefox RDP connection likely failed or lost its socket after " +
+      "connecting).\n" +
+      formatFirefoxDiagnostics() +
+      `\n--- original error ---\n${error?.stack ?? error}`,
+  );
+
+  // Best-effort teardown, capped short: the crash almost certainly means Firefox is already gone
+  // or unreachable, so a hung exit() here shouldn't be allowed to keep this process alive in CI.
+  await Promise.race([
+    extensionRunner?.exit().catch(() => {}),
+    new Promise((resolvePromise) => setTimeout(resolvePromise, 5_000)),
+  ]);
+  process.exit(1);
+});
+
 try {
   extensionRunner = await webExt.cmd.run(
     {
@@ -202,18 +246,14 @@ try {
     { shouldExitProgram: false },
   );
 
-  const { lines: firefoxOutputLines, firefoxProcess } = captureFirefoxProcessOutput(extensionRunner);
+  captureFirefoxProcessOutput(extensionRunner);
 
   try {
     browser = await connectWithRetries(`ws://127.0.0.1:${biDiPort}/session`);
   } catch (error) {
-    const processState = firefoxProcess
-      ? `Firefox child process: exitCode=${firefoxProcess.exitCode} signalCode=${firefoxProcess.signalCode} killed=${firefoxProcess.killed}`
-      : "Firefox child process handle unavailable (web-ext's internal shape may have changed).";
-    const outputTail = firefoxOutputLines.slice(-60).join("") || "(nothing captured)";
     throw new Error(
       `Could not connect to Firefox's WebDriver BiDi endpoint at ws://127.0.0.1:${biDiPort}/session ` +
-        `after retrying. ${processState}\n--- last Firefox stdout/stderr lines ---\n${outputTail}` +
+        `after retrying. ${formatFirefoxDiagnostics()}` +
         `\n--- original connection error ---\n${error?.stack ?? error}`,
     );
   }

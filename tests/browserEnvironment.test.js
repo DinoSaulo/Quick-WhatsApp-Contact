@@ -44,7 +44,11 @@ describe("installation browser environment", () => {
   });
 
   it("adds Chromium sandbox overrides only for a root container", () => {
-    expect(createBrowserArgs({ isRoot: true })).toEqual([
+    // isCI is pinned explicitly here: createBrowserArgs() defaults it from the real
+    // process.env.CI/GITHUB_ACTIONS, and GitHub Actions sets those on every job. Leaving it
+    // ambient made this test's outcome depend on where it ran (passing on a dev machine, failing
+    // in CI) instead of on the isRoot behavior it's actually meant to verify.
+    expect(createBrowserArgs({ isRoot: true, isCI: false })).toEqual([
       "--no-first-run",
       "--no-default-browser-check",
       "--disable-dev-shm-usage",
@@ -52,7 +56,7 @@ describe("installation browser environment", () => {
       "--no-sandbox",
       "--disable-setuid-sandbox",
     ]);
-    expect(createBrowserArgs({ isRoot: false })).toEqual([
+    expect(createBrowserArgs({ isRoot: false, isCI: false })).toEqual([
       "--no-first-run",
       "--no-default-browser-check",
       "--disable-dev-shm-usage",
@@ -60,11 +64,26 @@ describe("installation browser environment", () => {
     ]);
   });
 
+  it("adds CI stability flags only when running in CI", () => {
+    const args = createBrowserArgs({ isRoot: false, isCI: true });
+
+    expect(args).toEqual(
+      expect.arrayContaining([
+        "--disable-background-networking",
+        "--disable-extensions",
+        "--enable-features=NetworkService,NetworkServiceInProcess",
+      ]),
+    );
+    expect(createBrowserArgs({ isRoot: false, isCI: false })).not.toContain(
+      "--disable-background-networking",
+    );
+  });
+
   it("returns a fresh argument array for every browser launch", () => {
-    const first = createBrowserArgs({ isRoot: false });
+    const first = createBrowserArgs({ isRoot: false, isCI: false });
     first.push("--unexpected-shared-state");
 
-    expect(createBrowserArgs({ isRoot: false })).not.toContain(
+    expect(createBrowserArgs({ isRoot: false, isCI: false })).not.toContain(
       "--unexpected-shared-state",
     );
   });
