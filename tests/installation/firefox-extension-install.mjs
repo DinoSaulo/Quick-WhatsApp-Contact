@@ -48,8 +48,9 @@
 // regression this extension's code could actually break — unlike the Chrome test, which reuses
 // one browser profile across install → uninstall → reinstall).
 import assert from "node:assert/strict";
-import { existsSync, readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
 import puppeteer from "puppeteer-core";
 import webExt from "web-ext";
 import { consoleStream as webExtConsoleStream } from "web-ext/util/logger";
@@ -194,20 +195,36 @@ assert.ok(
 
 const biDiPort = await getAvailablePort();
 
-// Hypothesis, not a confirmed root cause (no raw CI log was available to verify against): recent
-// Ubuntu (23.10+, which is what GitHub's ubuntu-latest runner currently is) restricts unprivileged
-// processes from creating user namespaces via AppArmor unless the binary has a registered profile
-// — apt/snap-packaged Firefox gets one from the OS, but a manually downloaded tarball extracted to
-// an arbitrary path (see scripts/install-firefox-version.mjs) does not. Firefox's own content-
-// process sandbox needs exactly that syscall, and Docker's default seccomp profile restricts the
-// same thing for root-in-container Firefox too — a plausible single explanation covering both a
-// non-root bare-runner failure and a root-in-container failure reported against this file. Content
-// sandboxing only protects against a compromised *web page's* renderer process; it has no bearing
-// on this test's own security-relevant assertions (which run in Node, driving the browser, not in
-// page content), so disabling it here is a test-harness-only concession — it must never be applied
-// to how end users actually run this extension.
+// Unconfirmed for the non-container Ubuntu/bare-runner leg, but left in place as a low-risk
+// precaution: recent Ubuntu restricts unprivileged processes from creating user namespaces via
+// AppArmor unless the binary has a registered profile — apt/snap-packaged Firefox gets one from
+// the OS, a manually downloaded tarball extracted to an arbitrary path (see
+// scripts/install-firefox-version.mjs) does not, and Firefox's content-process sandbox needs
+// exactly that syscall. Content sandboxing only protects against a compromised *web page's*
+// renderer process; it has no bearing on this test's own security-relevant assertions (which run
+// in Node, driving the browser, not in page content), so disabling it here is a test-harness-only
+// concession — it must never be applied to how end users actually run this extension.
 if (process.platform === "linux") {
   process.env.MOZ_DISABLE_CONTENT_SANDBOX = "1";
+}
+
+// Confirmed root cause (from CI's own verbose Firefox stderr, via consoleStream.makeVerbose()
+// above) of the ECONNREFUSED failures on every container-based Linux job (Fedora/Debian/Rocky/
+// Arch — see the "installation-test-firefox" matrix in .github/workflows/ci.yml): those jobs run
+// as root by default (no `user:` override on the container image), and Firefox refuses to launch
+// as root against a $HOME it doesn't own, aborting with "Running Firefox as root in a regular
+// user's session is not supported" before it ever opens the RDP port this script waits on — which
+// is exactly what a bare ECONNREFUSED with no Firefox output looks like from the outside. The
+// mismatch is GitHub Actions' own doing: it sets $HOME to /github/home for every container job,
+// a directory *it* creates and owns as a fixed non-root uid for its own bookkeeping, regardless of
+// which user is actually running inside the container. Pointing $HOME at a fresh directory this
+// (root) process creates — and therefore owns — satisfies Firefox's check without touching the
+// real $HOME any other CI step relies on. Harmless as a no-op everywhere else: on macOS/Windows
+// and the non-container Ubuntu leg this process never runs as root, so the condition never fires.
+let rootOwnedHome;
+if (process.platform === "linux" && typeof process.getuid === "function" && process.getuid() === 0) {
+  rootOwnedHome = mkdtempSync(join(tmpdir(), "quick-whatsapp-contact-firefox-root-home-"));
+  process.env.HOME = rootOwnedHome;
 }
 
 let extensionRunner;
@@ -437,4 +454,7 @@ try {
     await browser.close().catch(() => {});
   }
   await extensionRunner?.exit().catch(() => {});
+  if (rootOwnedHome) {
+    rmSync(rootOwnedHome, { recursive: true, force: true });
+  }
 }
