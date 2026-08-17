@@ -310,16 +310,43 @@ try {
   // target discovery to complete. Lower confidence than the Chrome-side timing fixes in this same
   // file: those were directly reproduced and root-caused locally, this one could only be
   // diagnosed from the CI log and a documented but non-specific Firefox warning.
+  // A 30s timeout wasn't enough on at least one real CI run (installation-test-firefox-pinned, a
+  // manually-downloaded Firefox build) — but the accompanying log showed near-total silence for
+  // the whole wait, not gradually-progressing activity, which doesn't fit "just needed more time"
+  // the way the earlier bare-Ubuntu timeout did. That run's Firefox stderr also showed a
+  // "Sandbox: CanCreateUserNamespace() ... EPERM" line, but that specific message is independently
+  // documented (Mozilla Bugzilla #1981001, cypress-io/cypress-docker-images#1343) as a benign,
+  // always-present warning on namespace-restricted Linux setups — not fatal, and this same run's
+  // Firefox demonstrably did keep working past it (connected, installed the extension, disabled
+  // reload). So neither "give it more time" nor "fix the sandbox" is backed by real evidence yet.
+  // Rather than guess at a third fix blind, this captures what this script itself can see at the
+  // moment of failure — every BiDi target and its URL, not just the "page"-typed ones
+  // browser.pages() filters to, in case the onboarding tab (or something else revealing) exists
+  // under a target type this test wasn't looking at — so the *next* occurrence is diagnosable
+  // instead of another guess.
   let driverPage;
-  await waitUntil(
-    async () => {
-      const pages = await browser.pages();
-      driverPage = pages.find((candidate) => candidate.url().startsWith("moz-extension://"));
-      return Boolean(driverPage);
-    },
-    "Timed out waiting for the extension's onboarding tab to open after install.",
-    30_000,
-  );
+  try {
+    await waitUntil(
+      async () => {
+        const pages = await browser.pages();
+        driverPage = pages.find((candidate) => candidate.url().startsWith("moz-extension://"));
+        return Boolean(driverPage);
+      },
+      "Timed out waiting for the extension's onboarding tab to open after install.",
+      30_000,
+    );
+  } catch (error) {
+    const targets = browser.targets().map((target) => {
+      try {
+        return `${target.type()} ${target.url()}`;
+      } catch (targetError) {
+        return `(failed to read target: ${targetError?.message ?? targetError})`;
+      }
+    });
+    throw new Error(
+      `${error.message}\n--- all BiDi targets at time of failure ---\n${targets.join("\n") || "(none)"}`,
+    );
+  }
 
   const extensionId = new URL(driverPage.url()).host;
   const extensionOrigin = `moz-extension://${extensionId}`;
