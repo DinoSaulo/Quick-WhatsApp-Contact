@@ -92,11 +92,15 @@ function formatChromeDiagnostics() {
 // Chrome-internal log line points outward more than inward: the most common cause of exactly this
 // shape is the Linux kernel's OOM killer sending a bare SIGKILL, which Chrome has no chance to log
 // anything about (it's killed, not crashing through its own code) but which the kernel itself
-// records. Not yet confirmed — this is instrumentation to find out, the same move as the Chrome
-// log-file capture above (which is what actually found the SIGSEGV in the first place).
+// records. The dmesg scan also now catches segfault traces, not just OOM — added after a real
+// SIGSEGV recurred on installation-test-pinned (see ci.yml's "Instalar Chrome estavel" step) even
+// after that exact crash was already fixed there once: the original regex here only matched
+// OOM-killer wording, so a genuine segfault line from the kernel (Linux logs these by default,
+// e.g. "chrome[1234]: segfault at 0 ip ... in libfoo.so[...]") would have been silently filtered
+// out and never seen, even though it was almost certainly sitting right there in dmesg's output.
 function captureSystemDiagnostics() {
   if (process.platform !== "linux") {
-    return "(system memory/OOM diagnostics only implemented for Linux, this test's actual CI target)";
+    return "(system memory/crash diagnostics only implemented for Linux, this test's actual CI target)";
   }
 
   const sections = [];
@@ -110,16 +114,41 @@ function captureSystemDiagnostics() {
     // Actions grants the runner user passwordless sudo, already relied on elsewhere in this repo's
     // workflow for apt-get, so this uses the same trust boundary rather than a new one.
     const dmesg = execFileSync("sudo", ["dmesg", "--ctime"], { encoding: "utf8", timeout: 5_000 });
-    const oomLines = dmesg.split("\n").filter((line) => /oom|out of memory|killed process/i.test(line));
+    const crashLines = dmesg
+      .split("\n")
+      .filter((line) => /oom|out of memory|killed process|segfault|general protection|traps:/i.test(line));
     sections.push(
-      oomLines.length
-        ? `--- dmesg lines matching OOM/killed (${oomLines.length} total) ---\n${oomLines.slice(-20).join("\n")}`
-        : "--- dmesg: no OOM/killed-process lines found ---",
+      crashLines.length
+        ? `--- dmesg lines matching OOM/segfault/crash (${crashLines.length} total) ---\n${crashLines.slice(-20).join("\n")}`
+        : "--- dmesg: no OOM/segfault/crash lines found ---",
     );
   } catch (error) {
     sections.push(`--- dmesg ---\n(failed: ${error.message})`);
   }
   return sections.join("\n");
+}
+
+// SIGSEGV in a manually-downloaded Chrome-for-Testing binary was already root-caused once to
+// missing shared library dependencies (see ci.yml's "Instalar Chrome estavel" step, which installs
+// google-chrome-stable purely for its .deb dependency chain as a fix). Its recurrence — after two
+// clean runs with that fix live — means either that CI step didn't actually run/succeed this
+// time, or a *different* library is missing than whatever was fixed before. ldd answers that
+// directly for the exact binary this run is about to launch, and does so unconditionally rather
+// than only when a crash happens to occur: unresolved dynamic dependencies show up as "=> not
+// found" lines regardless of whether execution ever gets far enough to segfault.
+function captureLinkerDiagnostics(execPath) {
+  if (process.platform !== "linux" || !execPath) {
+    return "(dynamic-linking diagnostics only implemented for Linux)";
+  }
+  try {
+    const ldd = execFileSync("ldd", [execPath], { encoding: "utf8", timeout: 5_000 });
+    const missing = ldd.split("\n").filter((line) => line.includes("not found"));
+    return missing.length
+      ? `--- ldd ${execPath}: missing shared libraries ---\n${missing.join("\n")}`
+      : `--- ldd ${execPath}: all shared libraries resolved ---`;
+  } catch (error) {
+    return `--- ldd ${execPath} ---\n(failed: ${error.message})`;
+  }
 }
 
 let browser;
@@ -562,6 +591,7 @@ try {
   // help diagnose.
   console.error(formatChromeDiagnostics());
   console.error(captureSystemDiagnostics());
+  console.error(captureLinkerDiagnostics(executablePath));
   if (browser) {
     try {
       const diag = await captureBrowserDiagnostics(browser);
