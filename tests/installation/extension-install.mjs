@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
@@ -81,6 +82,43 @@ function formatChromeDiagnostics() {
     outputTail = lines.slice(-60).join("\n") || outputTail;
   }
   return `${processState}\n--- last Chrome log lines (${chromeLogFile}) ---\n${outputTail}`;
+}
+
+// Confirmed the SIGSEGV/missing-dependencies bug above; this exists for the failure mode that
+// showed up immediately after fixing it — a newly-created tab's renderer closing right after
+// browser.newPage(), with the top-level Chrome process still alive (exitCode/signalCode both
+// null) and nothing informative in chrome.log around it. A silent renderer death with no
+// Chrome-internal log line points outward more than inward: the most common cause of exactly this
+// shape is the Linux kernel's OOM killer sending a bare SIGKILL, which Chrome has no chance to log
+// anything about (it's killed, not crashing through its own code) but which the kernel itself
+// records. Not yet confirmed — this is instrumentation to find out, the same move as the Chrome
+// log-file capture above (which is what actually found the SIGSEGV in the first place).
+function captureSystemDiagnostics() {
+  if (process.platform !== "linux") {
+    return "(system memory/OOM diagnostics only implemented for Linux, this test's actual CI target)";
+  }
+
+  const sections = [];
+  try {
+    sections.push(`--- free -h ---\n${execFileSync("free", ["-h"], { encoding: "utf8", timeout: 5_000 })}`);
+  } catch (error) {
+    sections.push(`--- free -h ---\n(failed: ${error.message})`);
+  }
+  try {
+    // dmesg is restricted to root on most modern kernels (kernel.dmesg_restrict=1); GitHub
+    // Actions grants the runner user passwordless sudo, already relied on elsewhere in this repo's
+    // workflow for apt-get, so this uses the same trust boundary rather than a new one.
+    const dmesg = execFileSync("sudo", ["dmesg", "--ctime"], { encoding: "utf8", timeout: 5_000 });
+    const oomLines = dmesg.split("\n").filter((line) => /oom|out of memory|killed process/i.test(line));
+    sections.push(
+      oomLines.length
+        ? `--- dmesg lines matching OOM/killed (${oomLines.length} total) ---\n${oomLines.slice(-20).join("\n")}`
+        : "--- dmesg: no OOM/killed-process lines found ---",
+    );
+  } catch (error) {
+    sections.push(`--- dmesg ---\n(failed: ${error.message})`);
+  }
+  return sections.join("\n");
 }
 
 let browser;
@@ -469,12 +507,13 @@ try {
   console.log("Uninstall-with-pages-open validation: passed");
 } catch (error) {
   console.error("❌ Test failed:", error);
-  // Printed unconditionally, unlike captureBrowserDiagnostics() below: this reads only the
-  // already-buffered chromeOutputLines array and the raw ChildProcess object's own properties, so
-  // — confirmed useful precisely because of this — it still works even when the CDP connection
-  // itself is what broke (captureBrowserDiagnostics() has failed with "Tab target session is not
-  // defined" on exactly the kind of crash this exists to help diagnose).
+  // Printed unconditionally, unlike captureBrowserDiagnostics() below: this reads only the log
+  // file on disk and the raw ChildProcess object's own properties, neither of which depends on the
+  // CDP connection — confirmed useful precisely because of that: captureBrowserDiagnostics() has
+  // failed with "Tab target session is not defined" on exactly the kind of crash this exists to
+  // help diagnose.
   console.error(formatChromeDiagnostics());
+  console.error(captureSystemDiagnostics());
   if (browser) {
     try {
       const diag = await captureBrowserDiagnostics(browser);
