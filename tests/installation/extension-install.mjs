@@ -68,21 +68,47 @@ assert.ok(
 const chromeLogDir = mkdtempSync(join(tmpdir(), "quick-whatsapp-contact-chrome-log-"));
 const chromeLogFile = join(chromeLogDir, "chrome.log");
 let chromeProcess;
+// A bare synchronous read of chromeProcess.exitCode/signalCode races Node's own event loop: if
+// Chrome's main process just died, the child process 'exit' event that actually updates those
+// properties may not have been delivered yet at the moment formatChromeDiagnostics() happens to
+// run — which is exactly why two real CI failures in a row showed exitCode=null signalCode=null
+// killed=false right alongside a browser-level "Protocol error: Connection closed", a symptom that
+// looks a lot like Chrome's process actually going away. Listening for the real events instead of
+// guessing from a snapshot removes that ambiguity for whichever failure (if any) shows up next.
+let chromeExitInfo = null;
+let browserDisconnectedAt = null;
 
 function captureChromeProcessOutput(launchedBrowser) {
   chromeProcess = launchedBrowser.process() ?? null;
+  chromeProcess?.once("exit", (code, signal) => {
+    chromeExitInfo = { code, signal, at: new Date().toISOString() };
+  });
+  launchedBrowser.once("disconnected", () => {
+    browserDisconnectedAt = new Date().toISOString();
+  });
 }
 
-function formatChromeDiagnostics() {
+async function formatChromeDiagnostics() {
+  // Give Node's event loop a moment to actually deliver a same-tick 'exit'/'disconnected' event
+  // before reading state below — see the comment on chromeExitInfo above for why a bare
+  // synchronous read right after a rejected promise isn't trustworthy on its own.
+  await new Promise((resolve) => setTimeout(resolve, 500));
+
   const processState = chromeProcess
-    ? `Chrome child process: exitCode=${chromeProcess.exitCode} signalCode=${chromeProcess.signalCode} killed=${chromeProcess.killed}`
+    ? `Chrome child process: exitCode=${chromeProcess.exitCode} signalCode=${chromeProcess.signalCode} killed=${chromeProcess.killed}` +
+      (chromeExitInfo
+        ? ` (exit event observed at ${chromeExitInfo.at}: code=${chromeExitInfo.code} signal=${chromeExitInfo.signal})`
+        : " (no exit event observed — process object itself is still alive as far as Node can tell)")
     : "Chrome child process handle unavailable (browser.process() returned null — connected via .connect() rather than .launch()?).";
+  const disconnectState = browserDisconnectedAt
+    ? `Puppeteer's own 'disconnected' event fired at ${browserDisconnectedAt}.`
+    : "Puppeteer's own 'disconnected' event never fired — the CDP connection failure wasn't reported as a full disconnect.";
   let outputTail = "(nothing captured)";
   if (existsSync(chromeLogFile)) {
     const lines = readFileSync(chromeLogFile, "utf8").split("\n");
     outputTail = lines.slice(-60).join("\n") || outputTail;
   }
-  return `${processState}\n--- last Chrome log lines (${chromeLogFile}) ---\n${outputTail}`;
+  return `${processState}\n${disconnectState}\n--- last Chrome log lines (${chromeLogFile}) ---\n${outputTail}`;
 }
 
 // Confirmed the SIGSEGV/missing-dependencies bug above; this exists for the failure mode that
@@ -213,27 +239,34 @@ try {
   // concurrent with anything this script does. firefox-extension-install.mjs already has to
   // account for this (see its own onboarding-tab wait); this file never did, because until now a
   // different, more prominent bug always failed the run first (the service-worker dead-mode bug,
-  // then a missing-shared-library SIGSEGV — see git history). With those fixed, this looks like
+  // then a missing-shared-library SIGSEGV — see git history). With those fixed, this looked like
   // the next layer: browser.newPage() below for the popup was racing that same automatic tab
-  // creation — two independent, near-simultaneous tab-creation calls — and the newly-created
-  // popup tab's own CDP session was occasionally already gone by the time setViewport() sent its
-  // first command, surfacing as "Session closed. Most likely the page has been closed" on
-  // Emulation.setTouchEmulationEnabled. Not confirmed by direct reproduction (this failure mode
-  // never reproduced locally); what IS confirmed, via formatChromeDiagnostics()/
-  // captureSystemDiagnostics() in the catch block below on the most recent real failure, is that
-  // it's neither a Chrome crash (signalCode was null) nor OOM (dmesg had no matching lines,
-  // free -h showed 13Gi available) — narrowing this to a timing race specifically. Waiting for the
-  // onboarding tab to fully exist (and closing it) before creating any other page removes that
-  // race instead of retrying around it, and as a side effect is the first time this file actually
-  // verifies the onboarding tab opens on install at all — previously untested here, unlike the
-  // Firefox sibling test.
+  // creation, surfacing as "Session closed. Most likely the page has been closed" on
+  // Emulation.setTouchEmulationEnabled right after newPage(). Waiting for the onboarding tab to
+  // fully exist before creating any other page is still correct and still here.
+  //
+  // Explicitly closing that tab immediately afterward (this block used to call
+  // safePageClose(await onboardingTarget.page()) right here) is NOT still here — removed after two
+  // separate CI runs died with a browser-level "Protocol error: Connection closed" (not a
+  // page-level session error — the *entire* CDP connection, thrown from Connection.send() itself)
+  // at exactly this point, both times only after that close call was added. Chrome starts with
+  // exactly one blank "page" target already open before anything in this script runs (confirmed
+  // via captureBrowserDiagnostics()'s own output on a clean local launch: totalPages: 1, about:
+  // blank) — if the extension's chrome.tabs.create() for the onboarding tab reuses that same
+  // initial target rather than opening a genuinely separate one, then closing "the onboarding tab"
+  // was closing the only page Chrome had, which is a plausible trigger for a follow-on
+  // browser-level failure. Not proven by direct reproduction, but it lines up: the symptom only
+  // ever appeared after this specific call was introduced, and removing it is a strict reduction
+  // in what this script does to the browser, not a new mechanism to trust. The onboarding tab is
+  // left open here; browser.uninstallExtension() below already closes every extension-origin page
+  // automatically on uninstall (relied on already for the popup/options pages further down), so
+  // nothing further needs to close it explicitly.
   console.log("⏳ Waiting for onboarding tab (opened automatically on install)...");
   const onboardingUrl = `${extensionOrigin}/${ONBOARDING_PAGE_PATH}`;
-  const onboardingTarget = await browser.waitForTarget(
+  await browser.waitForTarget(
     (target) => target.type() === "page" && target.url() === onboardingUrl,
     { timeout: 15_000 },
   );
-  await safePageClose(await onboardingTarget.page());
 
   const popupUrl = `${extensionOrigin}/${expectedManifest.action.default_popup}`;
 
@@ -503,15 +536,15 @@ try {
   );
 
   // Same race as the first install above — reason: "install" fires again for this second,
-  // independent install cycle, so background.js opens another onboarding tab here too.
+  // independent install cycle, so background.js opens another onboarding tab here too. Not closed
+  // explicitly, for the same reason as the first one above.
   console.log("⏳ Waiting for onboarding tab (opened automatically on reinstall)...");
-  const reinstalledOnboardingTarget = await browser.waitForTarget(
+  await browser.waitForTarget(
     (target) =>
       target.type() === "page" &&
       target.url() === `${reinstalledOrigin}/${ONBOARDING_PAGE_PATH}`,
     { timeout: 15_000 },
   );
-  await safePageClose(await reinstalledOnboardingTarget.page());
 
   const reinstalledOptions = await browser.newPage();
   console.log("📄 Verifying clean settings on reinstalled extension...");
@@ -589,7 +622,7 @@ try {
   // CDP connection — confirmed useful precisely because of that: captureBrowserDiagnostics() has
   // failed with "Tab target session is not defined" on exactly the kind of crash this exists to
   // help diagnose.
-  console.error(formatChromeDiagnostics());
+  console.error(await formatChromeDiagnostics());
   console.error(captureSystemDiagnostics());
   console.error(captureLinkerDiagnostics(executablePath));
   if (browser) {
