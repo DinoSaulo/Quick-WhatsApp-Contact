@@ -68,8 +68,10 @@ try {
   assert.match(extensionId, /^[a-p]{32}$/);
   console.log(`✅ Extension installed: ${extensionId}`);
 
+  // Confirms the background context actually started, without ever calling .worker() on it — see
+  // the context-menu check below for why that distinction matters here.
   console.log("⏳ Waiting for service worker target...");
-  const workerTarget = await browser.waitForTarget(
+  await browser.waitForTarget(
     (target) =>
       target.type() === "service_worker" &&
       target.url().startsWith(extensionOrigin) &&
@@ -77,35 +79,57 @@ try {
     { timeout: 30_000 },
   );
 
+  const popupUrl = `${extensionOrigin}/${expectedManifest.action.default_popup}`;
+
+  console.log("📄 Opening popup page...");
+  const popup = await browser.newPage();
+  const pageErrors = [];
+  popup.on("pageerror", (error) => pageErrors.push(String(error)));
+
+  await popup.setViewport({ width: 360, height: 600, deviceScaleFactor: 1 });
+
+  await safeGoto(popup, popupUrl, {
+    waitUntil: "domcontentloaded",
+    timeout: 30_000,
+  });
+  console.log("⏳ Waiting for popup content selectors...");
+  await safeWaitForSelector(popup, "whatsapp-message-popup #country-trigger", {
+    timeout: 10_000,
+  });
+  await safeWaitForSelector(popup, "#country-trigger .country-picker__flag-img", {
+    timeout: 10_000,
+  });
+
   // O contextMenus permission só vale algo se o item realmente for registrado no worker de
   // fundo na instalação. update() com um id inexistente popula chrome.runtime.lastError sem
   // lançar — é a única forma de "consultar" um menu de contexto pela API, já que MV3 não expõe
   // um getAll(). A metade "removido na desinstalação" não precisa de uma checagem própria: uma
   // vez desinstalada, o worker que hospedava esse menu deixa de existir, o que as verificações
   // de desinstalação abaixo (service worker consumindo `startsWith(extensionOrigin)`) já cobrem.
+  //
+  // Deliberately checked from the popup page, not from the service worker directly. Evaluating
+  // straight in the service worker (via workerTarget.worker()) previously handled two known,
+  // recoverable races (Chromium's own "CDP can evaluate before the worker is initialized" bug,
+  // and background.js's onInstalled listener being itself async — see git history for the retry
+  // loop that absorbed both). But a third, confirmed-upstream Chromium/Puppeteer bug stacks on
+  // top of those and isn't recoverable by retrying: "getting" a service worker (calling
+  // .worker(), which — confirmed by reading its own source — sends Runtime.enable and attaches a
+  // CDP session as a side effect of construction, not just of evaluate()) can put it into a
+  // permanently dead state that never wakes up again (crbug.com/1371432,
+  // puppeteer/puppeteer#9995). Reproduced deterministically in CI: identical extension ID and
+  // near-identical timing across two separate runs, "Target closed" followed by dozens of
+  // unrecovering "detached frame or worker" errors for the full retry window. chrome.contextMenus
+  // is not actually background-context-exclusive — any extension page with the permission can
+  // call it — so checking from the popup (a normal page, no dead-mode risk) sidesteps the bug
+  // entirely instead of trying to out-retry an upstream Chromium issue. This also removes the
+  // need for the worker.close() call this file used to have before uninstallExtension(): that
+  // existed only to release the CDP session .worker() attached, and nothing here attaches one
+  // anymore.
   console.log("🔍 Verifying context menu registration...");
-  const worker = await workerTarget.worker();
-
-  // Two independent races stack here, so this polls the *actual* condition we care about (the
-  // menu item existing) rather than a proxy for it — one retry loop absorbs both:
-  //  1. CDP can attach to and evaluate against a service worker target before Chrome has actually
-  //     finished initializing that worker's global scope — a confirmed, Won't-Fix Chromium bug
-  //     (https://issues.chromium.org/issues/341213355). Evaluating too early doesn't throw a
-  //     useful error; it silently sees a bare worker global with no extension APIs injected yet
-  //     (confirmed directly: chrome.runtime undefined, chrome.contextMenus undefined, only the
-  //     ambient chrome.csi/chrome.loadTimes every page/worker gets).
-  //  2. Even once chrome.* exists, background.js's own chrome.runtime.onInstalled listener is
-  //     itself async — it awaits a chrome.storage.sync read and chrome.contextMenus.removeAll()
-  //     before chrome.contextMenus.create() ever runs (see refreshContextMenu() in
-  //     src/background.js) — so the menu item can still not exist yet even on a fully-initialized
-  //     worker. Confirmed as a real, separate CI failure: chrome.contextMenus.update() resolved
-  //     without throwing but returned false (chrome.runtime.lastError set, "no such menu item")
-  //     because that async chain hadn't finished. A one-shot check after only the first race was
-  //     fixed still isn't enough; retrying the update() call itself handles both by construction.
   let contextMenuRegistered = false;
   try {
     await waitUntil(async () => {
-      contextMenuRegistered = await worker.evaluate(
+      contextMenuRegistered = await popup.evaluate(
         () =>
           new Promise((resolveCheck) => {
             chrome.contextMenus.update("quick-whatsapp-contact.send", {}, () => {
@@ -129,27 +153,6 @@ try {
     true,
     "O item de menu de contexto não foi registrado na instalação.",
   );
-
-  const popupUrl = `${extensionOrigin}/${expectedManifest.action.default_popup}`;
-
-  console.log("📄 Opening popup page...");
-  const popup = await browser.newPage();
-  const pageErrors = [];
-  popup.on("pageerror", (error) => pageErrors.push(String(error)));
-
-  await popup.setViewport({ width: 360, height: 600, deviceScaleFactor: 1 });
-
-  await safeGoto(popup, popupUrl, {
-    waitUntil: "domcontentloaded",
-    timeout: 30_000,
-  });
-  console.log("⏳ Waiting for popup content selectors...");
-  await safeWaitForSelector(popup, "whatsapp-message-popup #country-trigger", {
-    timeout: 10_000,
-  });
-  await safeWaitForSelector(popup, "#country-trigger .country-picker__flag-img", {
-    timeout: 10_000,
-  });
 
   console.log("🔍 Evaluating popup state...");
   const installedState = await safeEvaluate(popup, () => {
@@ -280,18 +283,6 @@ try {
   console.log("🔒 Closing pages...");
   await safePageClose(optionsPage);
   await safePageClose(popup);
-
-  // Evaluating in the service worker earlier (the context-menu check, and the readiness poll
-  // before it) attached a CDP debugger session to it — and, confirmed directly, a service worker
-  // with a debugger still attached does not stop just because uninstallExtension() removes the
-  // extension: the target lingered indefinitely (still present 15s later) until this was added.
-  // CdpWebWorker.close()'s own source comment names this exactly: "For service and shared workers
-  // we need to close the target and detach to allow the worker to stop"
-  // (node_modules/puppeteer-core/lib/esm/puppeteer/cdp/WebWorker.js). Must run before
-  // uninstallExtension(), not after — verified closing first makes the target disappear within
-  // 0-1ms; the reverse order was never tested to help, since the whole point is releasing the
-  // debugger session that's keeping it pinned alive.
-  await worker.close();
 
   // A página aberta também é um alvo da extensão; feche-a para que somente os
   // processos mantidos pela instalação sejam considerados na desinstalação.
