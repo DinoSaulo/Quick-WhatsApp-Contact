@@ -405,6 +405,22 @@ jobs:
       - name: Verificar versao do Chrome baixado
         run: node scripts/verify-chrome-version.mjs "$(echo '${{ matrix.chromeVersion }}' | cut -d. -f1)"
 
+      # A real CI run SIGSEGV'd all 3 retry attempts identically, at nearly the same elapsed time
+      # each time (see tests/installation/extension-install.mjs's own exit-event diagnostics) —
+      # inconsistent with "rare flake" and consistent instead with either this exact binary being
+      # broken on whichever physical runner this job landed on (GitHub's ubuntu-latest fleet varies
+      # in kernel/microcode/hypervisor across instances, and a retry loop stays on the same runner),
+      # or a genuine bug in this exact Chrome-for-Testing build regardless of runner. This step
+      # tells those apart cheaply: launches the exact downloaded binary directly, no Puppeteer, no
+      # extension, nothing this repo's own code touches. If this also segfaults, the next failure's
+      # diagnostics will show it before the slower Puppeteer-driven test even starts, confirming the
+      # binary/runner itself rather than anything in extension-install.mjs. If it doesn't, that
+      # points back at Puppeteer's own CDP handling specifically.
+      - name: Verificar se o Chrome baixado inicia sem o Puppeteer
+        run: |
+          "$CHROME_PATH" --headless=new --no-sandbox --disable-gpu --disable-dev-shm-usage --dump-dom about:blank > /dev/null
+          echo "Chrome iniciou e renderizou about:blank sem o Puppeteer."
+
       # Every diagnosable cause of a failure here (missing shared libraries, OOM, a test-script
       # regression, CDP transport choice) has already been root-caused and fixed — see git history
       # on tests/installation/extension-install.mjs. What's left is a genuine, rare native SIGSEGV
