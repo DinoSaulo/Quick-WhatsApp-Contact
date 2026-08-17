@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import puppeteer from "puppeteer-core";
@@ -68,6 +68,15 @@ assert.ok(
 // still sees everything written so far.
 const chromeLogDir = mkdtempSync(join(tmpdir(), "quick-whatsapp-contact-chrome-log-"));
 const chromeLogFile = join(chromeLogDir, "chrome.log");
+// A real CI run segfaulted Chrome outright (confirmed via the exit-event diagnostics below), with
+// --enable-logging's own output above staying silent about it — expected, since Chrome's own crash
+// reporter (Crashpad/Breakpad) is what would normally produce a real report for exactly this, and
+// puppeteer-core's ChromeLauncher.defaultArgs() hardcodes both --disable-breakpad and
+// --disable-crash-reporter unconditionally (see the matching comment in browser-environment.mjs).
+// An explicit userDataDir — rather than the random temp one puppeteer-core would otherwise
+// generate — is what makes it possible to find whatever the crash reporter writes afterward,
+// since the dump location lives under it.
+const chromeUserDataDir = mkdtempSync(join(tmpdir(), "quick-whatsapp-contact-chrome-userdata-"));
 let chromeProcess;
 // A bare synchronous read of chromeProcess.exitCode/signalCode races Node's own event loop: if
 // Chrome's main process just died, the child process 'exit' event that actually updates those
@@ -178,6 +187,44 @@ function captureLinkerDiagnostics(execPath) {
   }
 }
 
+// Chrome's own crash reporter (Crashpad, or Breakpad on older builds) writes a .dmp minidump file
+// somewhere under its user-data-dir when it catches a native crash — but only once
+// ignoreDefaultArgs above has actually let it run at all (puppeteer-core disables it by default;
+// see the comment on that launch() call). The exact subdirectory has moved across Chrome versions
+// (Crash Reports/, Crashpad/completed/, ...), so this deliberately doesn't hardcode one — a
+// recursive filename search under the whole user-data-dir is robust to that and to which exact
+// signal/version produced it. This can't fully symbolicate a minidump (that needs Chrome's own
+// symbol files and a tool like minidump_stackwalk, disproportionate for a CI smoke test) but even
+// just confirming one exists, and where, turns "SIGSEGV, no other information" into something a
+// human can actually pull down and inspect from the CI artifact if this keeps recurring.
+function captureCrashDumpDiagnostics(userDataDir) {
+  if (process.platform !== "linux") {
+    return "(crash-dump diagnostics only implemented for Linux)";
+  }
+  try {
+    const found = execFileSync("find", [userDataDir, "-name", "*.dmp"], {
+      encoding: "utf8",
+      timeout: 5_000,
+    })
+      .split("\n")
+      .filter(Boolean);
+    if (!found.length) {
+      return `--- no .dmp crash dump files found under ${userDataDir} ---`;
+    }
+    const withSizes = found.map((dumpPath) => {
+      try {
+        const { size } = statSync(dumpPath);
+        return `${dumpPath} (${size} bytes)`;
+      } catch (error) {
+        return `${dumpPath} (stat failed: ${error.message})`;
+      }
+    });
+    return `--- crash dump files found ---\n${withSizes.join("\n")}`;
+  } catch (error) {
+    return `--- crash dump search under ${userDataDir} ---\n(failed: ${error.message})`;
+  }
+}
+
 let browser;
 
 try {
@@ -206,10 +253,18 @@ try {
   // "Session closed" errors. Left on the default WebSocket transport instead — far more
   // battle-tested, and nothing about this test (extension install/uninstall, page navigation,
   // evaluate calls) depends on pipe-specific behavior.
+  // ignoreDefaultArgs overrides two of puppeteer-core's own hardcoded default launch args (not
+  // anything from browserArgs/createBrowserArgs above — those never controlled this, see the
+  // comment on CI_STABILITY_FLAGS in browser-environment.mjs). Array form only excludes these two
+  // specific flags; every other puppeteer-core default (headless mode, --enable-unsafe-extension-
+  // debugging, etc.) is kept. userDataDir is set explicitly (rather than left to puppeteer-core's
+  // own random temp dir) purely so captureCrashDumpDiagnostics() below knows where to look.
   const launchOptions = launchBrowserWithStabilityFlags({
     executablePath,
     headless: true,
     enableExtensions: true,
+    userDataDir: chromeUserDataDir,
+    ignoreDefaultArgs: ["--disable-breakpad", "--disable-crash-reporter"],
     args: browserArgs,
   });
 
@@ -641,6 +696,7 @@ try {
   console.error(await formatChromeDiagnostics());
   console.error(captureSystemDiagnostics());
   console.error(captureLinkerDiagnostics(executablePath));
+  console.error(captureCrashDumpDiagnostics(chromeUserDataDir));
   if (browser) {
     try {
       const diag = await captureBrowserDiagnostics(browser);
@@ -662,5 +718,10 @@ try {
     rmSync(chromeLogDir, { recursive: true, force: true });
   } catch {
     // Ignored — see comment above.
+  }
+  try {
+    rmSync(chromeUserDataDir, { recursive: true, force: true });
+  } catch {
+    // Ignored — same reasoning as chromeLogDir above.
   }
 }

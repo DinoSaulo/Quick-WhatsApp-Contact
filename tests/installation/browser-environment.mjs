@@ -19,9 +19,18 @@ export const STANDARD_BROWSER_ARGS = [
 // local verification alone and only broke again once it reached GitHub Actions, where CI=true
 // unconditionally. Confirmed as the cause of a repeat "waiting for service worker" 30s timeout in
 // CI, after the first fix, on already-fixed code.
+// --disable-breakpad is deliberately NOT in this list (it briefly was, and removing it here alone
+// turned out to be a no-op worth documenting): puppeteer-core's own ChromeLauncher.defaultArgs()
+// hardcodes both --disable-breakpad and --disable-crash-reporter unconditionally, before this
+// file's args are ever merged in (node_modules/puppeteer-core/lib/esm/puppeteer/node/
+// ChromeLauncher.js) — so this array never actually controlled whether Chrome's own crash
+// reporter was on. The only way to override a puppeteer-core *default* arg (as opposed to adding
+// one of our own) is puppeteer.launch()'s ignoreDefaultArgs option, which extension-install.mjs
+// now passes directly for both flags — see the comment at that launch() call for why (getting a
+// real crash report/minidump out of a SIGSEGV that --disable-breakpad/--disable-crash-reporter
+// would otherwise silently swallow).
 export const CI_STABILITY_FLAGS = [
   "--disable-background-networking",
-  "--disable-breakpad",
   "--disable-client-side-phishing-detection",
   "--disable-component-extensions-with-background-pages",
   "--disable-component-update",
