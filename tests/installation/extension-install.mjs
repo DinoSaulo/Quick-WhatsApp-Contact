@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
-import { existsSync, readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
 import puppeteer from "puppeteer-core";
 import {
   createBrowserArgs,
@@ -42,13 +43,63 @@ assert.ok(
   "Chrome/Chromium não encontrado. Defina CHROME_PATH, CHROMIUM_PATH ou PUPPETEER_EXECUTABLE_PATH.",
 );
 
+// Unlike firefox-extension-install.mjs (which has captureFirefoxProcessOutput() +
+// consoleStream.makeVerbose() for exactly this purpose), this file had no equivalent — every
+// Chrome-side diagnosis this test has ever needed came only from Puppeteer's own error messages,
+// never from Chrome's actual stdout/stderr. That gap mattered concretely: a run failing with
+// "Session closed. Most likely the page has been closed" right after browser.newPage() gives no
+// way to tell *why* the tab/renderer went away (crash, OOM, sandbox denial, something else)
+// without Chrome's own output.
+//
+// File-based, not stream-based, and deliberately so: browser.process() (Puppeteer's standard way
+// to reach the underlying child process — confirmed via
+// node_modules/puppeteer-core/lib/esm/puppeteer/cdp/Browser.js's process() method) only becomes
+// available once puppeteer.launch() has already fully resolved. Tried piping Chrome's own
+// stdout/stderr (via the dumpio launch option) into a buffer first, and confirmed directly that
+// this loses a structural race every time: dumpio wires its own internal
+// .pipe(process.stdout/stderr) synchronously inside launch() itself, and by the time our own code
+// gets control back to attach a listener, Chrome has typically already emitted (and had drained)
+// most or all of its startup output — Node readable streams don't replay already-consumed data to
+// a newly attached listener. A log *file* has no such requirement: Chrome writes it continuously
+// regardless of whether anything is "listening", so reading it after the fact — however late —
+// still sees everything written so far.
+const chromeLogDir = mkdtempSync(join(tmpdir(), "quick-whatsapp-contact-chrome-log-"));
+const chromeLogFile = join(chromeLogDir, "chrome.log");
+let chromeProcess;
+
+function captureChromeProcessOutput(launchedBrowser) {
+  chromeProcess = launchedBrowser.process() ?? null;
+}
+
+function formatChromeDiagnostics() {
+  const processState = chromeProcess
+    ? `Chrome child process: exitCode=${chromeProcess.exitCode} signalCode=${chromeProcess.signalCode} killed=${chromeProcess.killed}`
+    : "Chrome child process handle unavailable (browser.process() returned null — connected via .connect() rather than .launch()?).";
+  let outputTail = "(nothing captured)";
+  if (existsSync(chromeLogFile)) {
+    const lines = readFileSync(chromeLogFile, "utf8").split("\n");
+    outputTail = lines.slice(-60).join("\n") || outputTail;
+  }
+  return `${processState}\n--- last Chrome log lines (${chromeLogFile}) ---\n${outputTail}`;
+}
+
 let browser;
 
 try {
   // GitHub Actions job containers run as root. Chromium refuses to start as
   // root unless its process sandbox is disabled; the outer job container
   // remains the isolation boundary in this CI-only scenario.
-  const browserArgs = createBrowserArgs();
+  // --enable-logging --log-file=<path> exists to make formatChromeDiagnostics() above actually
+  // have something to show (see the comment on chromeLogFile for why a file, not dumpio/streams).
+  // --v=1 (Chrome's verbose logging) was tested and rejected: ~594KB in 1.5s just for extension
+  // install, far too costly to write on every routine run. Plain --enable-logging (default
+  // verbosity — WARNING/ERROR/FATAL) is quiet in the common case (a couple of startup lines) but
+  // present when something actually goes wrong, which is exactly the tradeoff wanted here.
+  const browserArgs = [
+    ...createBrowserArgs(),
+    "--enable-logging",
+    `--log-file=${chromeLogFile}`,
+  ];
 
   const launchOptions = launchBrowserWithStabilityFlags({
     executablePath,
@@ -60,6 +111,7 @@ try {
 
   console.log("🚀 Launching browser with stability flags...");
   browser = await puppeteer.launch(launchOptions);
+  captureChromeProcessOutput(browser);
 
   console.log("📦 Installing extension...");
   const extensionId = await browser.installExtension(extensionPath);
@@ -417,6 +469,12 @@ try {
   console.log("Uninstall-with-pages-open validation: passed");
 } catch (error) {
   console.error("❌ Test failed:", error);
+  // Printed unconditionally, unlike captureBrowserDiagnostics() below: this reads only the
+  // already-buffered chromeOutputLines array and the raw ChildProcess object's own properties, so
+  // — confirmed useful precisely because of this — it still works even when the CDP connection
+  // itself is what broke (captureBrowserDiagnostics() has failed with "Tab target session is not
+  // defined" on exactly the kind of crash this exists to help diagnose).
+  console.error(formatChromeDiagnostics());
   if (browser) {
     try {
       const diag = await captureBrowserDiagnostics(browser);
@@ -429,4 +487,14 @@ try {
 } finally {
   console.log("🔒 Closing browser...");
   await safeBrowserClose(browser);
+  // Best-effort: on Windows specifically, the log file can still be held open by Chrome's own
+  // process for a brief moment after close() resolves, which turns rmSync into EBUSY/EPERM
+  // instead of silently no-op'ing the way a missing path does even with force: true. Harmless to
+  // leave behind in CI (ephemeral runners), so this must never let a cleanup failure mask the
+  // actual test result.
+  try {
+    rmSync(chromeLogDir, { recursive: true, force: true });
+  } catch {
+    // Ignored — see comment above.
+  }
 }
