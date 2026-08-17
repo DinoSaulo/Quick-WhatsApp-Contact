@@ -231,8 +231,8 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            label: "Chrome 150 - Ubuntu"
-            chromeMajor: "150"
+            label: "Chrome 151 - Ubuntu"
+            chromeMajor: "151"
           - os: ubuntu-latest
             label: "Chrome 151 - Fedora"
             container: fedora:latest
