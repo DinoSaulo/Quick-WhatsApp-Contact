@@ -299,12 +299,27 @@ try {
   // openOnboardingTab() there). That tab is this test's entry point into the extension's own
   // privileged context — see the file-level comment above for why it's needed — and its origin is
   // read back from it directly rather than assumed from EXTENSION_UUID/the pref above.
+  // The default 10s waitUntil() budget was observed timing out here specifically on the bare
+  // Ubuntu CI runner (not reproducible locally, including with CI=true set) alongside a Firefox-
+  // internal "RemoteAgent WARN PollPromise timed out after 100 ms" line — a warning Mozilla's own
+  // tooling associates with resource contention/timing pressure, not a specific logic bug. This
+  // tab can only open after background.js's onInstalled listener finishes an async chain of its
+  // own (a Promise.all of a context-menu rebuild and a chrome.scripting registration sync — see
+  // src/background.js) before ever calling openOnboardingTab(), so a loaded CI runner plausibly
+  // just needs more room than a local machine does for that whole chain plus Firefox's own BiDi
+  // target discovery to complete. Lower confidence than the Chrome-side timing fixes in this same
+  // file: those were directly reproduced and root-caused locally, this one could only be
+  // diagnosed from the CI log and a documented but non-specific Firefox warning.
   let driverPage;
-  await waitUntil(async () => {
-    const pages = await browser.pages();
-    driverPage = pages.find((candidate) => candidate.url().startsWith("moz-extension://"));
-    return Boolean(driverPage);
-  }, "Timed out waiting for the extension's onboarding tab to open after install.");
+  await waitUntil(
+    async () => {
+      const pages = await browser.pages();
+      driverPage = pages.find((candidate) => candidate.url().startsWith("moz-extension://"));
+      return Boolean(driverPage);
+    },
+    "Timed out waiting for the extension's onboarding tab to open after install.",
+    30_000,
+  );
 
   const extensionId = new URL(driverPage.url()).host;
   const extensionOrigin = `moz-extension://${extensionId}`;
