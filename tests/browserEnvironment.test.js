@@ -43,12 +43,12 @@ describe("installation browser environment", () => {
     ).toBeUndefined();
   });
 
-  it("adds Chromium sandbox overrides only for a root container", () => {
-    // isCI is pinned explicitly here: createBrowserArgs() defaults it from the real
-    // process.env.CI/GITHUB_ACTIONS, and GitHub Actions sets those on every job. Leaving it
-    // ambient made this test's outcome depend on where it ran (passing on a dev machine, failing
-    // in CI) instead of on the isRoot behavior it's actually meant to verify.
-    expect(createBrowserArgs({ isRoot: true, isCI: false })).toEqual([
+  it("adds Chromium sandbox overrides for a root container", () => {
+    // isCI/isLinux are pinned explicitly here: createBrowserArgs() defaults both from the real
+    // process.env.CI/GITHUB_ACTIONS and process.platform, and GitHub Actions sets/runs on Linux
+    // for most jobs. Leaving either ambient made this test's outcome depend on where it ran
+    // instead of on the isRoot behavior it's actually meant to verify.
+    expect(createBrowserArgs({ isRoot: true, isLinux: false, isCI: false })).toEqual([
       "--no-first-run",
       "--no-default-browser-check",
       "--disable-dev-shm-usage",
@@ -56,12 +56,30 @@ describe("installation browser environment", () => {
       "--no-sandbox",
       "--disable-setuid-sandbox",
     ]);
-    expect(createBrowserArgs({ isRoot: false, isCI: false })).toEqual([
+    expect(createBrowserArgs({ isRoot: false, isLinux: false, isCI: false })).toEqual([
       "--no-first-run",
       "--no-default-browser-check",
       "--disable-dev-shm-usage",
       "--disable-gpu",
     ]);
+  });
+
+  it("adds Chromium sandbox overrides on Linux even without root", () => {
+    // Confirmed root cause of a real CI failure (installation-test-pinned): a non-root bare
+    // ubuntu-latest runner launching a manually-downloaded (not apt-installed) Chrome build hits
+    // the same AppArmor user-namespace restriction as the earlier Firefox fix, unrelated to which
+    // uid is running it. See the matching comment on createBrowserArgs() itself.
+    expect(createBrowserArgs({ isRoot: false, isLinux: true, isCI: false })).toEqual([
+      "--no-first-run",
+      "--no-default-browser-check",
+      "--disable-dev-shm-usage",
+      "--disable-gpu",
+      "--no-sandbox",
+      "--disable-setuid-sandbox",
+    ]);
+    expect(createBrowserArgs({ isRoot: false, isLinux: false, isCI: false })).not.toContain(
+      "--no-sandbox",
+    );
   });
 
   it("adds CI stability flags only when running in CI", () => {

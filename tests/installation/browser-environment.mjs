@@ -81,14 +81,28 @@ export function findBrowserExecutable({ exists = existsSync, ...options } = {}) 
 
 export function createBrowserArgs({
   isRoot = typeof process.getuid === "function" && process.getuid() === 0,
+  isLinux = process.platform === "linux",
   isCI = process.env.CI === "true" ||
     process.env.GITHUB_ACTIONS === "true" ||
     process.env.CONTINUOUS_INTEGRATION === "true",
 } = {}) {
   const args = [...STANDARD_BROWSER_ARGS];
 
-  // Add sandbox args if running as root (CI containers)
-  if (isRoot) {
+  // Add sandbox args if running as root (CI containers) OR on Linux at all — not just root.
+  // Confirmed root cause of a real CI failure (installation-test-pinned, a bare non-root
+  // ubuntu-latest runner): recent Ubuntu restricts unprivileged processes from creating user
+  // namespaces via AppArmor unless the binary has a registered profile. apt/dnf/pacman-installed
+  // Chromium gets one from the OS; scripts/install-chrome-version.mjs downloads Chrome for Testing
+  // straight to .chrome-for-testing/<version>/ instead, an arbitrary path with no such profile —
+  // and Chrome's own sandbox process needs exactly that syscall to start. The crash surfaces as an
+  // immediate "Target closed" during ChromeLauncher's very first CDP handshake, before any of this
+  // script's own code runs, not as anything root-related. Same reasoning already applied to
+  // Firefox via MOZ_DISABLE_CONTENT_SANDBOX in firefox-extension-install.mjs: content sandboxing
+  // only protects against a compromised *web page's* renderer process, has no bearing on this
+  // test's own security-relevant assertions (which run in Node, driving the browser), so disabling
+  // it here is a test-harness-only concession — it must never be applied to how end users actually
+  // run this extension.
+  if (isRoot || isLinux) {
     args.push("--no-sandbox", "--disable-setuid-sandbox");
   }
 
