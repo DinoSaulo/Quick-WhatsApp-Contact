@@ -140,10 +140,19 @@ try {
     `--log-file=${chromeLogFile}`,
   ];
 
+  // pipe: true previously wired the CDP connection through Chrome's stdio pipes instead of
+  // Puppeteer's default WebSocket transport. Nothing in this file's history explains why — it
+  // predates every fix in this file's git log — and pipe transport has a known, if old, class of
+  // bugs where an unhandled stream error drops the *entire* browser-level connection, not just a
+  // single page's session (puppeteer/puppeteer#4374, #6258). That matches a real CI failure here
+  // exactly: a "Protocol error: Connection closed" thrown from Connection.send() itself (the
+  // browser-level CDP connection), immediately escalating what had been isolated per-page
+  // "Session closed" errors. Left on the default WebSocket transport instead — far more
+  // battle-tested, and nothing about this test (extension install/uninstall, page navigation,
+  // evaluate calls) depends on pipe-specific behavior.
   const launchOptions = launchBrowserWithStabilityFlags({
     executablePath,
     headless: true,
-    pipe: true,
     enableExtensions: true,
     args: browserArgs,
   });
