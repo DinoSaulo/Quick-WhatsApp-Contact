@@ -497,6 +497,24 @@ try {
   console.log(`Extension origin: ${extensionOrigin}`);
   console.log("Install validation: passed");
   console.log("Uninstall (runner exit) validation: passed");
+} catch (error) {
+  // Without this, every ordinary failure in the try block above — not just a genuine RDP crash —
+  // fell through this file's top-level try/finally (previously no catch at all) as an unhandled
+  // top-level module rejection, which Node routes through the same reporting path as
+  // uncaughtException (confirmed empirically earlier in this file's history). That made the
+  // uncaughtException handler below's "crashed outside this script's own error handling" preamble
+  // print for completely ordinary, well-formed errors (e.g. the onboarding-tab wait's own timeout,
+  // which already builds an informative message with a BiDi targets dump) — misleading, since that
+  // text specifically describes the *other* failure mode that handler exists for (a raw RDP socket
+  // error with no application stack frames at all). This catch gives ordinary errors an accurate,
+  // Chrome-test-equivalent path instead: log with correct framing, then rethrow so the process
+  // still exits non-zero and `finally` below still runs.
+  console.error(
+    "❌ Firefox extension lifecycle smoke test failed.\n" +
+      formatFirefoxDiagnostics() +
+      `\n--- original error ---\n${error?.stack ?? error}`,
+  );
+  throw error;
 } finally {
   if (browser?.connected) {
     await browser.close().catch(() => {});
