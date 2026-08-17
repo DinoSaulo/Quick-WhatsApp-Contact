@@ -375,6 +375,28 @@ jobs:
           name: extension-build
           path: dist/extension/
 
+      # Confirmed root cause of a real CI crash (SIGSEGV, captured via
+      # tests/installation/extension-install.mjs's own Chrome log-file diagnostic): "chrome for
+      # Testing" downloaded straight from Google's CDN — as install-chrome-version.mjs does just
+      # below, unlike this job's Fedora/Debian/Rocky/Arch siblings which install `chromium`
+      # through their own package manager — has no dependency-resolution mechanism of its own.
+      # Puppeteer's own troubleshooting docs describe this exact scenario verbatim: "The bundled
+      # Chrome for Testing that Puppeteer installs is missing the necessary shared library
+      # dependencies." installing google-chrome-stable here is purely for that side effect (pulling
+      # in the correct shared libraries via its own .deb dependency chain) — the actual testing
+      # still runs against the separately-downloaded, version-pinned binary below via CHROME_PATH,
+      # never against this one. Installing the real .deb rather than hand-copying Puppeteer's
+      # static package list is deliberate: Ubuntu has renamed several of those packages across
+      # releases (e.g. libasound2 → libasound2t64), so letting apt resolve dependencies from the
+      # actual current package metadata is more robust than a list that can silently drift out of
+      # date. Likely a fast no-op in practice — ubuntu-latest runner images ship Chrome
+      # pre-installed already, which is how installation-test's plain "Chrome - Ubuntu" entry (no
+      # setup step at all) finds a working browser without this job's crash.
+      - name: Instalar Chrome estavel (resolve dependencias de sistema via apt)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y google-chrome-stable
+
       - name: Baixar Chrome for Testing ${{ matrix.chromeVersion }}
         run: |
           EXEC_PATH=$(node scripts/install-chrome-version.mjs "${{ matrix.chromeVersion }}")
