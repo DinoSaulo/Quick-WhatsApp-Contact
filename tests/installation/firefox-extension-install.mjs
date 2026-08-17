@@ -324,12 +324,29 @@ try {
   // browser.pages() filters to, in case the onboarding tab (or something else revealing) exists
   // under a target type this test wasn't looking at — so the *next* occurrence is diagnosable
   // instead of another guess.
+  // A real CI failure showed only the BiDi-targets snapshot at the *end* of this wait (two
+  // "about:blank" pages, no moz-extension:// page) — informative about the final state, but silent
+  // on whether anything happened in between. The existing comment above already had to guess
+  // between "just needs more time" (gradual progress) and something more stuck (near-total
+  // silence) with no way to actually tell them apart from a single end-of-wait snapshot. Logging a
+  // throttled snapshot during the wait itself (not just on failure) answers that directly for
+  // whichever hypothesis the next occurrence supports, instead of another guess.
+  let lastSnapshotAt = 0;
   let driverPage;
   try {
     await waitUntil(
       async () => {
         const pages = await browser.pages();
         driverPage = pages.find((candidate) => candidate.url().startsWith("moz-extension://"));
+
+        if (!driverPage && Date.now() - lastSnapshotAt >= 5_000) {
+          lastSnapshotAt = Date.now();
+          console.log(
+            `⏳ Still waiting for the onboarding tab (${pages.length} page(s) open: ` +
+              `${pages.map((page) => page.url()).join(", ") || "(none)"})...`,
+          );
+        }
+
         return Boolean(driverPage);
       },
       "Timed out waiting for the extension's onboarding tab to open after install.",
