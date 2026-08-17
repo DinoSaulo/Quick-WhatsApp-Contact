@@ -17,6 +17,7 @@ import {
   safeWaitForSelector,
   waitUntilWithDiagnostics,
   captureBrowserDiagnostics,
+  validatePageIsAlive,
 } from "./puppeteer-helpers.mjs";
 import { ONBOARDING_PAGE_PATH } from "../../src/utils/tutorial.js";
 
@@ -275,6 +276,19 @@ try {
   const pageErrors = [];
   popup.on("pageerror", (error) => pageErrors.push(String(error)));
 
+  // A real CI run segfaulted Chrome's whole process (confirmed via the exit-event diagnostics in
+  // the catch block below — an actual observed SIGSEGV, not a stale snapshot) at the exact moment
+  // setViewport() sent its first CDP command (Emulation.setTouchEmulationEnabled) to this page,
+  // immediately after browser.newPage() resolved. That matches the same shape as every other race
+  // this file has hit and fixed already — a command sent before a target has actually finished
+  // initializing — just landing as a native crash this time instead of a graceful protocol error,
+  // plausible given headless Chrome's --disable-gpu rendering paths are known to be less
+  // battle-tested than the GPU-accelerated ones. validatePageIsAlive() forces a real round-trip
+  // through the page's own JS engine over CDP first, so if the renderer isn't actually up yet this
+  // fails with a clear, ordinary error instead of risking a native crash on the very next command.
+  // Not proven by direct reproduction — native crashes are inherently hard to prove — but it's the
+  // same low-risk, evidence-matching move as this file's other timing fixes.
+  await validatePageIsAlive(popup, "popup page");
   await popup.setViewport({ width: 360, height: 600, deviceScaleFactor: 1 });
 
   await safeGoto(popup, popupUrl, {
@@ -405,6 +419,8 @@ try {
 
   console.log("📄 Opening options page...");
   const optionsPage = await browser.newPage();
+  // Same readiness probe as the popup page above, same reasoning.
+  await validatePageIsAlive(optionsPage, "options page");
   await optionsPage.setViewport({ width: 1200, height: 800, deviceScaleFactor: 1 });
   await safeGoto(optionsPage, `${extensionOrigin}/${expectedManifest.options_ui.page}`, {
     waitUntil: "domcontentloaded",
