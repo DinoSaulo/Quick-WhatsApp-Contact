@@ -86,30 +86,35 @@ try {
   console.log("🔍 Verifying context menu registration...");
   const worker = await workerTarget.worker();
 
-  // CDP can attach to and evaluate against a service worker target before Chrome has actually
-  // finished initializing that worker's global scope — a confirmed, Won't-Fix Chromium bug
-  // (https://issues.chromium.org/issues/341213355). Evaluating too early here doesn't throw a
-  // useful error; it silently sees a bare worker global with no extension APIs injected yet
-  // (confirmed directly: chrome.runtime undefined, chrome.contextMenus undefined, only the
-  // ambient chrome.csi/chrome.loadTimes every page/worker gets), so `chrome.contextMenus.update`
-  // below would throw "Cannot read properties of undefined" — not because the permission is
-  // missing, but because of this race. Poll for chrome.runtime's presence first; verified locally
-  // this resolves in ~100-150ms (2 polls), consistently across repeated runs.
-  await waitUntil(
-    () => worker.evaluate(() => typeof chrome !== "undefined" && typeof chrome.runtime !== "undefined"),
-    "Timed out waiting for the service worker's extension APIs (chrome.runtime) to initialize.",
-  );
-
+  // Two independent races stack here, so this polls the *actual* condition we care about (the
+  // menu item existing) rather than a proxy for it — one retry loop absorbs both:
+  //  1. CDP can attach to and evaluate against a service worker target before Chrome has actually
+  //     finished initializing that worker's global scope — a confirmed, Won't-Fix Chromium bug
+  //     (https://issues.chromium.org/issues/341213355). Evaluating too early doesn't throw a
+  //     useful error; it silently sees a bare worker global with no extension APIs injected yet
+  //     (confirmed directly: chrome.runtime undefined, chrome.contextMenus undefined, only the
+  //     ambient chrome.csi/chrome.loadTimes every page/worker gets).
+  //  2. Even once chrome.* exists, background.js's own chrome.runtime.onInstalled listener is
+  //     itself async — it awaits a chrome.storage.sync read and chrome.contextMenus.removeAll()
+  //     before chrome.contextMenus.create() ever runs (see refreshContextMenu() in
+  //     src/background.js) — so the menu item can still not exist yet even on a fully-initialized
+  //     worker. Confirmed as a real, separate CI failure: chrome.contextMenus.update() resolved
+  //     without throwing but returned false (chrome.runtime.lastError set, "no such menu item")
+  //     because that async chain hadn't finished. A one-shot check after only the first race was
+  //     fixed still isn't enough; retrying the update() call itself handles both by construction.
   let contextMenuRegistered = false;
   try {
-    contextMenuRegistered = await worker.evaluate(
-      () =>
-        new Promise((resolveCheck) => {
-          chrome.contextMenus.update("quick-whatsapp-contact.send", {}, () => {
-            resolveCheck(!chrome.runtime.lastError);
-          });
-        }),
-    );
+    await waitUntil(async () => {
+      contextMenuRegistered = await worker.evaluate(
+        () =>
+          new Promise((resolveCheck) => {
+            chrome.contextMenus.update("quick-whatsapp-contact.send", {}, () => {
+              resolveCheck(!chrome.runtime.lastError);
+            });
+          }),
+      );
+      return contextMenuRegistered;
+    }, "Timed out waiting for the context menu item to be registered.");
   } catch (error) {
     console.error(`⚠️  Context menu check failed: ${error.message}`);
     // Log diagnostics before re-throwing
