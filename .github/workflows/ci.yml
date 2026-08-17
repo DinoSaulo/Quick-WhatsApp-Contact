@@ -352,6 +352,18 @@ jobs:
       fail-fast: false
       matrix:
         chromeVersion: ${{ fromJson(needs.resolve-chrome-versions.outputs.versions) }}
+        # TEMPORARY diagnostic entry, remove once answered: every SIGSEGV chased across many
+        # rounds (see git history on tests/installation/extension-install.mjs and this job's own
+        # comments below) has been against 151.0.7922.138 specifically, resolved dynamically as
+        # the newest patch of Chrome's current major. Never actually tested whether an *older*
+        # 151.x patch is affected too, or whether this is unique to .138. 151.0.7922.71 is a real,
+        # earlier patch on the same stable branch (confirmed available for linux64 via Chrome for
+        # Testing's own catalog) — several patches before .138, not adjacent enough to plausibly
+        # share whatever specific regression (if any) .138 introduced. A pass here would strongly
+        # suggest a real regression isolated to .138 itself; a crash here would suggest the whole
+        # 151.x line (or this test's own interaction with it) is affected regardless of patch.
+        include:
+          - chromeVersion: "151.0.7922.71"
 
     steps:
       - name: Clonar repositorio
