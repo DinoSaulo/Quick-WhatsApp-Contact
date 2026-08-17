@@ -421,18 +421,46 @@ jobs:
           "$CHROME_PATH" --headless=new --no-sandbox --disable-gpu --disable-dev-shm-usage --dump-dom about:blank > /dev/null
           echo "Chrome iniciou e renderizou about:blank sem o Puppeteer."
 
+      # Bisecting further after the step above ruled out a broken binary/runner: two consecutive
+      # real job runs SIGSEGV'd 3/3 retry attempts each, at nearly identical elapsed time every
+      # time (~15-20s post-launch — see tests/installation/extension-install.mjs's own exit-event
+      # diagnostics), right around when this extension's own background.js opens its onboarding
+      # tab on install. Does merely *loading this extension* — no Puppeteer, no CDP connection at
+      # all — survive that same window? --load-extension is Chrome's own CLI mechanism for loading
+      # an unpacked extension, independent of whatever puppeteer-core's installExtension() does
+      # internally over CDP. A crash here would point at this extension's own onInstalled/
+      # onboarding-tab flow interacting badly with this exact Chrome build, regardless of Puppeteer;
+      # survival narrows it back to something specific in Puppeteer's CDP-driven flow (auto-attach
+      # across multiple targets created in quick succession is the leading suspect).
+      - name: Verificar se a extensao carrega sem o Puppeteer
+        run: |
+          "$CHROME_PATH" --headless=new --no-sandbox --disable-gpu --disable-dev-shm-usage \
+            --disable-extensions-except="$(pwd)/dist/extension" \
+            --load-extension="$(pwd)/dist/extension" \
+            about:blank &
+          CHROME_PID=$!
+          sleep 20
+          if kill -0 "$CHROME_PID" 2>/dev/null; then
+            echo "Chrome sobreviveu 20s com a extensao carregada, sem o Puppeteer."
+            kill "$CHROME_PID"
+            wait "$CHROME_PID" 2>/dev/null || true
+          else
+            wait "$CHROME_PID"
+            EXIT_CODE=$?
+            echo "Chrome morreu (exit code $EXIT_CODE) apos carregar a extensao, sem o Puppeteer." >&2
+            exit 1
+          fi
+
       # Every diagnosable cause of a failure here (missing shared libraries, OOM, a test-script
       # regression, CDP transport choice) has already been root-caused and fixed — see git history
-      # on tests/installation/extension-install.mjs. What's left is a genuine, rare native SIGSEGV
-      # inside this exact pinned Chrome-for-Testing binary that reproduced with healthy memory, all
-      # shared libraries resolved, and no command in flight at the moment of the crash (confirmed
-      # via that file's own exit-event/ldd/dmesg diagnostics on real failures) — i.e. a real
-      # upstream-shaped crash, not something this script's own logic is doing wrong. A small retry
-      # loop is the pragmatic answer to that class of failure: proportionate to how rare it is,
-      # doesn't mask a systematic bug (there's nothing systematic left to mask, and the crash-dump
-      # diagnostics added alongside this still fire and get logged on every attempt, including ones
-      # a later retry papers over), and avoids spending a full job re-run's queue time over one
-      # flaky attempt in three.
+      # on tests/installation/extension-install.mjs. What remains is a native SIGSEGV inside this
+      # exact pinned Chrome-for-Testing binary, confirmed across two consecutive job runs (3/3
+      # attempts each) NOT to be OOM, a missing library, or the raw binary/runner (see the two
+      # steps above) — genuinely hard to pin down further without the bisection above landing on
+      # something actionable. Not actually "rare" per that evidence, but the retry loop stays for
+      # now regardless: it's cheap, it can't make things worse, and the crash-dump diagnostics above
+      # still fire and get logged on every attempt, including ones a later retry papers over — so it
+      # isn't masking a systematic bug that's otherwise going undiagnosed.
       - name: Testar instalacao e desinstalacao no Chrome
         run: |
           for attempt in 1 2 3; do
