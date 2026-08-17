@@ -96,7 +96,16 @@ describe("GitHub Actions cross-platform runtime integration", () => {
 
     expect(pinnedJob).toContain("needs: [security-tests, resolve-chrome-versions]");
     expect(pinnedJob).toContain("fromJson(needs.resolve-chrome-versions.outputs.versions)");
-    expect(pinnedJob).toContain("run: npm run test:install");
+    // Unlike installation-test's plain "run: npm run test:install" (asserted with that exact
+    // prefix further down), this job wraps the same command in a retry loop — see the comment
+    // above that step in ci.yml for why (a rare, already-root-caused-as-far-as-possible native
+    // Chrome crash, not a systematic bug this test suite should be masking). "run: |" starts the
+    // block; the loop still has to actually invoke the real script and still has to fail loudly
+    // (not silently pass CI) once every attempt is exhausted.
+    expect(pinnedJob).toContain("run: |");
+    expect(pinnedJob).toContain("npm run test:install");
+    expect(pinnedJob).toMatch(/for attempt in .+; do/);
+    expect(pinnedJob).toContain("exit 1");
     expect(pinnedJob).toContain("scripts/install-chrome-version.mjs");
     expect(pinnedJob).toContain("scripts/verify-chrome-version.mjs");
     // This job is deliberately Ubuntu-only (precise version coverage, not OS diversity — see the
