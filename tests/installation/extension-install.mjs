@@ -18,6 +18,7 @@ import {
   waitUntilWithDiagnostics,
   captureBrowserDiagnostics,
 } from "./puppeteer-helpers.mjs";
+import { ONBOARDING_PAGE_PATH } from "../../src/utils/tutorial.js";
 
 const projectRoot = resolve(import.meta.dirname, "../..");
 const extensionPath = resolve(projectRoot, "dist", "extension");
@@ -168,6 +169,33 @@ try {
       target.url().endsWith("/src/background.js"),
     { timeout: 30_000 },
   );
+
+  // background.js's onInstalled listener (reason: "install") calls chrome.tabs.create() to open
+  // an onboarding tab — see openOnboardingTab() in src/background.js — independent of and
+  // concurrent with anything this script does. firefox-extension-install.mjs already has to
+  // account for this (see its own onboarding-tab wait); this file never did, because until now a
+  // different, more prominent bug always failed the run first (the service-worker dead-mode bug,
+  // then a missing-shared-library SIGSEGV — see git history). With those fixed, this looks like
+  // the next layer: browser.newPage() below for the popup was racing that same automatic tab
+  // creation — two independent, near-simultaneous tab-creation calls — and the newly-created
+  // popup tab's own CDP session was occasionally already gone by the time setViewport() sent its
+  // first command, surfacing as "Session closed. Most likely the page has been closed" on
+  // Emulation.setTouchEmulationEnabled. Not confirmed by direct reproduction (this failure mode
+  // never reproduced locally); what IS confirmed, via formatChromeDiagnostics()/
+  // captureSystemDiagnostics() in the catch block below on the most recent real failure, is that
+  // it's neither a Chrome crash (signalCode was null) nor OOM (dmesg had no matching lines,
+  // free -h showed 13Gi available) — narrowing this to a timing race specifically. Waiting for the
+  // onboarding tab to fully exist (and closing it) before creating any other page removes that
+  // race instead of retrying around it, and as a side effect is the first time this file actually
+  // verifies the onboarding tab opens on install at all — previously untested here, unlike the
+  // Firefox sibling test.
+  console.log("⏳ Waiting for onboarding tab (opened automatically on install)...");
+  const onboardingUrl = `${extensionOrigin}/${ONBOARDING_PAGE_PATH}`;
+  const onboardingTarget = await browser.waitForTarget(
+    (target) => target.type() === "page" && target.url() === onboardingUrl,
+    { timeout: 15_000 },
+  );
+  await safePageClose(await onboardingTarget.page());
 
   const popupUrl = `${extensionOrigin}/${expectedManifest.action.default_popup}`;
 
@@ -435,6 +463,17 @@ try {
       target.url().endsWith("/src/background.js"),
     { timeout: 30_000 },
   );
+
+  // Same race as the first install above — reason: "install" fires again for this second,
+  // independent install cycle, so background.js opens another onboarding tab here too.
+  console.log("⏳ Waiting for onboarding tab (opened automatically on reinstall)...");
+  const reinstalledOnboardingTarget = await browser.waitForTarget(
+    (target) =>
+      target.type() === "page" &&
+      target.url() === `${reinstalledOrigin}/${ONBOARDING_PAGE_PATH}`,
+    { timeout: 15_000 },
+  );
+  await safePageClose(await reinstalledOnboardingTarget.page());
 
   const reinstalledOptions = await browser.newPage();
   console.log("📄 Verifying clean settings on reinstalled extension...");
