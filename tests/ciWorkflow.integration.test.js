@@ -82,7 +82,7 @@ describe("GitHub Actions cross-platform runtime integration", () => {
     expect(packageJson.scripts["test:install"]).toBe(
       "npm run build && node tests/installation/extension-install.mjs",
     );
-    expect(packageJson.devDependencies["puppeteer-core"]).toBe("24.8.1");
+    expect(packageJson.devDependencies["puppeteer-core"]).toBe("25.8.0");
   });
 
   it("resolves and pins installation-test-pinned's matrix to the last 3 Chrome majors dynamically", () => {

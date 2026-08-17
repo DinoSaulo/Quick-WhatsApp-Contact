@@ -232,7 +232,7 @@ export function launchBrowserWithStabilityFlags(options = {}) {
   // caller — always passes enableExtensions: true precisely so it can load and test our own
   // extension. Puppeteer-core's ChromeLauncher reads that flag itself and pushes
   // --enable-unsafe-extension-debugging ahead of these args (see
-  // node_modules/puppeteer-core/lib/esm/puppeteer/node/ChromeLauncher.js's
+  // node_modules/puppeteer-core/lib/puppeteer/node/ChromeLauncher.js's
   // computeLaunchArguments()), then appends this function's `args` *after* it. Chrome's
   // --disable-extensions has no "re-enable" counterpart a later flag can undo, so its mere
   // presence anywhere on the command line disables the extensions system outright — silently

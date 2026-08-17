@@ -56,7 +56,7 @@ assert.ok(
 //
 // File-based, not stream-based, and deliberately so: browser.process() (Puppeteer's standard way
 // to reach the underlying child process — confirmed via
-// node_modules/puppeteer-core/lib/esm/puppeteer/cdp/Browser.js's process() method) only becomes
+// node_modules/puppeteer-core/lib/puppeteer/cdp/Browser.js's process() method) only becomes
 // available once puppeteer.launch() has already fully resolved. Tried piping Chrome's own
 // stdout/stderr (via the dumpio launch option) into a buffer first, and confirmed directly that
 // this loses a structural race every time: dumpio wires its own internal

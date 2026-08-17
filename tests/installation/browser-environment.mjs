@@ -22,7 +22,7 @@ export const STANDARD_BROWSER_ARGS = [
 // --disable-breakpad is deliberately NOT in this list (it briefly was, and removing it here alone
 // turned out to be a no-op worth documenting): puppeteer-core's own ChromeLauncher.defaultArgs()
 // hardcodes both --disable-breakpad and --disable-crash-reporter unconditionally, before this
-// file's args are ever merged in (node_modules/puppeteer-core/lib/esm/puppeteer/node/
+// file's args are ever merged in (node_modules/puppeteer-core/lib/puppeteer/node/
 // ChromeLauncher.js) — so this array never actually controlled whether Chrome's own crash
 // reporter was on. The only way to override a puppeteer-core *default* arg (as opposed to adding
 // one of our own) is puppeteer.launch()'s ignoreDefaultArgs option, which extension-install.mjs
