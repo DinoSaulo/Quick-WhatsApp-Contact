@@ -3,7 +3,7 @@ import { extname, join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 
 const projectRoot = resolve(import.meta.dirname, "..");
-const roots = ["src", "scripts", "tests"];
+const roots = ["src", "scripts", "tests", "docs"];
 
 function collectJavaScript(directory) {
   return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {

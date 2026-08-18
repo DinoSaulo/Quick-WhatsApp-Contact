@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en-US">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Quick WhatsApp Contact</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #f7f4eb;
+        --text: #1f2a1f;
+        --muted: #5f6f5f;
+        --accent: #1f8f55;
+        --border: #d8ccb1;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #11151a;
+          --text: #f0f4f7;
+          --muted: #b3c0cb;
+          --accent: #2ecc71;
+          --border: #3a4756;
+        }
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--bg);
+        color: var(--text);
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        line-height: 1.6;
+      }
+      main {
+        max-width: 480px;
+        margin: 0 auto;
+        padding: 40px 24px;
+        text-align: center;
+      }
+      #farewell-emoji {
+        font-size: 64px;
+        line-height: 1;
+      }
+      #farewell-eyebrow {
+        margin: 16px 0 4px;
+        color: var(--accent);
+        font-weight: 600;
+        letter-spacing: 0.02em;
+        text-transform: uppercase;
+        font-size: 13px;
+      }
+      #farewell-title {
+        margin: 0 0 12px;
+        font-size: 24px;
+      }
+      #farewell-message {
+        color: var(--muted);
+        font-size: 15px;
+      }
+      a {
+        color: var(--accent);
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div id="farewell-emoji"></div>
+      <p id="farewell-eyebrow"></p>
+      <h1 id="farewell-title"></h1>
+      <p id="farewell-message"></p>
+      <p><a href="https://github.com/DinoSaulo/Quick-WhatsApp-Contact">GitHub</a></p>
+    </main>
+    <script type="module">
+      import { renderFarewellPage } from "./farewell.js";
+      renderFarewellPage();
+    </script>
+  </body>
+</html>

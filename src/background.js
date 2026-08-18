@@ -20,16 +20,19 @@ const LANGUAGE_STORAGE_KEY = "quick-whatsapp-contact.language";
 const AUTO_HIGHLIGHT_ENABLED_KEY = "quick-whatsapp-contact.auto-highlight-enabled";
 const PAGE_HELPERS_SCRIPT_ID = "quick-whatsapp-contact.page-helpers";
 const PAGE_ORIGINS = ["http://*/*", "https://*/*"];
+// Hosted outside the packed extension (GitHub Pages, same as PRIVACY.md/docs/privacy.html):
+// chrome-extension:// pages are unreachable by the time this URL actually opens, after removal.
+const FAREWELL_PAGE_URL = "https://dinosaulo.github.io/Quick-WhatsApp-Contact/farewell.html";
 
 chrome.runtime.onInstalled.addListener(async (details = {}) => {
-  await Promise.all([refreshContextMenu(), syncPageHelpersRegistration()]);
+  await Promise.all([refreshContextMenu(), syncPageHelpersRegistration(), updateUninstallUrl()]);
   if (details.reason === "install") {
     await openOnboardingTab();
   }
 });
 
 chrome.runtime.onStartup.addListener(async () => {
-  await Promise.all([refreshContextMenu(), syncPageHelpersRegistration()]);
+  await Promise.all([refreshContextMenu(), syncPageHelpersRegistration(), updateUninstallUrl()]);
 });
 
 chrome.storage.onChanged.addListener(async (changes, areaName) => {
@@ -37,7 +40,7 @@ chrome.storage.onChanged.addListener(async (changes, areaName) => {
     return;
   }
   if (changes[LANGUAGE_STORAGE_KEY]) {
-    await refreshContextMenu();
+    await Promise.all([refreshContextMenu(), updateUninstallUrl()]);
   }
   if (changes[AUTO_HIGHLIGHT_ENABLED_KEY]) {
     await syncPageHelpersRegistration();
@@ -120,6 +123,13 @@ async function openWhatsAppTab(url) {
 
 async function openOnboardingTab() {
   return chrome.tabs.create({ url: chrome.runtime.getURL(ONBOARDING_PAGE_PATH) });
+}
+
+// Re-set whenever the language changes so the farewell page (docs/farewell.js) always opens in
+// whatever language was current when the extension was actually removed, not install-time's.
+async function updateUninstallUrl() {
+  const language = await getLanguage();
+  await chrome.runtime.setUninstallURL(`${FAREWELL_PAGE_URL}?lang=${encodeURIComponent(language)}`);
 }
 
 async function syncPageHelpersRegistration() {

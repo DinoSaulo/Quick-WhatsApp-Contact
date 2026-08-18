@@ -6,7 +6,7 @@ import { extname, join, resolve } from "node:path";
 const MAX_COMMENT_LINES = 2;
 
 const projectRoot = resolve(import.meta.dirname, "..");
-const jsRoots = ["src", "scripts", "tests"];
+const jsRoots = ["src", "scripts", "tests", "docs"];
 const yamlRoots = [".github"];
 
 function collectFiles(directory, extensions) {

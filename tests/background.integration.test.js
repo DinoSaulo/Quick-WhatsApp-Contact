@@ -43,7 +43,8 @@ describe("background selection security integration", () => {
         onInstalled: eventFor("installed"),
         onStartup: eventFor("startup"),
         onMessage: eventFor("message"),
-        getURL: vi.fn((path) => `chrome-extension://background-id/${path}`)
+        getURL: vi.fn((path) => `chrome-extension://background-id/${path}`),
+        setUninstallURL: vi.fn()
       },
       storage: { onChanged: eventFor("storageChanged") },
       permissions: {
@@ -76,6 +77,7 @@ describe("background selection security integration", () => {
     mockLocation.detectCountryCodeFromUrl.mockReturnValue("PT");
     chrome.tabs.create.mockResolvedValue({});
     chrome.action.openPopup.mockResolvedValue();
+    chrome.runtime.setUninstallURL.mockResolvedValue();
     chrome.permissions.contains.mockResolvedValue(false);
     chrome.scripting.getRegisteredContentScripts.mockResolvedValue([]);
     chrome.scripting.unregisterContentScripts.mockResolvedValue();
@@ -279,5 +281,32 @@ describe("background selection security integration", () => {
 
     expect(chrome.contextMenus.removeAll).not.toHaveBeenCalled();
     expect(chrome.scripting.getRegisteredContentScripts).not.toHaveBeenCalled();
+  });
+
+  const FAREWELL_URL = "https://dinosaulo.github.io/Quick-WhatsApp-Contact/farewell.html";
+
+  it("sets the uninstall farewell page URL for the current language on install", async () => {
+    await handlers.installed();
+
+    expect(chrome.runtime.setUninstallURL).toHaveBeenCalledWith(`${FAREWELL_URL}?lang=en-US`);
+  });
+
+  it("sets the uninstall farewell page URL again on browser startup", async () => {
+    mockStorage.getLanguage.mockResolvedValue("pt-BR");
+
+    await handlers.startup();
+
+    expect(chrome.runtime.setUninstallURL).toHaveBeenCalledWith(`${FAREWELL_URL}?lang=pt-BR`);
+  });
+
+  it("updates the uninstall farewell page URL when the language setting changes", async () => {
+    mockStorage.getLanguage.mockResolvedValue("pt-BR");
+
+    await handlers.storageChanged(
+      { "quick-whatsapp-contact.language": { newValue: "pt-BR" } },
+      "sync"
+    );
+
+    expect(chrome.runtime.setUninstallURL).toHaveBeenCalledWith(`${FAREWELL_URL}?lang=pt-BR`);
   });
 });
