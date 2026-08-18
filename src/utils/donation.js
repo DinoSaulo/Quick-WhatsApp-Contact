@@ -1,15 +1,5 @@
-// Dados dos métodos de doação exibidos no modal "Buy me a coffee" (src/options/donationModal.js).
-//
-// `copyText` é o valor mostrado com um botão "copiar" em cada seção.
-// `link` é opcional — quando presente, mostra também um botão "Abrir" (ex.: um link
-// paypal.me/revolut.me que já pré-preenche valor). Deixe `null` quando não houver.
-// `qrAsset` é o caminho, relativo à raiz da extensão, da imagem do QR code:
-//   - termina em ".svg"  → gerado localmente a partir do `copyText` por
-//     scripts/generate-donation-qrcodes.mjs (caso do PIX). Rode esse script depois de
-//     editar o copyText correspondente, antes de commitar.
-//   - qualquer outra extensão (ex. ".png") → imagem oficial exportada manualmente do
-//     próprio app de pagamento (caso do MB WAY/Revolut e do PayPal). O script de geração
-//     pula esses métodos de propósito — nunca sobrescreva a imagem oficial.
+// Dados dos métodos de doação exibidos no modal "Buy me a coffee" (donationModal.js). `link` é opcional
+// (botão "Abrir"). `qrAsset` termina em ".svg" quando gerado por generate-donation-qrcodes.mjs (rode-o após editar copyText), senão é imagem oficial manual — nunca sobrescreva.
 export const DONATION_METHODS = [
   {
     id: "pix",

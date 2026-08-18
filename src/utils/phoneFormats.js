@@ -1,12 +1,5 @@
-// Regras de validação do número local por DDI (dial code), não pelo país.
-// Um mesmo DDI pode ser compartilhado por vários países (ex.: "1" = EUA/Canadá);
-// nesses casos o array reúne todos os formatos aceitos para esse DDI.
-//
-// A maioria das entradas usa apenas "X" (qualquer dígito) porque foi derivada
-// automaticamente da contagem de dígitos do phoneMask já curado em countries.js.
-// As entradas com dígitos literais (ex.: "55": mobile brasileiro exige um "9")
-// foram escritas à mão a partir de conhecimento do plano de numeração local —
-// preserve-as ao regenerar esta lista.
+// Regras de validação do número local por DDI, não por país (um DDI pode ter vários países, ex. "1").
+// Entradas com dígitos literais (ex. "55": mobile BR exige "9") foram escritas à mão — preserve-as ao regenerar.
 export const PHONE_FORMAT_RULES_BY_DDI = {
   "1": ["XXX-XXXX"],
   "7": ["XXX-XX-XX"],

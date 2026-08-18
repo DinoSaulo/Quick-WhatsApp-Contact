@@ -8,27 +8,8 @@ export const STANDARD_BROWSER_ARGS = [
   "--disable-gpu", // Disable GPU for headless CI
 ];
 
-// --disable-extensions must NOT be in this list: extension-install.mjs — the only caller that
-// feeds createBrowserArgs()'s output into a real browser launch — always passes
-// enableExtensions: true precisely so it can load and test our own extension, and Chrome's
-// --disable-extensions has no "re-enable" counterpart a later flag can undo (see the matching
-// comment in puppeteer-helpers.mjs's launchBrowserWithStabilityFlags(), which had the exact same
-// flag duplicated and was fixed first). This copy was missed in that pass because isCI here
-// defaults from the real process.env.CI, which is only "true" inside actual CI — a local run
-// (isCI false by default) never exercises this list at all, so the fix looked complete against
-// local verification alone and only broke again once it reached GitHub Actions, where CI=true
-// unconditionally. Confirmed as the cause of a repeat "waiting for service worker" 30s timeout in
-// CI, after the first fix, on already-fixed code.
-// --disable-breakpad is deliberately NOT in this list (it briefly was, and removing it here alone
-// turned out to be a no-op worth documenting): puppeteer-core's own ChromeLauncher.defaultArgs()
-// hardcodes both --disable-breakpad and --disable-crash-reporter unconditionally, before this
-// file's args are ever merged in (node_modules/puppeteer-core/lib/puppeteer/node/
-// ChromeLauncher.js) — so this array never actually controlled whether Chrome's own crash
-// reporter was on. The only way to override a puppeteer-core *default* arg (as opposed to adding
-// one of our own) is puppeteer.launch()'s ignoreDefaultArgs option, which extension-install.mjs
-// now passes directly for both flags — see the comment at that launch() call for why (getting a
-// real crash report/minidump out of a SIGSEGV that --disable-breakpad/--disable-crash-reporter
-// would otherwise silently swallow).
+// --disable-extensions must NOT be in this list (defeats enableExtensions: true, confirmed CI regression twice).
+// --disable-breakpad is deliberately absent too — puppeteer-core hardcodes it; override via ignoreDefaultArgs instead (see extension-install.mjs).
 export const CI_STABILITY_FLAGS = [
   "--disable-background-networking",
   "--disable-client-side-phishing-detection",
@@ -97,20 +78,8 @@ export function createBrowserArgs({
 } = {}) {
   const args = [...STANDARD_BROWSER_ARGS];
 
-  // Add sandbox args if running as root (CI containers) OR on Linux at all — not just root.
-  // Confirmed root cause of a real CI failure (installation-test-pinned, a bare non-root
-  // ubuntu-latest runner): recent Ubuntu restricts unprivileged processes from creating user
-  // namespaces via AppArmor unless the binary has a registered profile. apt/dnf/pacman-installed
-  // Chromium gets one from the OS; scripts/install-chrome-version.mjs downloads Chrome for Testing
-  // straight to .chrome-for-testing/<version>/ instead, an arbitrary path with no such profile —
-  // and Chrome's own sandbox process needs exactly that syscall to start. The crash surfaces as an
-  // immediate "Target closed" during ChromeLauncher's very first CDP handshake, before any of this
-  // script's own code runs, not as anything root-related. Same reasoning already applied to
-  // Firefox via MOZ_DISABLE_CONTENT_SANDBOX in firefox-extension-install.mjs: content sandboxing
-  // only protects against a compromised *web page's* renderer process, has no bearing on this
-  // test's own security-relevant assertions (which run in Node, driving the browser), so disabling
-  // it here is a test-harness-only concession — it must never be applied to how end users actually
-  // run this extension.
+  // Sandbox args for root (CI containers) OR Linux at all — a manually-downloaded (not apt/dnf-installed)
+  // Chrome has no AppArmor profile registered, so unprivileged sandbox startup fails even as non-root. Test-harness-only; never apply this to end users.
   if (isRoot || isLinux) {
     args.push("--no-sandbox", "--disable-setuid-sandbox");
   }

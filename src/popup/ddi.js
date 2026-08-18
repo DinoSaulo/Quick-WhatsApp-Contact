@@ -52,12 +52,7 @@ class CountryDdiScreen extends HTMLElement {
   }
 
   render() {
-    // this.messages is the static i18n DICTIONARY (i18n.js). this.initialNumber comes from the
-    // "number" query param but is always run through normalizeSelectedNumber() first
-    // (getNumberFromQuery above), which strips everything except [0-9+] — see the "country DDI
-    // screen query parameter security" tests in ddi.integration.test.js.
-    // buildCountryPickerMarkup() below only ever derives attributes from the resolved country
-    // object, never a raw string.
+    // initialNumber runs through normalizeSelectedNumber() first; buildCountryPickerMarkup() derives attributes only from the resolved country object.
     // eslint-disable-next-line no-unsanitized/property
     this.innerHTML = `
       <main class="panel">
@@ -225,9 +220,7 @@ class CountryDdiScreen extends HTMLElement {
           hiddenInput.value = selectedCountry.code;
         }
         if (trigger) {
-          // selectedCountry comes from getCountryByCode(code), where code is a
-          // data-country-code attribute this same render pass generated from the static
-          // COUNTRIES array — never raw user input.
+          // selectedCountry comes from getCountryByCode(code) on a data-country-code attribute this render pass generated from static COUNTRIES — never raw user input.
           // eslint-disable-next-line no-unsanitized/property
           trigger.innerHTML = `
             <span class="country-picker__flag">${renderCountryFlagHtml(selectedCountry)}</span>

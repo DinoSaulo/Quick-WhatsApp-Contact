@@ -65,10 +65,8 @@ describe("onboarding tutorial page", () => {
   });
 
   it("loads options.css so the donation modal's dialog/tabs/panel rules are styled, not just its trigger button", () => {
-    // The .donation-trigger button rule lives in popup/styles.css (already linked), but the
-    // dialog/tabs/panel rules the modal switches to once opened live only in options.css —
-    // see that file's own top-of-file comment. Without this link the button rendered fine
-    // but the opened modal looked unstyled, which is the regression this guards against.
+    // .donation-trigger lives in popup/styles.css (already linked), but dialog/tabs/panel rules
+    // live only in options.css — without this link the button rendered fine but the opened modal looked unstyled.
     expect(onboardingHtml).toContain('<link rel="stylesheet" href="../options/options.css" />');
   });
 

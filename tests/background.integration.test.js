@@ -94,12 +94,8 @@ describe("background selection security integration", () => {
     expect(chrome.action.openPopup).not.toHaveBeenCalled();
   });
 
-  // chrome.runtime.onMessage is already unreachable from outside this extension today (no
-  // externally_connectable — see tests/manifest.test.js), but that is a manifest-level
-  // guarantee, not something this listener enforces on its own. These two tests exercise the
-  // listener's own sender.id/sender.tab checks directly, so a future manifest change (or a bug
-  // in a mock/polyfill during testing) can't silently make this handler trust an untrusted
-  // sender again without a test failing here first.
+  // No externally_connectable (manifest.test.js) is a manifest-level guarantee, not something this
+  // listener enforces itself — these two tests exercise its own sender.id/sender.tab checks directly.
   it("ignores a message whose sender.id does not match this extension", () => {
     const result = handlers.message(
       { type: "quick-whatsapp-contact.process-selection", selectionText: "+351 912 345 678" },

@@ -17,11 +17,7 @@ function collectFiles(directory, extensions) {
 const sourceFiles = collectFiles(resolve(projectRoot, "src"), [".html", ".js"]);
 
 // This extension has exactly one legitimate reason to leave the browser: opening
-// https://wa.me/<number> in a new tab after the user asks to start a chat (see
-// buildWhatsAppUrl in src/utils/phone.js). Everything below asserts that stays true — no
-// fetch/XHR call exists to exfiltrate data to some other endpoint, and no non-TLS URL is
-// ever used as a real network destination (as opposed to XML namespace URIs, which are not
-// network requests and are excluded below).
+// https://wa.me/<number> (buildWhatsAppUrl). Asserts no fetch/XHR and no non-TLS network destination exists (XML namespace URIs are excluded below, not network requests).
 describe("network egress allow-list", () => {
   it("never calls fetch() or XMLHttpRequest anywhere in the shipped extension code", () => {
     const offenders = [];
@@ -38,13 +34,8 @@ describe("network egress allow-list", () => {
 
   it("only ever builds outbound URLs on the https scheme", () => {
     const offenders = [];
-    // Two categories of "http://" text are not network requests and are allowed:
-    // - XML/SVG namespace declarations (xmlns="http://www.w3.org/2000/svg") — never dereferenced.
-    // - "http://*/*" match patterns (PAGE_ORIGINS in background.js/options.js) — the wildcard
-    //   host permission string content scripts register against, not a URL fetched by this
-    //   extension. Plain-HTTP pages legitimately have "tel:" links too, so this pattern is
-    //   intentional, not a plaintext network call.
-    // Everything else starting with "http://" would be a real, MITM-able network destination.
+    // Allowed "http://" text that isn't a network request: XML/SVG namespace declarations, and
+    // "http://*/*" match patterns (PAGE_ORIGINS) — a host-permission string, not a fetched URL.
     const allowedHttpPatterns = [/http:\/\/www\.w3\.org\//, /^http:\/\/\*\/\*$/];
 
     for (const file of sourceFiles) {

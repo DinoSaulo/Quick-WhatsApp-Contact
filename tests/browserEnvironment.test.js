@@ -44,10 +44,8 @@ describe("installation browser environment", () => {
   });
 
   it("adds Chromium sandbox overrides for a root container", () => {
-    // isCI/isLinux are pinned explicitly here: createBrowserArgs() defaults both from the real
-    // process.env.CI/GITHUB_ACTIONS and process.platform, and GitHub Actions sets/runs on Linux
-    // for most jobs. Leaving either ambient made this test's outcome depend on where it ran
-    // instead of on the isRoot behavior it's actually meant to verify.
+    // isCI/isLinux are pinned explicitly: leaving either ambient (defaulted from process.env/platform)
+    // made this test's outcome depend on where it ran instead of the isRoot behavior it verifies.
     expect(createBrowserArgs({ isRoot: true, isLinux: false, isCI: false })).toEqual([
       "--no-first-run",
       "--no-default-browser-check",
@@ -65,10 +63,8 @@ describe("installation browser environment", () => {
   });
 
   it("adds Chromium sandbox overrides on Linux even without root", () => {
-    // Confirmed root cause of a real CI failure (installation-test-pinned): a non-root bare
-    // ubuntu-latest runner launching a manually-downloaded (not apt-installed) Chrome build hits
-    // the same AppArmor user-namespace restriction as the earlier Firefox fix, unrelated to which
-    // uid is running it. See the matching comment on createBrowserArgs() itself.
+    // Confirmed root cause of a real installation-test-pinned failure: a non-root bare ubuntu-latest
+    // runner with a manually-downloaded Chrome hits the same AppArmor restriction as the Firefox fix.
     expect(createBrowserArgs({ isRoot: false, isLinux: true, isCI: false })).toEqual([
       "--no-first-run",
       "--no-default-browser-check",
@@ -97,14 +93,8 @@ describe("installation browser environment", () => {
   });
 
   it("never adds --disable-extensions, in CI or not", () => {
-    // extension-install.mjs always launches with enableExtensions: true specifically to load and
-    // test our own extension. --disable-extensions has no "re-enable" counterpart a later flag
-    // can undo, so its mere presence anywhere on the command line silently defeats
-    // enableExtensions — the extension "installs" (Puppeteer's CDP bookkeeping doesn't check
-    // whether Chrome actually loaded it) but its service worker never starts, and
-    // browser.waitForTarget() for it times out. This exact flag was accidentally reintroduced
-    // once already via this file's CI_STABILITY_FLAGS after being removed from
-    // puppeteer-helpers.mjs's separate copy — a real, confirmed CI regression, not a hypothetical.
+    // --disable-extensions has no "re-enable" counterpart, so its mere presence silently defeats
+    // enableExtensions: true — already a real confirmed regression once (reintroduced via CI_STABILITY_FLAGS).
     expect(createBrowserArgs({ isRoot: true, isCI: true })).not.toContain("--disable-extensions");
     expect(createBrowserArgs({ isRoot: false, isCI: true })).not.toContain("--disable-extensions");
   });

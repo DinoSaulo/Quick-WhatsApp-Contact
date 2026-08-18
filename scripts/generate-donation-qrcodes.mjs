@@ -1,7 +1,5 @@
 // Gera os SVGs de QR code do modal de doação a partir de src/utils/donation.js.
-// Ao contrário dos ícones de bandeira (copiados de node_modules/@twemoji/svg no build),
-// estes SVGs são pequenos, estáticos e ficam versionados normalmente em assets/ —
-// rode este script manualmente sempre que um `copyText` em donation.js mudar.
+// Diferente dos ícones de bandeira (copiados no build), ficam versionados em assets/ — rode manualmente quando `copyText` mudar.
 import { mkdirSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import QRCode from "qrcode";

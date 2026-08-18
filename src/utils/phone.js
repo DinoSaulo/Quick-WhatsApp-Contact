@@ -38,9 +38,7 @@ function normalizeDialCode(dialCode = "") {
 function formatMaskToRegex(formatMask) {
   const normalizedMask = String(formatMask).replace(/[^X0-9]/g, "");
   const regexSource = normalizedMask.replace(/X/g, "\\d");
-  // regexSource is built only from formatMask entries in the static PHONE_FORMAT_RULES_BY_DDI
-  // table (phoneFormats.js), stripped to [X0-9] first; it never carries user input or storage
-  // data, so there is no regex-injection or ReDoS surface here (fixed-length digit patterns only).
+  // regexSource comes only from the static PHONE_FORMAT_RULES_BY_DDI table, stripped to [X0-9] — never user/storage input, so no regex-injection or ReDoS surface.
   // eslint-disable-next-line security/detect-non-literal-regexp
   return new RegExp(`^${regexSource}$`);
 }

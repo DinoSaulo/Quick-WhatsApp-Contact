@@ -132,9 +132,7 @@ describe("popup integration", () => {
     const hiddenCountry = popup.querySelector("#country-hidden");
 
     expect(document.querySelector("img[onerror]")).toBeNull();
-    // Flagged by the conservative safe-regex heuristic, but this is a bounded, anchored,
-    // non-backtracking pattern (a single optional group, no nested quantifiers) matching a
-    // short fixed string, not user input fed into the regex itself.
+    // Flagged by the safe-regex heuristic, but bounded/anchored/non-backtracking, matching a short fixed string.
     // eslint-disable-next-line security/detect-unsafe-regex
     expect(hiddenCountry.value).toMatch(/^[A-Z]{2}(?:-[A-Z0-9]+)?$/);
     expect(popup.querySelectorAll(".country-picker__option").length).toBeGreaterThanOrEqual(200);
@@ -161,16 +159,11 @@ describe("popup integration", () => {
     expect(phoneInput.validationMessage).toBe("");
   });
 
-  // render() interpolates this.pendingContextNumber straight into value="${...}", unescaped
-  // (see popup.js). In real usage it always comes from normalizeSelectedNumber() already
-  // (background.js's own storage read), but this proves the render layer's OWN call to
-  // normalizeSelectedNumber() — not just background.js's upstream gate, already covered in
-  // background.integration.test.js — is what actually keeps the phone input's HTML safe,
-  // even if a hostile value ever reached storage some other way (e.g. a future bug upstream).
+  // render() interpolates pendingContextNumber unescaped (popup.js) — proves render()'s OWN
+  // normalizeSelectedNumber() call keeps the input safe, even if a hostile value reached storage some other way.
   it("neutralizes an HTML/script payload in the pending context number before rendering it", async () => {
-    // alert("x") deliberately has no digits (unlike alert(1)) — normalizeSelectedNumber() keeps
-    // every digit it sees, including ones inside an attack payload, so a numeral there would
-    // legitimately survive sanitization and throw off the expected number below on its own.
+    // alert("x") deliberately has no digits (unlike alert(1)) — a numeral inside the payload
+    // would legitimately survive sanitization and throw off the expected number below.
     mockStorage.consumePendingContextNumber.mockResolvedValue(
       '"><img src=x onerror=alert("x")>+351912345678'
     );
@@ -481,9 +474,8 @@ describe("popup integration", () => {
     if (!customElements.get("whatsapp-message-popup")) {
       await import("../src/popup/popup.js");
     }
-    // O botão de doação vive no <footer> de popup.html, fora do custom element — por isso
-    // os dois precisam já estar em document.body quando bindEvents() rodar (dentro do
-    // connectedCallback), já que o listener é anexado com document.querySelector, não this.
+    // O botão de doação vive no <footer>, fora do custom element — ambos precisam já estar em
+    // document.body quando bindEvents() rodar, já que o listener usa document.querySelector, não this.
     document.body.innerHTML =
       '<whatsapp-message-popup></whatsapp-message-popup>' +
       '<footer><button id="donation-button" type="button">☕ Buy me a coffee</button></footer>';

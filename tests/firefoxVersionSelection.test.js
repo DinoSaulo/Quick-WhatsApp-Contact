@@ -14,9 +14,8 @@ describe("selectLastThreeFirefoxMajors", () => {
   });
 
   it("keeps the numerically newest entry when a major appears more than once", () => {
-    // The live history file has exactly one key per major (confirmed by inspection), but the
-    // picker stays defensive about it — same numeric-not-lexicographic concern as
-    // chromeVersionSelection.test.js: "9" must not beat "54" as a plain string comparison would.
+    // The picker stays defensive even though the live file has one key per major — same
+    // numeric-not-lexicographic concern as chromeVersionSelection.test.js ("9" must not beat "54").
     const releaseHistory = {
       "120.0": "2023-11-21",
       "121.0": "2023-12-19",

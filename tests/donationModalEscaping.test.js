@@ -1,14 +1,8 @@
 /* @vitest-environment jsdom */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-// DONATION_METHODS is a hardcoded, developer-authored list today (see src/utils/donation.js) —
-// nothing in it is currently attacker-reachable. This suite exists anyway, as a regression
-// guard on donationModal.js's own escapeHtml() convention: every interpolated method field is
-// supposed to go through escapeHtml() before landing in the template (see render() there), and
-// a value this trusted is exactly the kind of thing a future refactor stops escaping "because
-// it's safe anyway" — right up until the data source changes. Mocking a hostile
-// DONATION_METHODS here proves the rendering function itself is safe independent of how much
-// today's data source can be trusted.
+// DONATION_METHODS is hardcoded and not attacker-reachable today, but this guards donationModal.js's
+// escapeHtml() convention against a future refactor that stops escaping "because it's safe anyway".
 const mockDonation = vi.hoisted(() => ({
   DONATION_METHODS: [
     {

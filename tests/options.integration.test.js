@@ -104,10 +104,8 @@ describe("options page integration", () => {
   });
 
   it("keeps the footer text a fixed dark color in both themes, while links stay green", () => {
-    // Unlike the rest of the page, .options-footer must NOT react to
-    // :root[data-theme="dark"] — it's pinned to a literal color, not a var(--token), so
-    // dark mode can't lighten it. Links are the one exception: they stay on var(--accent),
-    // which is still some shade of green in both themes.
+    // Unlike the rest of the page, .options-footer must NOT react to dark mode — it's pinned to a
+    // literal color, not a var(--token). Links are the exception, staying on var(--accent).
     expect(optionsStyles).toMatch(/\.options-footer\s*\{[^}]*color:\s*#1f2a1f;[^}]*\}/s);
     expect(optionsStyles).not.toMatch(/\.options-footer\s*\{[^}]*color:\s*var\(--[^)]+\);[^}]*\}/s);
     expect(optionsStyles).toMatch(/\.options-footer a\s*\{[^}]*color:\s*var\(--accent\);[^}]*\}/s);
@@ -280,14 +278,8 @@ describe("options page integration", () => {
     );
   });
 
-  // Regression test for a real finding from the SAST audit (see docs/THREAT_MODEL.md): unlike
-  // popup.js and ddi.js, which always build the hidden country input's value from the resolved,
-  // always-valid country object, options.js used to interpolate the raw defaultCountry setting
-  // straight from chrome.storage.sync into that same attribute. chrome.storage.sync is not
-  // exclusively written by this extension's own UI (manual devtools edits, a corrupted sync,
-  // or a future bug elsewhere could all leave hostile text there), so this must degrade safely
-  // just like popup.js already does — see its "falls back to a known country when synced
-  // country settings contain hostile markup" test.
+  // Regression from a real SAST finding (docs/THREAT_MODEL.md): options.js used to interpolate
+  // raw defaultCountry from chrome.storage.sync directly — must degrade safely like popup.js's equivalent test.
   it("neutralizes hostile markup in the synced default country instead of injecting it", async () => {
     mockStorage.getSettings.mockResolvedValue({
       language: "en-US",
@@ -299,10 +291,7 @@ describe("options page integration", () => {
     const page = await renderOptionsPage();
 
     expect(document.querySelector("img[onerror]")).toBeNull();
-    // Flagged by the conservative safe-regex heuristic, but this is a bounded, anchored,
-    // non-backtracking pattern (a single optional group, no nested quantifiers) matching a
-    // short fixed string, not user input fed into the regex itself — see the identical pattern
-    // and comment in popup.integration.test.js.
+    // Flagged by the safe-regex heuristic, but bounded/anchored/non-backtracking — see popup.integration.test.js's identical pattern.
     // eslint-disable-next-line security/detect-unsafe-regex
     expect(page.querySelector("#default-country-hidden").value).toMatch(/^[A-Z]{2}(?:-[A-Z0-9]+)?$/);
   });

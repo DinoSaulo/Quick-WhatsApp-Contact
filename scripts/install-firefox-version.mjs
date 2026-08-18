@@ -1,18 +1,11 @@
-// Downloads and extracts an exact Firefox release for the version
-// scripts/resolve-firefox-versions.mjs picked, so .github/workflows/ci.yml's
-// installation-test-firefox-pinned matrix can run the real install/uninstall lifecycle test
-// (tests/installation/firefox-extension-install.mjs) against that precise major. Mirrors
-// scripts/install-chrome-version.mjs's shape, against Mozilla's public release archive instead
-// of Chrome for Testing. Prints the extracted executable's absolute path on stdout; the
-// workflow step captures it into $GITHUB_ENV as FIREFOX_PATH, which
-// tests/installation/firefox-environment.mjs's findFirefoxExecutable() already checks first.
+// Downloads and extracts an exact Firefox release for the version resolve-firefox-versions.mjs picked
+// (mirrors install-chrome-version.mjs, against Mozilla's release archive). Prints the path as FIREFOX_PATH.
 import { execFileSync } from "node:child_process";
 import { chmodSync, mkdirSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-// Confirmed live against archive.mozilla.org/pub/firefox/releases/<version>/linux-x86_64/en-US/:
-// current releases ship as a single firefox-<version>.tar.xz (older releases used .tar.bz2, but
-// every version installation-test-firefox-pinned ever resolves is recent enough to be .tar.xz).
+// Confirmed live against archive.mozilla.org: current releases ship as firefox-<version>.tar.xz
+// (older ones used .tar.bz2, but every version we resolve is recent enough to be .tar.xz).
 const PLATFORM_DIR = "linux-x86_64";
 
 const version = process.argv[2];

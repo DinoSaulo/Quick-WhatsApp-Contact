@@ -1,11 +1,5 @@
-// Resolves the three most recent Chrome *major* versions (N, N-1, N-2) that Google's Chrome for
-// Testing (CfT) project has a downloadable linux64 build for, so .github/workflows/ci.yml can pin
-// installation-test-pinned's matrix to each one deliberately, instead of testing whatever major an
-// OS/distro package manager happens to ship that week (see the plain installation-test job).
-// Source of truth: https://googlechromelabs.github.io/chrome-for-testing, the same catalog
-// Google's own @puppeteer/browsers CLI reads from. Grouping/selection logic lives in
-// tests/installation/chrome-version-selection.mjs so it's unit-testable against fixture data
-// instead of only ever running against the live network (see tests/chromeVersionSelection.test.js).
+// Resolves the 3 most recent Chrome for Testing majors (N, N-1, N-2) so ci.yml's installation-test-pinned
+// matrix can pin to each deliberately. Selection logic lives in chrome-version-selection.mjs (unit-testable).
 import { selectLastThreeMajors } from "../tests/installation/chrome-version-selection.mjs";
 
 const KNOWN_GOOD_VERSIONS_URL =

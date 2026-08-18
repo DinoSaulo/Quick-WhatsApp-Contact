@@ -1,16 +1,9 @@
-// Caminho (relativo à raiz da extensão) da página de tutorial, usado tanto pelo
-// service worker (abertura automática num install limpo, src/background.js) quanto
-// pela página de configurações (botão "Ver tutorial", src/options/options.js) —
-// fonte única para não duplicar o literal em dois arquivos.
+// Caminho da página de tutorial, usado pelo service worker (install limpo) e pelas
+// opções (botão "Ver tutorial") — fonte única para não duplicar o literal.
 export const ONBOARDING_PAGE_PATH = "src/onboarding/onboarding.html";
 
-// Passos do tutorial exibido em src/onboarding/onboarding.html logo após a instalação
-// (chrome.runtime.onInstalled com reason "install", ver src/background.js).
-//
-// Cada passo aponta suas strings de UI para chaves do dicionário (src/utils/i18n.js),
-// não para texto literal aqui — assim o tutorial acompanha o idioma da extensão como
-// qualquer outra tela. `image` é opcional; quando presente, é o caminho (relativo à
-// raiz da extensão) de uma captura de tela estática em assets/onboarding/.
+// Passos do tutorial exibido logo após a instalação (onInstalled reason "install", background.js).
+// Cada passo aponta para chaves de i18n.js, não texto literal. `image` é opcional (assets/onboarding/).
 export const TUTORIAL_STEPS = [
   {
     id: "welcome",

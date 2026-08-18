@@ -15,9 +15,8 @@ const mockStorage = vi.hoisted(() => ({
 
 vi.mock("../src/utils/storage.js", () => mockStorage);
 
-// jsdom (as of 29.x) does not implement HTMLDialogElement.showModal()/close() yet —
-// Chrome (minimum_chrome_version 127 in manifest.json) fully supports both natively,
-// this polyfill only exists so the component's real, un-mocked code is testable here.
+// jsdom (as of 29.x) does not implement HTMLDialogElement.showModal()/close() yet — Chrome does
+// natively, this polyfill only exists so the component's real, un-mocked code is testable here.
 function polyfillDialog() {
   if (!HTMLDialogElement.prototype.showModal) {
     HTMLDialogElement.prototype.showModal = function showModal() {
@@ -44,10 +43,8 @@ async function renderDonationModal() {
   return document.querySelector("donation-modal");
 }
 
-// O clique no gatilho agora relê o idioma do storage (async) antes de abrir o dialog
-// (ver loadAndRender em donationModal.js), e isso substitui todo o innerHTML — então
-// qualquer referência a #donation-dialog capturada ANTES do clique fica obsoleta.
-// Este helper espera a re-renderização e devolve o <dialog> atual.
+// O clique no gatilho relê o idioma (loadAndRender) e substitui todo o innerHTML — qualquer
+// referência a #donation-dialog capturada antes fica obsoleta; este helper devolve a atual.
 async function openDonationDialog(modal) {
   modal.querySelector("#donation-trigger").click();
   await new Promise((resolve) => setTimeout(resolve, 0));
@@ -83,9 +80,8 @@ describe("donation modal", () => {
     expect(mockStorage.consumePendingDonationOpen).toHaveBeenCalled();
   });
 
-  // Regressão: clicar em "Buy me a coffee" no popup (popup.js) chama setPendingDonationOpen()
-  // e depois abre options.html — este componente precisa ler e consumir essa flag sozinho
-  // assim que montado, já que popup.js não tem como chamar nada diretamente nele.
+  // Regressão: popup.js chama setPendingDonationOpen() e abre options.html — este componente
+  // precisa ler e consumir essa flag sozinho ao montar, já que popup.js não o alcança diretamente.
   it("auto-opens the dialog on mount when a donation open was flagged pending (opened from the popup)", async () => {
     mockStorage.consumePendingDonationOpen.mockResolvedValue(true);
     const modal = await renderDonationModal();
@@ -140,11 +136,8 @@ describe("donation modal", () => {
     expect(mbwayPanel.querySelector(".donation-panel__unavailable")).toBeNull();
   });
 
-  // Regressão: display:flex em .donation-panel tem a mesma especificidade que o
-  // [hidden] do stylesheet do navegador — sem esta regra explícita, alternar `hidden`
-  // via JS não escondia visualmente o painel (as 3 seções ficavam empilhadas e
-  // visíveis ao mesmo tempo, ainda que os testes de `panel.hidden` acima passassem,
-  // já que jsdom não aplica cascata de CSS/layout).
+  // Regressão: display:flex em .donation-panel empata em especificidade com [hidden] do navegador —
+  // sem esta regra, alternar `hidden` via JS não escondia o painel visualmente (jsdom não aplica cascata).
   it("keeps [hidden] panels actually hidden despite the flex display rule", () => {
     expect(optionsStyles).toMatch(
       /\.donation-panel\[hidden\]\s*\{[^}]*display:\s*none\s*!important;/s

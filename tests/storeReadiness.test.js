@@ -5,10 +5,8 @@ import { describe, expect, it } from "vitest";
 const projectRoot = resolve(import.meta.dirname, "..");
 const manifest = JSON.parse(readFileSync(resolve(projectRoot, "manifest.json"), "utf8"));
 
-// Guards the Chrome Web Store publishing groundwork (see docs/STORE_READINESS.md and
-// docs/RELEASE_CHECKLIST.md) — cheap checks that the pieces this repo is responsible for
-// (as opposed to Developer Dashboard account settings, which live outside the repo) stay
-// present and mutually consistent as the docs get edited.
+// Guards the Chrome Web Store publishing groundwork (docs/STORE_READINESS.md, RELEASE_CHECKLIST.md)
+// — cheap checks that this repo's own pieces (not Developer Dashboard settings) stay consistent.
 describe("Chrome Web Store publishing groundwork", () => {
   it("disables Jekyll processing so docs/privacy.html is served byte-for-byte by GitHub Pages", () => {
     expect(existsSync(resolve(projectRoot, "docs/.nojekyll"))).toBe(true);

@@ -1,11 +1,5 @@
-// Confirms the browser a CI installation-test matrix entry actually has installed matches the
-// major version declared in that job's label/chromeMajor (.github/workflows/ci.yml). A plain
-// `chromium --version` shell command only works on the Linux container entries (Fedora, Debian,
-// Rocky Linux, Arch Linux), where the package manager symlinks the binary onto PATH — on
-// Windows and macOS, Chrome lives at a fixed, non-PATH path, so this reuses the same
-// findBrowserExecutable() lookup tests/installation/extension-install.mjs uses to locate the
-// real browser puppeteer-core will launch, keeping "what CI verifies" and "what the smoke test
-// actually runs against" the same code path instead of two separate, driftable ones.
+// Confirms the browser a CI matrix entry actually installed matches its declared major version.
+// Reuses extension-install.mjs's own findBrowserExecutable() so "what CI verifies" and "what the smoke test runs" never drift apart.
 import { execFileSync } from "node:child_process";
 import { findBrowserExecutable } from "../tests/installation/browser-environment.mjs";
 
@@ -23,11 +17,8 @@ if (!executablePath) {
   process.exit(1);
 }
 
-// `chrome.exe --version` is unreliable on Windows: when another Chrome instance is already
-// running (the desktop browser, or a leftover process), the singleton mechanism just activates
-// that window and prints "Opening in existing browser session." instead of a version — reading
-// the executable's own file version metadata sidesteps that entirely and is not affected by
-// whether Chrome is already running.
+// `chrome.exe --version` is unreliable on Windows when another Chrome instance is already running
+// (singleton mechanism prints "Opening in existing browser session." instead) — reading file version metadata sidesteps that.
 const rawVersion =
   process.platform === "win32"
     ? execFileSync(

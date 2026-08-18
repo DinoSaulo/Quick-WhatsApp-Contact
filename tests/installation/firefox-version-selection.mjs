@@ -1,13 +1,5 @@
-// Picks the 3 most recent Firefox *major* versions (N, N-1, N-2) from Mozilla's own release
-// history, so scripts/resolve-firefox-versions.mjs can feed
-// installation-test-firefox-pinned's matrix — same role as
-// tests/installation/chrome-version-selection.mjs plays for Chrome, but against a differently
-// shaped source: https://product-details.mozilla.org/1.0/firefox_history_major_releases.json is
-// a flat { "121.0": "2023-12-19", ... } map (one entry per major already, confirmed by
-// inspection — no per-major "pick the newest patch" step is strictly needed), and unlike Chrome
-// for Testing there's no per-version platform-availability metadata to filter on: Mozilla's
-// archive (archive.mozilla.org/pub/firefox/releases/<version>/linux-x86_64/en-US/) predictably
-// hosts a linux64 build for every stable release this history file lists.
+// Picks the 3 most recent Firefox majors (N, N-1, N-2) from Mozilla's release-history API — the
+// Firefox counterpart of chrome-version-selection.mjs, against a flat one-entry-per-major map (no platform filtering needed).
 
 export function selectLastThreeFirefoxMajors(releaseHistory, { count = 3 } = {}) {
   const newestVersionByMajor = new Map();
@@ -28,9 +20,8 @@ export function selectLastThreeFirefoxMajors(releaseHistory, { count = 3 } = {})
     .map((major) => newestVersionByMajor.get(major));
 }
 
-// Same numeric, segment-by-segment comparison as chrome-version-selection.mjs's compareVersions
-// (kept as a separate copy rather than a shared import — these two modules only exist to be
-// independently swappable per browser, and the comparison itself is a few lines either way).
+// Same numeric comparison as chrome-version-selection.mjs's compareVersions, kept as a separate
+// copy — these two modules exist to be independently swappable per browser.
 function compareVersions(versionA, versionB) {
   const segmentsA = versionA.split(".").map(Number);
   const segmentsB = versionB.split(".").map(Number);

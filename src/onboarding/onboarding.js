@@ -57,10 +57,7 @@ class TutorialPage extends HTMLElement {
       ></button>
     `).join("");
 
-    // Every interpolated value below is developer-controlled: this.messages comes from the
-    // static i18n DICTIONARY (i18n.js), and step/TUTORIAL_STEPS/chrome.runtime.getURL(step.image)
-    // come from the static TUTORIAL_STEPS array (tutorial.js). None of it is user input or
-    // synced storage.
+    // Every interpolated value below is developer-controlled (static i18n DICTIONARY, static TUTORIAL_STEPS) — never user input or synced storage.
     // eslint-disable-next-line no-unsanitized/property
     this.innerHTML = `
       <main class="panel tutorial-shell">

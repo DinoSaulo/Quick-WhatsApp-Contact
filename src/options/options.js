@@ -96,11 +96,7 @@ class ExtensionSettingsPage extends HTMLElement {
   }
 
   render() {
-    // this.messages is the static i18n DICTIONARY (i18n.js) and this.settings values are all
-    // normalized before this point (Boolean()/normalizeLanguage() in storage.js);
-    // buildCountryPickerMarkup() below derives every attribute from the resolved country object,
-    // never a raw storage string — see the regression test "neutralizes hostile markup in the
-    // synced default country...".
+    // this.messages/settings are normalized; buildCountryPickerMarkup() derives attributes only from the resolved country object — see "neutralizes hostile markup..." test.
     // eslint-disable-next-line no-unsanitized/property
     this.innerHTML = `
       <main class="panel options-shell">
@@ -252,10 +248,7 @@ class ExtensionSettingsPage extends HTMLElement {
             ? ""
             : `+${selectedCountry.dialCode}`;
 
-          // code comes from a data-country-code attribute this same render pass generated from
-          // the static COUNTRIES array (countries.js), then round-tripped through
-          // getCountryByCode(), which always returns a known, static entry — never raw user or
-          // storage input.
+          // code round-trips through getCountryByCode() back to a known static COUNTRIES entry — never raw user or storage input.
           // eslint-disable-next-line no-unsanitized/property
           trigger.innerHTML = `
             ${flagMarkup}

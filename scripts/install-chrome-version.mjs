@@ -1,11 +1,5 @@
-// Downloads and extracts an exact Chrome for Testing (CfT) build for the version
-// scripts/resolve-chrome-versions.mjs picked, so .github/workflows/ci.yml's
-// installation-test-pinned matrix can run the real install/uninstall smoke test
-// (tests/installation/extension-install.mjs) against that precise major instead of whatever the
-// OS package manager happens to have. Prints the extracted executable's absolute path on stdout;
-// the workflow step captures it into $GITHUB_ENV as CHROME_PATH, which
-// tests/installation/browser-environment.mjs's findBrowserExecutable() already checks first (via
-// browserExecutableCandidates), so no changes were needed there.
+// Downloads and extracts an exact Chrome for Testing build for the version resolve-chrome-versions.mjs
+// picked. Prints the executable's absolute path on stdout for the workflow step to capture as CHROME_PATH.
 import { execFileSync } from "node:child_process";
 import { chmodSync, mkdirSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";

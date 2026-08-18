@@ -1,10 +1,8 @@
 import { existsSync } from "node:fs";
 import { createServer } from "node:net";
 
-// Mirrors browser-environment.mjs's Chrome lookup, one env var narrower: Firefox has no
-// "Chromium" naming split to account for, but Debian/Ubuntu ship the binary as `firefox-esr`
-// (see .github/workflows/ci.yml's installation-test-firefox Debian entry), which is why that
-// candidate is listed separately from plain `firefox`.
+// Mirrors browser-environment.mjs's Chrome lookup: Debian/Ubuntu ship the binary as `firefox-esr`
+// (ci.yml's installation-test-firefox Debian entry), so it's listed separately from plain `firefox`.
 export function firefoxExecutableCandidates({
   platform = process.platform,
   env = process.env,
@@ -27,12 +25,8 @@ export function findFirefoxExecutable({ exists = existsSync, ...options } = {}) 
   return firefoxExecutableCandidates(options).find((candidate) => exists(candidate));
 }
 
-// Firefox's WebDriver BiDi endpoint (which puppeteer-core connects to for the popup/options page
-// checks in firefox-extension-install.mjs) needs a port handed to it up front via
-// --remote-debugging-port — unlike Chrome, web-ext's programmatic API exposes no stdout/stderr
-// stream we could otherwise scrape an auto-assigned port from. Binding port 0 and reading back
-// what the OS assigned is the standard way to reserve a free port without hardcoding one that
-// might collide with something else on the runner.
+// Firefox's BiDi endpoint needs a port handed to it up front via --remote-debugging-port — unlike
+// Chrome, web-ext exposes no stream to scrape an auto-assigned one from, so we bind port 0 and read back what the OS assigned.
 export function getAvailablePort() {
   return new Promise((resolvePort, rejectPort) => {
     const server = createServer();

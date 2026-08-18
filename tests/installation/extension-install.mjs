@@ -46,59 +46,18 @@ assert.ok(
   "Chrome/Chromium não encontrado. Defina CHROME_PATH, CHROMIUM_PATH ou PUPPETEER_EXECUTABLE_PATH.",
 );
 
-// Unlike firefox-extension-install.mjs (which has captureFirefoxProcessOutput() +
-// consoleStream.makeVerbose() for exactly this purpose), this file had no equivalent — every
-// Chrome-side diagnosis this test has ever needed came only from Puppeteer's own error messages,
-// never from Chrome's actual stdout/stderr. That gap mattered concretely: a run failing with
-// "Session closed. Most likely the page has been closed" right after browser.newPage() gives no
-// way to tell *why* the tab/renderer went away (crash, OOM, sandbox denial, something else)
-// without Chrome's own output.
-//
-// File-based, not stream-based, and deliberately so: browser.process() (Puppeteer's standard way
-// to reach the underlying child process — confirmed via
-// node_modules/puppeteer-core/lib/puppeteer/cdp/Browser.js's process() method) only becomes
-// available once puppeteer.launch() has already fully resolved. Tried piping Chrome's own
-// stdout/stderr (via the dumpio launch option) into a buffer first, and confirmed directly that
-// this loses a structural race every time: dumpio wires its own internal
-// .pipe(process.stdout/stderr) synchronously inside launch() itself, and by the time our own code
-// gets control back to attach a listener, Chrome has typically already emitted (and had drained)
-// most or all of its startup output — Node readable streams don't replay already-consumed data to
-// a newly attached listener. A log *file* has no such requirement: Chrome writes it continuously
-// regardless of whether anything is "listening", so reading it after the fact — however late —
-// still sees everything written so far.
-// A fixed, workspace-relative directory rather than os.tmpdir(): CI needs a known, glob-able path
-// to hand actions/upload-artifact so a failed run's diagnostics (log file, crash dumps) survive
-// past the ephemeral runner as a downloadable artifact instead of only ever reaching a human via
-// console.error's text — see the "Anexar diagnosticos" step in ci.yml's installation-test* jobs.
-// mkdtempSync's uniqueness suffix still applies within this directory, so retry-loop attempts
-// (ci.yml wraps this test in up to 3 attempts) each get their own subdirectory rather than
-// overwriting the previous attempt's evidence.
+// File-based (not dumpio/streams, which lose a startup-output race) and workspace-relative (not
+// os.tmpdir()) so ci.yml's "Anexar diagnosticos" step can upload it; mkdtempSync keeps each retry attempt's evidence separate.
 const diagnosticsRoot = resolve(projectRoot, "ci-diagnostics");
 mkdirSync(diagnosticsRoot, { recursive: true });
 const chromeLogDir = mkdtempSync(join(diagnosticsRoot, "chrome-log-"));
 const chromeLogFile = join(chromeLogDir, "chrome.log");
-// A real CI run segfaulted Chrome outright (confirmed via the exit-event diagnostics below), with
-// --enable-logging's own output above staying silent about it — expected, since Chrome's own crash
-// reporter (Crashpad/Breakpad) is what would normally produce a real report for exactly this, and
-// puppeteer-core's ChromeLauncher.defaultArgs() hardcodes both --disable-breakpad and
-// --disable-crash-reporter unconditionally (see the matching comment in browser-environment.mjs).
-// An explicit userDataDir — rather than the random temp one puppeteer-core would otherwise
-// generate — is what makes it possible to find whatever the crash reporter writes afterward,
-// since the dump location lives under it. Deliberately NOT under diagnosticsRoot like
-// chromeLogDir above: this is Chrome's entire profile directory (confirmed directly — tens of MB
-// of ShaderCache/GPUCache/WidevineCdm/etc. once Chrome actually runs), not something worth
-// uploading wholesale as a CI artifact. captureCrashDumpDiagnostics() below copies out just the
-// one file that matters (a .dmp, if any) into chromeLogDir instead; this directory itself is
-// always cleaned up regardless of pass/fail, unlike chromeLogDir.
+// An explicit userDataDir (not puppeteer-core's random temp one) lets captureCrashDumpDiagnostics()
+// find whatever Crashpad writes. Deliberately NOT under diagnosticsRoot: it's Chrome's entire profile (tens of MB) — copy just the .dmp out instead, always clean this dir up.
 const chromeUserDataDir = mkdtempSync(join(tmpdir(), "quick-whatsapp-contact-chrome-userdata-"));
 let chromeProcess;
-// A bare synchronous read of chromeProcess.exitCode/signalCode races Node's own event loop: if
-// Chrome's main process just died, the child process 'exit' event that actually updates those
-// properties may not have been delivered yet at the moment formatChromeDiagnostics() happens to
-// run — which is exactly why two real CI failures in a row showed exitCode=null signalCode=null
-// killed=false right alongside a browser-level "Protocol error: Connection closed", a symptom that
-// looks a lot like Chrome's process actually going away. Listening for the real events instead of
-// guessing from a snapshot removes that ambiguity for whichever failure (if any) shows up next.
+// A bare synchronous read of exitCode/signalCode races Node's event loop — two real CI failures
+// showed exitCode=null right alongside a real "Connection closed". Listening for the real events removes that ambiguity.
 let chromeExitInfo = null;
 let browserDisconnectedAt = null;
 
@@ -114,8 +73,7 @@ function captureChromeProcessOutput(launchedBrowser) {
 
 async function formatChromeDiagnostics() {
   // Give Node's event loop a moment to actually deliver a same-tick 'exit'/'disconnected' event
-  // before reading state below — see the comment on chromeExitInfo above for why a bare
-  // synchronous read right after a rejected promise isn't trustworthy on its own.
+  // before reading state below (see the comment on chromeExitInfo above).
   await new Promise((resolve) => setTimeout(resolve, 500));
 
   const processState = chromeProcess
@@ -135,19 +93,8 @@ async function formatChromeDiagnostics() {
   return `${processState}\n${disconnectState}\n--- last Chrome log lines (${chromeLogFile}) ---\n${outputTail}`;
 }
 
-// Confirmed the SIGSEGV/missing-dependencies bug above; this exists for the failure mode that
-// showed up immediately after fixing it — a newly-created tab's renderer closing right after
-// browser.newPage(), with the top-level Chrome process still alive (exitCode/signalCode both
-// null) and nothing informative in chrome.log around it. A silent renderer death with no
-// Chrome-internal log line points outward more than inward: the most common cause of exactly this
-// shape is the Linux kernel's OOM killer sending a bare SIGKILL, which Chrome has no chance to log
-// anything about (it's killed, not crashing through its own code) but which the kernel itself
-// records. The dmesg scan also now catches segfault traces, not just OOM — added after a real
-// SIGSEGV recurred on installation-test-pinned (see ci.yml's "Instalar Chrome estavel" step) even
-// after that exact crash was already fixed there once: the original regex here only matched
-// OOM-killer wording, so a genuine segfault line from the kernel (Linux logs these by default,
-// e.g. "chrome[1234]: segfault at 0 ip ... in libfoo.so[...]") would have been silently filtered
-// out and never seen, even though it was almost certainly sitting right there in dmesg's output.
+// Handles a renderer dying silently (no chrome.log line, process still alive): usually the Linux
+// OOM killer's SIGKILL. Scans dmesg for both OOM and segfault traces — a real recurring SIGSEGV once slipped past a regex that only matched OOM wording.
 function captureSystemDiagnostics() {
   if (process.platform !== "linux") {
     return "(system memory/crash diagnostics only implemented for Linux, this test's actual CI target)";
@@ -160,9 +107,8 @@ function captureSystemDiagnostics() {
     sections.push(`--- free -h ---\n(failed: ${error.message})`);
   }
   try {
-    // dmesg is restricted to root on most modern kernels (kernel.dmesg_restrict=1); GitHub
-    // Actions grants the runner user passwordless sudo, already relied on elsewhere in this repo's
-    // workflow for apt-get, so this uses the same trust boundary rather than a new one.
+    // dmesg is restricted to root on most modern kernels; GitHub Actions grants the runner
+    // passwordless sudo, already relied on elsewhere in this workflow for apt-get.
     const dmesg = execFileSync("sudo", ["dmesg", "--ctime"], { encoding: "utf8", timeout: 5_000 });
     const crashLines = dmesg
       .split("\n")
@@ -178,14 +124,8 @@ function captureSystemDiagnostics() {
   return sections.join("\n");
 }
 
-// SIGSEGV in a manually-downloaded Chrome-for-Testing binary was already root-caused once to
-// missing shared library dependencies (see ci.yml's "Instalar Chrome estavel" step, which installs
-// google-chrome-stable purely for its .deb dependency chain as a fix). Its recurrence — after two
-// clean runs with that fix live — means either that CI step didn't actually run/succeed this
-// time, or a *different* library is missing than whatever was fixed before. ldd answers that
-// directly for the exact binary this run is about to launch, and does so unconditionally rather
-// than only when a crash happens to occur: unresolved dynamic dependencies show up as "=> not
-// found" lines regardless of whether execution ever gets far enough to segfault.
+// SIGSEGV in a manually-downloaded Chrome-for-Testing binary was already root-caused once to missing
+// shared library dependencies (ci.yml's "Instalar Chrome estavel" step) — ldd confirms directly, unconditionally, whether that still holds for this run's exact binary.
 function captureLinkerDiagnostics(execPath) {
   if (process.platform !== "linux" || !execPath) {
     return "(dynamic-linking diagnostics only implemented for Linux)";
@@ -201,24 +141,8 @@ function captureLinkerDiagnostics(execPath) {
   }
 }
 
-// Chrome's own crash reporter (Crashpad, or Breakpad on older builds) writes a .dmp minidump file
-// somewhere under its user-data-dir when it catches a native crash — but only once
-// ignoreDefaultArgs above has actually let it run at all (puppeteer-core disables it by default;
-// see the comment on that launch() call). The exact subdirectory has moved across Chrome versions
-// (Crash Reports/, Crashpad/completed/, ...), so this deliberately doesn't hardcode one — a
-// recursive filename search under the whole user-data-dir is robust to that and to which exact
-// signal/version produced it. This can't fully symbolicate a minidump (that needs Chrome's own
-// symbol files and a tool like minidump_stackwalk, disproportionate for a CI smoke test) but even
-// just confirming one exists, and where, turns "SIGSEGV, no other information" into something a
-// human can actually pull down and inspect from the CI artifact if this keeps recurring.
-//
-// copyDestDir: userDataDir itself is NOT what ci.yml uploads as an artifact — confirmed directly
-// (a local synthetic-failure run) that it's the *entire* Chrome profile, tens of MB of
-// ShaderCache/GPUCache/WidevineCdm/etc. that have nothing to do with debugging a crash, not
-// something worth asking actions/upload-artifact to ship. Any dump actually found gets copied
-// into copyDestDir (chromeLogDir — small, already the thing ci.yml uploads, sits right next to
-// chrome.log) instead, so the one file that matters survives without dragging the rest of the
-// profile along.
+// Chrome's crash reporter writes a .dmp minidump under user-data-dir on a native crash (only once
+// ignoreDefaultArgs re-enables it). Recursive search since the subdirectory moved across Chrome versions; copies any dump into copyDestDir since userDataDir itself is never uploaded.
 function captureCrashDumpDiagnostics(userDataDir, copyDestDir) {
   if (process.platform !== "linux") {
     return "(crash-dump diagnostics only implemented for Linux)";
@@ -253,44 +177,21 @@ function captureCrashDumpDiagnostics(userDataDir, copyDestDir) {
 }
 
 let browser;
-// Guards the diagnostics-directory cleanup in finally below: only delete ci-diagnostics/ on a
-// genuine pass. On failure it needs to survive this process exiting so ci.yml's own
-// actions/upload-artifact step (which runs as a separate, later step, after this script has
-// already exited) can still find it on disk.
+// Guards the diagnostics-directory cleanup below: only delete on a genuine pass — on failure it
+// must survive this process exiting so ci.yml's later actions/upload-artifact step can find it.
 let testSucceeded = false;
 
 try {
-  // GitHub Actions job containers run as root. Chromium refuses to start as
-  // root unless its process sandbox is disabled; the outer job container
-  // remains the isolation boundary in this CI-only scenario.
-  // --enable-logging --log-file=<path> exists to make formatChromeDiagnostics() above actually
-  // have something to show (see the comment on chromeLogFile for why a file, not dumpio/streams).
-  // --v=1 (Chrome's verbose logging) was tested and rejected: ~594KB in 1.5s just for extension
-  // install, far too costly to write on every routine run. Plain --enable-logging (default
-  // verbosity — WARNING/ERROR/FATAL) is quiet in the common case (a couple of startup lines) but
-  // present when something actually goes wrong, which is exactly the tradeoff wanted here.
+  // GitHub Actions job containers run as root, so Chromium's sandbox must be disabled (outer job
+  // container is the isolation boundary). --v=1 was rejected as too costly (~594KB/1.5s); plain --enable-logging stays quiet unless something goes wrong.
   const browserArgs = [
     ...createBrowserArgs(),
     "--enable-logging",
     `--log-file=${chromeLogFile}`,
   ];
 
-  // pipe: true previously wired the CDP connection through Chrome's stdio pipes instead of
-  // Puppeteer's default WebSocket transport. Nothing in this file's history explains why — it
-  // predates every fix in this file's git log — and pipe transport has a known, if old, class of
-  // bugs where an unhandled stream error drops the *entire* browser-level connection, not just a
-  // single page's session (puppeteer/puppeteer#4374, #6258). That matches a real CI failure here
-  // exactly: a "Protocol error: Connection closed" thrown from Connection.send() itself (the
-  // browser-level CDP connection), immediately escalating what had been isolated per-page
-  // "Session closed" errors. Left on the default WebSocket transport instead — far more
-  // battle-tested, and nothing about this test (extension install/uninstall, page navigation,
-  // evaluate calls) depends on pipe-specific behavior.
-  // ignoreDefaultArgs overrides two of puppeteer-core's own hardcoded default launch args (not
-  // anything from browserArgs/createBrowserArgs above — those never controlled this, see the
-  // comment on CI_STABILITY_FLAGS in browser-environment.mjs). Array form only excludes these two
-  // specific flags; every other puppeteer-core default (headless mode, --enable-unsafe-extension-
-  // debugging, etc.) is kept. userDataDir is set explicitly (rather than left to puppeteer-core's
-  // own random temp dir) purely so captureCrashDumpDiagnostics() below knows where to look.
+  // pipe: true (removed) had a known bug class dropping the whole browser connection — matched a
+  // real CI failure; left on WebSocket transport. ignoreDefaultArgs overrides only these two; userDataDir lets captureCrashDumpDiagnostics() find its target.
   const launchOptions = launchBrowserWithStabilityFlags({
     executablePath,
     headless: true,
@@ -322,33 +223,8 @@ try {
     { timeout: 30_000 },
   );
 
-  // background.js's onInstalled listener (reason: "install") calls chrome.tabs.create() to open
-  // an onboarding tab — see openOnboardingTab() in src/background.js — independent of and
-  // concurrent with anything this script does. firefox-extension-install.mjs already has to
-  // account for this (see its own onboarding-tab wait); this file never did, because until now a
-  // different, more prominent bug always failed the run first (the service-worker dead-mode bug,
-  // then a missing-shared-library SIGSEGV — see git history). With those fixed, this looked like
-  // the next layer: browser.newPage() below for the popup was racing that same automatic tab
-  // creation, surfacing as "Session closed. Most likely the page has been closed" on
-  // Emulation.setTouchEmulationEnabled right after newPage(). Waiting for the onboarding tab to
-  // fully exist before creating any other page is still correct and still here.
-  //
-  // Explicitly closing that tab immediately afterward (this block used to call
-  // safePageClose(await onboardingTarget.page()) right here) is NOT still here — removed after two
-  // separate CI runs died with a browser-level "Protocol error: Connection closed" (not a
-  // page-level session error — the *entire* CDP connection, thrown from Connection.send() itself)
-  // at exactly this point, both times only after that close call was added. Chrome starts with
-  // exactly one blank "page" target already open before anything in this script runs (confirmed
-  // via captureBrowserDiagnostics()'s own output on a clean local launch: totalPages: 1, about:
-  // blank) — if the extension's chrome.tabs.create() for the onboarding tab reuses that same
-  // initial target rather than opening a genuinely separate one, then closing "the onboarding tab"
-  // was closing the only page Chrome had, which is a plausible trigger for a follow-on
-  // browser-level failure. Not proven by direct reproduction, but it lines up: the symptom only
-  // ever appeared after this specific call was introduced, and removing it is a strict reduction
-  // in what this script does to the browser, not a new mechanism to trust. The onboarding tab is
-  // left open here; browser.uninstallExtension() below already closes every extension-origin page
-  // automatically on uninstall (relied on already for the popup/options pages further down), so
-  // nothing further needs to close it explicitly.
+  // background.js's onInstalled opens an onboarding tab concurrently; wait for it before newPage() below.
+  // Deliberately not closed explicitly (once preceded a "Connection closed" crash) — uninstallExtension() below closes it anyway.
   console.log("⏳ Waiting for onboarding tab (opened automatically on install)...");
   const onboardingUrl = `${extensionOrigin}/${ONBOARDING_PAGE_PATH}`;
   await browser.waitForTarget(
@@ -363,18 +239,8 @@ try {
   const pageErrors = [];
   popup.on("pageerror", (error) => pageErrors.push(String(error)));
 
-  // A real CI run segfaulted Chrome's whole process (confirmed via the exit-event diagnostics in
-  // the catch block below — an actual observed SIGSEGV, not a stale snapshot) at the exact moment
-  // setViewport() sent its first CDP command (Emulation.setTouchEmulationEnabled) to this page,
-  // immediately after browser.newPage() resolved. That matches the same shape as every other race
-  // this file has hit and fixed already — a command sent before a target has actually finished
-  // initializing — just landing as a native crash this time instead of a graceful protocol error,
-  // plausible given headless Chrome's --disable-gpu rendering paths are known to be less
-  // battle-tested than the GPU-accelerated ones. validatePageIsAlive() forces a real round-trip
-  // through the page's own JS engine over CDP first, so if the renderer isn't actually up yet this
-  // fails with a clear, ordinary error instead of risking a native crash on the very next command.
-  // Not proven by direct reproduction — native crashes are inherently hard to prove — but it's the
-  // same low-risk, evidence-matching move as this file's other timing fixes.
+  // A real CI run segfaulted Chrome right as setViewport()'s first CDP command hit a not-yet-ready
+  // page. validatePageIsAlive() forces a real round-trip first, turning that into an ordinary error instead of risking a native crash.
   await validatePageIsAlive(popup, "popup page");
   await popup.setViewport({ width: 360, height: 600, deviceScaleFactor: 1 });
 
@@ -390,31 +256,8 @@ try {
     timeout: 10_000,
   });
 
-  // O contextMenus permission só vale algo se o item realmente for registrado no worker de
-  // fundo na instalação. update() com um id inexistente popula chrome.runtime.lastError sem
-  // lançar — é a única forma de "consultar" um menu de contexto pela API, já que MV3 não expõe
-  // um getAll(). A metade "removido na desinstalação" não precisa de uma checagem própria: uma
-  // vez desinstalada, o worker que hospedava esse menu deixa de existir, o que as verificações
-  // de desinstalação abaixo (service worker consumindo `startsWith(extensionOrigin)`) já cobrem.
-  //
-  // Deliberately checked from the popup page, not from the service worker directly. Evaluating
-  // straight in the service worker (via workerTarget.worker()) previously handled two known,
-  // recoverable races (Chromium's own "CDP can evaluate before the worker is initialized" bug,
-  // and background.js's onInstalled listener being itself async — see git history for the retry
-  // loop that absorbed both). But a third, confirmed-upstream Chromium/Puppeteer bug stacks on
-  // top of those and isn't recoverable by retrying: "getting" a service worker (calling
-  // .worker(), which — confirmed by reading its own source — sends Runtime.enable and attaches a
-  // CDP session as a side effect of construction, not just of evaluate()) can put it into a
-  // permanently dead state that never wakes up again (crbug.com/1371432,
-  // puppeteer/puppeteer#9995). Reproduced deterministically in CI: identical extension ID and
-  // near-identical timing across two separate runs, "Target closed" followed by dozens of
-  // unrecovering "detached frame or worker" errors for the full retry window. chrome.contextMenus
-  // is not actually background-context-exclusive — any extension page with the permission can
-  // call it — so checking from the popup (a normal page, no dead-mode risk) sidesteps the bug
-  // entirely instead of trying to out-retry an upstream Chromium issue. This also removes the
-  // need for the worker.close() call this file used to have before uninstallExtension(): that
-  // existed only to release the CDP session .worker() attached, and nothing here attaches one
-  // anymore.
+  // update() with a nonexistent id populates lastError without throwing — the only way to "query" a
+  // context menu since MV3 has no getAll(). Checked from the popup, not the service worker: .worker() can put the worker into a permanently dead state (crbug.com/1371432), reproduced in CI.
   console.log("🔍 Verifying context menu registration...");
   let contextMenuRegistered = false;
   try {
@@ -619,10 +462,8 @@ try {
     "O popup ainda pode ser acessado após a desinstalação.",
   );
 
-  // Reinstala no mesmo perfil para confirmar dois pontos que o ciclo acima não cobre: (1) a
-  // desinstalação não deixa nenhum registro (worker, storage) que impeça uma nova instalação
-  // limpa, e (2) chrome.storage.sync é escopado por instalação — as configurações setadas antes
-  // da desinstalação não devem "ressuscitar" na reinstalação.
+  // Reinstala no mesmo perfil para confirmar: (1) a desinstalação não deixa registro que impeça
+  // reinstalar, e (2) chrome.storage.sync é escopado por instalação — nada "ressuscita".
   console.log("📦 Reinstalling extension to verify clean state...");
   const reinstalledExtensionId = await browser.installExtension(extensionPath);
   assert.match(reinstalledExtensionId, /^[a-p]{32}$/);
@@ -638,9 +479,8 @@ try {
     { timeout: 30_000 },
   );
 
-  // Same race as the first install above — reason: "install" fires again for this second,
-  // independent install cycle, so background.js opens another onboarding tab here too. Not closed
-  // explicitly, for the same reason as the first one above.
+  // Same race as the first install above — this second, independent install cycle also opens an
+  // onboarding tab; not closed explicitly, for the same reason as above.
   console.log("⏳ Waiting for onboarding tab (opened automatically on reinstall)...");
   await browser.waitForTarget(
     (target) =>
@@ -688,10 +528,8 @@ try {
     "O país padrão não voltou ao padrão após reinstalar; configurações antigas ressuscitaram.",
   );
 
-  // Segundo ciclo de desinstalação, desta vez deliberadamente com o popup E a página de opções
-  // ainda abertos — o caminho mais realista (um usuário não fecha suas abas antes de remover a
-  // extensão em chrome://extensions), e diferente do primeiro ciclo acima, que fecha o popup
-  // antes de desinstalar.
+  // Segundo ciclo de desinstalação, desta vez com popup E opções ainda abertos — o caminho mais
+  // realista (usuário não fecha as abas antes de remover a extensão), diferente do ciclo acima.
   console.log("🔄 Testing uninstall with open pages...");
   const reinstalledPopup = await browser.newPage();
   await safeGoto(reinstalledPopup, `${reinstalledOrigin}/${expectedManifest.action.default_popup}`, {
@@ -721,11 +559,8 @@ try {
   console.log("Uninstall-with-pages-open validation: passed");
 } catch (error) {
   console.error("❌ Test failed:", error);
-  // Printed unconditionally, unlike captureBrowserDiagnostics() below: this reads only the log
-  // file on disk and the raw ChildProcess object's own properties, neither of which depends on the
-  // CDP connection — confirmed useful precisely because of that: captureBrowserDiagnostics() has
-  // failed with "Tab target session is not defined" on exactly the kind of crash this exists to
-  // help diagnose.
+  // Printed unconditionally, unlike captureBrowserDiagnostics() below: reads only the log file and
+  // ChildProcess's own properties, neither depending on the CDP connection that a crash just broke.
   console.error(await formatChromeDiagnostics());
   console.error(captureSystemDiagnostics());
   console.error(captureLinkerDiagnostics(executablePath));
@@ -742,24 +577,15 @@ try {
 } finally {
   console.log("🔒 Closing browser...");
   await safeBrowserClose(browser);
-  // Best-effort throughout: on Windows specifically, a log/profile file can still be held open by
-  // Chrome's own process for a brief moment after close() resolves, which turns rmSync into
-  // EBUSY/EPERM instead of silently no-op'ing the way a missing path does even with force: true.
-  // This must never let a cleanup failure mask the actual test result.
-  //
-  // chromeUserDataDir: always removed, pass or fail — it's Chrome's whole profile directory (see
-  // the comment where it's created), never itself uploaded as a CI artifact, so there's no reason
-  // to keep it around after a failure the way chromeLogDir is kept below.
+  // Best-effort: on Windows, Chrome can briefly hold a file open after close() resolves, turning
+  // rmSync into EBUSY/EPERM — must never mask the actual test result. chromeUserDataDir is always removed, pass or fail (never itself a CI artifact).
   try {
     rmSync(chromeUserDataDir, { recursive: true, force: true });
   } catch {
     // Ignored — see comment above.
   }
-  // chromeLogDir: only cleaned up on a genuine pass — see the comment on testSucceeded above. On
-  // failure, this deliberately leaves chrome.log and any copied crash dumps on disk so ci.yml's
-  // "Anexar diagnosticos do Chrome" step (actions/upload-artifact, if: failure()) can pick them up
-  // as a downloadable artifact; ephemeral CI runners discard the whole directory regardless once
-  // the job ends, and locally this is a small, git-ignored directory safe to delete by hand.
+  // chromeLogDir: only cleaned up on a genuine pass (see testSucceeded above) — on failure it's
+  // left behind so ci.yml's "Anexar diagnosticos do Chrome" step can upload it as an artifact.
   if (testSucceeded) {
     try {
       rmSync(chromeLogDir, { recursive: true, force: true });

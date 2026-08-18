@@ -156,38 +156,27 @@ describe("country DDI screen mask integration", () => {
   });
 });
 
-// ddi.js is reachable with an attacker-influenced URL in a way background.js's own
-// selection pipeline (see "background selection security integration" in
-// background.integration.test.js) never sees: getNumberFromQuery() reads the ?number=
-// query string straight from window.location, bypassing background.js's isLikelyPhoneText
-// gate entirely. render() then interpolates that value, unescaped, into an HTML attribute
-// (value="${this.initialNumber}") — so this suite proves the *last* line of defense,
-// normalizeSelectedNumber() stripping everything but digits and "+" before render() ever
-// runs, actually holds at the DOM level, not just at the sanitizer's own unit tests.
+// ddi.js reads ?number= straight from window.location, bypassing background.js's isLikelyPhoneText
+// gate — this suite proves normalizeSelectedNumber() still holds at the DOM level before render() interpolates it unescaped.
 describe("country DDI screen query parameter security", () => {
   beforeEach(() => {
     window.history.pushState({}, "", "/src/popup/ddi.html");
   });
 
   it("strips HTML/script syntax from a hostile ?number= query parameter before rendering it", async () => {
-    // alert("x") deliberately has no digits in it (unlike alert(1)) — normalizeSelectedNumber()
-    // keeps every digit character it sees, including ones sitting inside an attack payload, so
-    // a numeral in the payload itself would legitimately survive sanitization and throw off the
-    // expected digit string below without indicating any real bug.
+    // alert("x") deliberately has no digits (unlike alert(1)) — normalizeSelectedNumber() keeps every
+    // digit it sees, so a numeral inside the payload would throw off the expected digit string below.
     const payload = '"><img src=x onerror=alert("x")>912345678';
     window.history.pushState({}, "", `/src/popup/ddi.html?number=${encodeURIComponent(payload)}`);
 
     const screen = await renderDdiScreen();
     const input = screen.querySelector("#local-number");
 
-    // A successful attribute breakout would parse a real, attacker-controlled <img
-    // onerror> element into the document. None of this page's legitimate markup
-    // (country flag icons included) ever sets an onerror attribute, so finding one here
-    // means the payload escaped the value="..." attribute instead of being neutralized.
+    // A successful attribute breakout would parse a real <img onerror> element — no legitimate
+    // markup here ever sets one, so finding one means the payload escaped value="...".
     expect(document.querySelector("img[onerror]")).toBeNull();
-    // The mask formats digits with spaces, so compare only against the digit stream, not the
-    // exact display string — 912345678 is deliberately sized to fit Portugal's 9-digit local
-    // mask (this suite's default country) without truncation.
+    // Compare only the digit stream, not the display string (mask adds spaces) — 912345678 fits
+    // Portugal's 9-digit local mask (this suite's default country) without truncation.
     expect(input.value.replace(/\D/g, "")).toBe("912345678");
     expect(input.value).toMatch(/^[\d\s]*$/);
   });

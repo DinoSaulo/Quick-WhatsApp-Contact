@@ -17,12 +17,8 @@ function collectFiles(directory, extensions) {
 
 const sourceFiles = collectFiles(resolve(projectRoot, "src"), [".html", ".js"]);
 
-// Codebase-wide sweep, not a per-link assertion: every current target="_blank" anchor is
-// already individually covered (options.integration.test.js, donationModal.integration.test.js),
-// but those tests only protect the links that exist today. Tabnabbing — a target="_blank" page
-// using window.opener to redirect the original tab to a phishing page — is a class of bug that
-// shows up the moment someone adds a NEW external link and forgets rel="noopener", so this test
-// scans every .html/.js file in src/ instead of naming files, and will catch that link too.
+// Codebase-wide sweep, not a per-link assertion — protects against tabnabbing (target="_blank"
+// + window.opener phishing redirect) the moment someone adds a NEW external link and forgets rel="noopener".
 describe("tabnabbing protection", () => {
   it("pairs every target=\"_blank\" anchor in src/ with rel=\"noopener\"", () => {
     const offenders = [];
@@ -65,12 +61,8 @@ describe("extension storage isolation", () => {
   });
 });
 
-// This extension has no backend and no user accounts, so it should never need to hold an API
-// key, access token, or private key in source — chrome.storage.sync/session here only ever
-// holds the user's own preferences and a short-lived phone-number handoff (see storage.js).
-// This is a regression guard, not a finding: it fails loudly if a future change (e.g. wiring
-// up an analytics or crash-reporting SDK) introduces a credential that belongs in a build-time
-// secret instead of committed, plaintext source.
+// No backend/accounts, so no API key/token/private key should ever land in source — a regression
+// guard, not a finding: fails loudly if a future SDK integration introduces one.
 describe("no hardcoded secrets in shipped source", () => {
   const secretPatterns = [
     { pattern: /-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/, label: "PEM private key" },

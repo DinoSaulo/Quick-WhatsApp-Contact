@@ -1,8 +1,5 @@
-// Confirms the browser a CI installation-test-firefox* matrix entry actually has installed
-// matches the major version declared in that job's label/firefoxMajor (.github/workflows/ci.yml).
-// Mirrors scripts/verify-chrome-version.mjs: reuses the same findFirefoxExecutable() lookup
-// tests/installation/firefox-extension-install.mjs uses, so "what CI verifies" and "what the
-// lifecycle test actually runs against" stay the same code path.
+// Confirms the browser a CI matrix entry actually installed matches its declared major version.
+// Mirrors verify-chrome-version.mjs, reusing firefox-extension-install.mjs's own findFirefoxExecutable().
 import { execFileSync } from "node:child_process";
 import { findFirefoxExecutable } from "../tests/installation/firefox-environment.mjs";
 
@@ -20,9 +17,8 @@ if (!executablePath) {
   process.exit(1);
 }
 
-// Same rationale as verify-chrome-version.mjs: reading the executable's own file version
-// metadata on Windows sidesteps any single-instance/already-running-process quirk instead of
-// trusting `firefox.exe --version` to print to this process's stdout.
+// Same rationale as verify-chrome-version.mjs: file version metadata sidesteps any
+// single-instance/already-running-process quirk in `firefox.exe --version`.
 const rawVersion =
   process.platform === "win32"
     ? execFileSync(

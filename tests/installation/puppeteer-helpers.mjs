@@ -1,17 +1,8 @@
 // Puppeteer utility helpers for robust browser automation with retry logic, frame validation,
 // and improved error handling. Designed to handle transient frame/context errors in CI environments.
 
-/**
- * Retries an async operation with exponential backoff.
- * @param {Function} operation - Async function to retry
- * @param {Object} options - Configuration options
- * @param {number} options.maxAttempts - Maximum number of attempts (default: 3)
- * @param {number} options.initialDelayMs - Initial delay between retries (default: 500)
- * @param {number} options.backoffMultiplier - Multiplier for exponential backoff (default: 1.5)
- * @param {Function} options.shouldRetry - Predicate to determine if error is retryable (default: retries all)
- * @param {Function} options.onRetry - Callback when retrying (default: no-op)
- * @returns {Promise<*>} Result of the operation
- */
+// Retries an async operation with exponential backoff (maxAttempts/initialDelayMs/backoffMultiplier
+// defaults: 3/500/1.5). shouldRetry gates which errors retry; onRetry fires before each retry.
 export async function retryAsync(
   operation,
   {
@@ -44,11 +35,7 @@ export async function retryAsync(
   throw lastError;
 }
 
-/**
- * Checks if an error is likely a transient frame/context error that could be retried.
- * @param {Error} error - The error to check
- * @returns {boolean} True if the error appears to be transient
- */
+// Checks if an error is likely a transient frame/context error that could be retried.
 export function isTransientFrameError(error) {
   const message = String(error);
   const transientPatterns = [
@@ -66,12 +53,7 @@ export function isTransientFrameError(error) {
   return transientPatterns.some((pattern) => message.includes(pattern));
 }
 
-/**
- * Validates that a page/frame is still valid before operations.
- * @param {Page} page - The Puppeteer page to validate
- * @param {string} context - Description of the context (for error messages)
- * @throws {Error} If the page is invalid
- */
+// Validates that a page/frame is still valid before operations; `context` labels the error message.
 export async function validatePageIsAlive(page, context = "page") {
   if (!page) {
     throw new Error(`${context} is null or undefined`);
@@ -87,13 +69,7 @@ export async function validatePageIsAlive(page, context = "page") {
   }
 }
 
-/**
- * Safely evaluates JavaScript in a page with retry logic and frame validation.
- * @param {Page} page - The Puppeteer page
- * @param {Function} pageFunction - Function to evaluate in page context
- * @param {...*} args - Arguments to pass to pageFunction
- * @returns {Promise<*>} Result of the evaluation
- */
+// Safely evaluates JavaScript in a page with retry logic and frame validation.
 export async function safeEvaluate(page, pageFunction, ...args) {
   return retryAsync(
     async () => {
@@ -113,13 +89,7 @@ export async function safeEvaluate(page, pageFunction, ...args) {
   );
 }
 
-/**
- * Safely navigates to a URL with retry logic and improved error handling.
- * @param {Page} page - The Puppeteer page
- * @param {string} url - URL to navigate to
- * @param {Object} options - Navigation options (passed to page.goto)
- * @returns {Promise<HTTPResponse>} The response object
- */
+// Safely navigates to a URL with retry logic and improved error handling.
 export async function safeGoto(page, url, options = {}) {
   const defaultOptions = {
     waitUntil: "domcontentloaded",
@@ -145,13 +115,7 @@ export async function safeGoto(page, url, options = {}) {
   );
 }
 
-/**
- * Safely waits for a selector with retry logic.
- * @param {Page} page - The Puppeteer page
- * @param {string} selector - Selector to wait for
- * @param {Object} options - Wait options (passed to page.waitForSelector)
- * @returns {Promise<ElementHandle>} The element handle
- */
+// Safely waits for a selector with retry logic.
 export async function safeWaitForSelector(page, selector, options = {}) {
   const defaultOptions = { timeout: 10_000, ...options };
 
@@ -173,15 +137,7 @@ export async function safeWaitForSelector(page, selector, options = {}) {
   );
 }
 
-/**
- * Waits for a condition to be true with diagnostic logging.
- * @param {Function} predicate - Async function that returns boolean
- * @param {string} failureMessage - Message to show if timeout occurs
- * @param {Object} options - Options
- * @param {number} options.timeout - Timeout in milliseconds (default: 10_000)
- * @param {number} options.checkIntervalMs - Interval between checks (default: 100)
- * @throws {Error} If timeout expires
- */
+// Waits for a condition to be true with diagnostic logging (timeout=10_000ms, checkIntervalMs=100 by default).
 export async function waitUntilWithDiagnostics(
   predicate,
   failureMessage,
@@ -215,32 +171,11 @@ export async function waitUntilWithDiagnostics(
   throw new Error(`${failureMessage} (timeout after ${elapsed}ms)`);
 }
 
-/**
- * Merges the given Puppeteer launch options with CI-stability args (defaults first, so callers
- * can still override any of them). Synchronous by design — it does no I/O, it just builds an
- * options object for the caller to pass to puppeteer.launch() itself. It must stay synchronous:
- * every call site (and every doc example) calls it without `await`, so marking it `async` would
- * silently hand callers a Promise instead of the options object, dropping fields like
- * executablePath without any error until puppeteer.launch() rejects far downstream.
- * @param {Object} options - Puppeteer launch options
- * @returns {Object} Merged Puppeteer launch options
- */
+// Merges the given launch options with CI-stability args (defaults first, so callers can override).
+// Must stay synchronous — every call site calls it without `await`; marking it async would silently hand callers a Promise instead.
 export function launchBrowserWithStabilityFlags(options = {}) {
-  // CI-specific stability improvements
-  //
-  // --disable-extensions must NOT be in this list: extension-install.mjs — this helper's only
-  // caller — always passes enableExtensions: true precisely so it can load and test our own
-  // extension. Puppeteer-core's ChromeLauncher reads that flag itself and pushes
-  // --enable-unsafe-extension-debugging ahead of these args (see
-  // node_modules/puppeteer-core/lib/puppeteer/node/ChromeLauncher.js's
-  // computeLaunchArguments()), then appends this function's `args` *after* it. Chrome's
-  // --disable-extensions has no "re-enable" counterpart a later flag can undo, so its mere
-  // presence anywhere on the command line disables the extensions system outright — silently
-  // overriding --enable-unsafe-extension-debugging regardless of order. The extension still
-  // "installs" successfully (Puppeteer's own CDP-level bookkeeping doesn't check whether Chrome
-  // actually loaded it), but its service worker never starts, and browser.waitForTarget(...) for
-  // it times out after 30s. Confirmed as the cause of that exact timeout — reproduced both in CI
-  // (Windows) and locally, since this is a Chrome flag conflict, not an OS-specific issue.
+  // --disable-extensions must NOT be in this list: extension-install.mjs always passes
+  // enableExtensions: true, and this flag silently defeats that — confirmed cause of a 30s service-worker timeout, both in CI and locally.
   const defaultArgs = [
     "--disable-dev-shm-usage", // Prevent /dev/shm issues in Docker/CI
     "--disable-gpu", // Disable GPU acceleration for CI
@@ -261,10 +196,7 @@ export function launchBrowserWithStabilityFlags(options = {}) {
   };
 }
 
-/**
- * Safely closes a browser with cleanup.
- * @param {Browser} browser - The browser instance
- */
+// Safely closes a browser with cleanup.
 export async function safeBrowserClose(browser) {
   try {
     if (browser) {
@@ -276,10 +208,7 @@ export async function safeBrowserClose(browser) {
   }
 }
 
-/**
- * Safely closes a page with cleanup.
- * @param {Page} page - The page instance
- */
+// Safely closes a page with cleanup.
 export async function safePageClose(page) {
   try {
     if (page) {
@@ -291,11 +220,7 @@ export async function safePageClose(page) {
   }
 }
 
-/**
- * Captures detailed diagnostics about the current browser state.
- * @param {Browser} browser - The browser instance
- * @returns {Object} Diagnostic information
- */
+// Captures detailed diagnostics about the current browser state.
 export async function captureBrowserDiagnostics(browser) {
   try {
     const targets = browser.targets();

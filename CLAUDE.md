@@ -11,6 +11,9 @@ npx vitest run tests/phone.test.js    # run a single test file
 
 There is no build step — the extension is loaded directly in Chrome via "Load unpacked" from the project root. The manifest is at `manifest.json`.
 
+### Comment style
+No comment (line-comment run or block comment) may span more than 2 lines, in any file — code, tests, or `.github/**/*.yml`. Enforced by `npm run lint:comments` (`scripts/check-comment-length.mjs`), which also runs in CI. Deep root-cause narratives belong in the commit message, not inline.
+
 ## Architecture
 
 **Quick WhatsApp Contact** is a Manifest V3 Chrome extension that lets users open WhatsApp from any phone number found on a web page. It is written in vanilla JS with no bundler or framework.

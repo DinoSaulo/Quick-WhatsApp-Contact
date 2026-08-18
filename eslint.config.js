@@ -1,16 +1,5 @@
-// Security-focused static analysis (SAST), separate from scripts/check-source.mjs (syntax-only
-// lint run by `npm run lint`). This config exists to catch the vulnerability classes an
-// extension security audit cares about most — see docs/THREAT_MODEL.md:
-//   - eslint-plugin-no-unsanitized: flags DOM XSS sinks (innerHTML/outerHTML/insertAdjacentHTML/
-//     document.write) fed anything other than a string literal, so any *new* dynamic sink has to
-//     be deliberately reviewed and either sanitized or explicitly justified inline — it cannot
-//     land silently.
-//   - eslint-plugin-security: flags Node-side risk patterns (unsafe regex, dynamic require/eval,
-//     non-literal fs paths) most relevant to the build/dev scripts in scripts/ and tests/.
-// Run with `npm run lint:sast`. Every finding in src/ at the time this config was added was
-// hand-reviewed and left with an inline eslint-disable-next-line explaining why the sink is
-// safe (allow-list sanitized upstream, or escaped) — see those comments for the actual audit
-// reasoning, not this file.
+// Security-focused static analysis (SAST, `npm run lint:sast`) — catches DOM XSS sinks and
+// Node-side risk patterns. See docs/THREAT_MODEL.md and inline eslint-disable-next-line comments.
 import noUnsanitized from "eslint-plugin-no-unsanitized";
 import security from "eslint-plugin-security";
 import globals from "globals";
@@ -39,10 +28,8 @@ export default [
       "no-unsanitized/property": "error",
       "no-unsanitized/method": "error",
       ...security.configs.recommended.rules,
-      // High false-positive rate on any obj[key] access (bracket notation into a plain object
-      // or Map-like lookup) — this codebase uses it for static, developer-controlled lookups
-      // only (e.g. getCountryByCode, i18n DICTIONARY[language]), never with untrusted keys.
-      // See eslint-plugin-security's own docs for why this rule is commonly disabled project-wide.
+      // High false-positive rate on obj[key] access; this codebase only uses it for static,
+      // developer-controlled lookups (getCountryByCode, i18n DICTIONARY[language]), never untrusted keys.
       "security/detect-object-injection": "off"
     }
   },

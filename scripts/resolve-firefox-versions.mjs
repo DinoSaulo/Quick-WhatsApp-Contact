@@ -1,10 +1,5 @@
-// Resolves the three most recent Firefox *major* versions (N, N-1, N-2) from Mozilla's own
-// release history, so .github/workflows/ci.yml can pin installation-test-firefox-pinned's
-// matrix to each one deliberately — the Firefox counterpart of resolve-chrome-versions.mjs.
-// Source of truth: https://product-details.mozilla.org/1.0/firefox_history_major_releases.json,
-// Mozilla's own public release-history API. Selection logic lives in
-// tests/installation/firefox-version-selection.mjs so it's unit-testable against fixture data
-// instead of only ever running against the live network (see tests/firefoxVersionSelection.test.js).
+// Resolves the 3 most recent Firefox majors (N, N-1, N-2) from Mozilla's release-history API — the
+// Firefox counterpart of resolve-chrome-versions.mjs. Selection logic lives in firefox-version-selection.mjs.
 import { selectLastThreeFirefoxMajors } from "../tests/installation/firefox-version-selection.mjs";
 
 const RELEASE_HISTORY_URL =

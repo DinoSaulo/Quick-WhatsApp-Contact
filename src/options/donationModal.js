@@ -21,9 +21,8 @@ class DonationModal extends HTMLElement {
     this.activeMethodId = DONATION_METHODS[0]?.id ?? "";
     await this.loadAndRender();
 
-    // Consumido uma única vez: se o popup nos mandou aqui via setPendingDonationOpen()
-    // (botão "Buy me a coffee" clicado lá, ver popup.js), abre o modal já na primeira
-    // renderização em vez de deixar o usuário procurar o botão flutuante de novo.
+    // Consumido uma única vez: se o popup nos mandou aqui via setPendingDonationOpen() (popup.js),
+    // abre o modal já na primeira renderização em vez de exigir que o usuário procure o botão de novo.
     const shouldOpenOnLoad = await consumePendingDonationOpen();
     if (shouldOpenOnLoad) {
       this.openDialog();
@@ -34,12 +33,8 @@ class DonationModal extends HTMLElement {
     this.querySelector("#donation-dialog")?.showModal();
   }
 
-  // Re-lê o idioma do storage e re-renderiza. É chamado tanto na primeira montagem
-  // quanto — mais importante — toda vez antes de abrir o modal (ver bindEvents):
-  // este componente vive fora de <extension-settings-page> como um custom element
-  // irmão, então não é avisado quando o <select> de idioma muda lá. Reler o storage
-  // no momento do clique garante que o modal sempre abre no idioma atual, sem exigir
-  // recarregar a página nem acoplar os dois componentes via evento customizado.
+  // Re-lê o idioma do storage e re-renderiza antes de cada abertura do modal (bindEvents): este
+  // componente vive fora de <extension-settings-page>, então não é avisado quando o <select> de idioma muda lá.
   async loadAndRender() {
     const settings = await getSettings();
     this.messages = getMessages(settings.language);
@@ -61,11 +56,8 @@ class DonationModal extends HTMLElement {
     `).join("");
 
     const panelsMarkup = DONATION_METHODS.map((method) => {
-      // escapeHtml() only neutralizes HTML syntax (<, >, ", &) — it says nothing about the
-      // URL *scheme*, so an unescaped "javascript:" or "data:" value would still render as a
-      // real, clickable href. method.link is developer-authored today, but buildWhatsAppUrl()
-      // (src/utils/phone.js) already treats scheme validation as mandatory for any URL this
-      // codebase hands to the browser, so donation links get the same https-only allow-list.
+      // escapeHtml() neutralizes HTML syntax but not the URL *scheme* — an unescaped "javascript:"
+      // would still render as a clickable href, so donation links get the same https-only allow-list as phone.js's buildWhatsAppUrl().
       const hasSafeLink = typeof method.link === "string" && /^https:\/\//i.test(method.link);
 
       return `
@@ -111,9 +103,7 @@ class DonationModal extends HTMLElement {
     `;
     }).join("");
 
-    // Every DONATION_METHODS field and every i18n string above is passed through escapeHtml()
-    // (or the https-only hasSafeLink allow-list for the one raw href) before landing here; see
-    // tests/donationModalEscaping.test.js.
+    // Every field above is passed through escapeHtml() (or hasSafeLink for the one raw href) — see tests/donationModalEscaping.test.js.
     // eslint-disable-next-line no-unsanitized/property
     this.innerHTML = `
       <button class="button button--secondary donation-trigger" id="donation-trigger" type="button">
@@ -137,10 +127,8 @@ class DonationModal extends HTMLElement {
     const closeButton = this.querySelector("#donation-close");
 
     trigger?.addEventListener("click", async () => {
-      // Atualiza os textos para o idioma atual antes de abrir — ver o comentário em
-      // loadAndRender(). Isto substitui this.innerHTML, então a referência local
-      // `dialog` (capturada no bindEvents anterior) fica obsoleta; buscamos a nova
-      // dentro de openDialog().
+      // Atualiza os textos antes de abrir (ver loadAndRender). Isto substitui this.innerHTML, então
+      // a referência local `dialog` fica obsoleta; buscamos a nova dentro de openDialog().
       await this.loadAndRender();
       this.openDialog();
     });
@@ -181,9 +169,8 @@ class DonationModal extends HTMLElement {
       copyButton.addEventListener("click", async () => {
         const methodId = copyButton.getAttribute("data-copy-method");
         const method = DONATION_METHODS.find((candidate) => candidate.id === methodId);
-        // Do not interpolate methodId into a CSS selector. Even escaped HTML attributes are
-        // decoded by getAttribute(), and selector metacharacters in a future data source could
-        // otherwise throw a SyntaxError or select the wrong feedback element.
+        // Do not interpolate methodId into a CSS selector: getAttribute() decodes escaped HTML,
+        // so a future data source with selector metacharacters could throw or select the wrong element.
         const feedback = findByDataAttribute(this, "data-copy-feedback", methodId);
         if (!method || !feedback) {
           return;

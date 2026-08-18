@@ -18,6 +18,10 @@ export function normalizeLanguage(language = "") {
   return String(language || "").toLowerCase() === "pt-br" ? "pt-BR" : "en-US";
 }
 
+function normalizeDefaultCountry(countryCode) {
+  return typeof countryCode === "string" ? countryCode : DEFAULT_SETTINGS.defaultCountry;
+}
+
 export async function saveLastCountry(countryCode) {
   await chrome.storage.sync.set({ [LAST_COUNTRY_STORAGE_KEY]: countryCode });
 }
@@ -47,10 +51,8 @@ export async function consumePendingContextCountry() {
   return result[PENDING_CONTEXT_COUNTRY_KEY] ?? "";
 }
 
-// Sinaliza para a página de opções, prestes a ser aberta a partir do popup, que ela deve
-// abrir o modal de doação assim que carregar — mesmo padrão "consumir uma vez" usado acima
-// para o número/país pendentes do fluxo de DDI, com chrome.storage.session (não sync, para
-// não sobreviver além desta navegação nem sincronizar entre dispositivos).
+// Sinaliza para a página de opções que ela deve abrir o modal de doação ao carregar — mesmo padrão
+// "consumir uma vez" do fluxo de DDI acima, via storage.session (não sync, não sobrevive nem sincroniza).
 export async function setPendingDonationOpen() {
   await chrome.storage.session.set({ [PENDING_DONATION_OPEN_KEY]: true });
 }
@@ -96,7 +98,7 @@ export async function setLanguage(language) {
 
 export async function getDefaultCountry() {
   const result = await chrome.storage.sync.get(DEFAULT_COUNTRY_KEY);
-  return result[DEFAULT_COUNTRY_KEY] ?? DEFAULT_SETTINGS.defaultCountry;
+  return normalizeDefaultCountry(result[DEFAULT_COUNTRY_KEY]);
 }
 
 export async function setDefaultCountry(countryCode) {
@@ -121,7 +123,7 @@ export async function getSettings() {
         ? result[DARK_MODE_ENABLED_KEY]
         : DEFAULT_SETTINGS.darkModeEnabled,
     language: normalizeLanguage(result[LANGUAGE_KEY] ?? DEFAULT_SETTINGS.language),
-    defaultCountry: result[DEFAULT_COUNTRY_KEY] ?? DEFAULT_SETTINGS.defaultCountry
+    defaultCountry: normalizeDefaultCountry(result[DEFAULT_COUNTRY_KEY])
   };
 }
 

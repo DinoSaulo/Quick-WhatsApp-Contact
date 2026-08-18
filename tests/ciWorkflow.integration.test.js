@@ -26,18 +26,21 @@ function jobSource(jobName, nextJobName) {
 
 describe("GitHub Actions cross-platform runtime integration", () => {
   it("pins the same exact Node.js version in every job", () => {
-    // The three steps this used to check individually (checkout, setup-node, verify) got
-    // extracted into a shared composite action (.github/actions/setup-node-env) to kill the
-    // duplication of an identical block across all 11 jobs — see that action's own file for the
-    // setup-node/verify half (checkout still can't move there: a local action reference isn't
-    // resolvable until the repo housing it is already checked out, so every job still checks out
-    // explicitly first). This test now checks both halves: the action itself pins the right
-    // version once, and every job actually references that action rather than reimplementing it.
+    // setup-node/verify got extracted into a shared composite action (checkout can't move there —
+    // a local action isn't resolvable until the repo is checked out). Checks both halves here.
     expect(workflow).toContain('NODE_VERSION: "22.23.2"');
     expect(setupNodeEnvAction).toContain("node-version: ${{ env.NODE_VERSION }}");
     expect(setupNodeEnvAction).toContain("name: Verificar versao do Node.js");
     expect(workflow.match(/uses: \.\/\.github\/actions\/setup-node-env/g)).toHaveLength(11);
     expect(workflow).not.toContain("actions/setup-node@v6");
+  });
+
+  it("runs the comment-length lint in the unit-tests job", () => {
+    const unit = jobSource("unit-tests", "integration-tests");
+
+    expect(unit).toContain("run: npm run lint:comments");
+    expect(packageJson.scripts["lint:comments"]).toBe("node scripts/check-comment-length.mjs");
+    expect(packageJson.scripts.verify).toContain("npm run lint:comments");
   });
 
   it("uses Node 24 runtime releases for every official JavaScript action", () => {
@@ -78,8 +81,7 @@ describe("GitHub Actions cross-platform runtime integration", () => {
 
     expect(installationFirefox).toContain("nodejs npm firefox");
     expect(installationFirefox).toContain("firefox-esr");
-    // The rapid-release train (Fedora/Arch) and the ESR train (Debian/Rocky) sit many majors
-    // apart on purpose — see the comment above installation-test-firefox in ci.yml.
+    // The rapid-release train (Fedora/Arch) and ESR train (Debian/Rocky) sit many majors apart on purpose.
     expect(installationFirefox).toContain('firefoxMajor: "153"');
     expect(installationFirefox).toContain('firefoxMajor: "140"');
     // Ubuntu/macOS/Windows rely on the runner's preinstalled Firefox and carry no firefoxMajor,
@@ -101,9 +103,7 @@ describe("GitHub Actions cross-platform runtime integration", () => {
     const resolveJob = jobSource("resolve-chrome-versions", "installation-test-pinned");
     const pinnedJob = jobSource("installation-test-pinned", "installation-test-firefox");
 
-    // needs: integration-tests, not security-tests — this job only needs Node and a network
-    // call, nothing from security-tests' own results, so it runs alongside security-tests
-    // instead of waiting on it needlessly (see the matching comment in ci.yml).
+    // needs: integration-tests, not security-tests — only needs Node and a network call, so it runs alongside security-tests instead of waiting on it.
     expect(resolveJob).toContain("needs: integration-tests");
     expect(resolveJob).toContain("outputs:");
     expect(resolveJob).toContain("versions: ${{ steps.resolve.outputs.versions }}");
@@ -111,12 +111,8 @@ describe("GitHub Actions cross-platform runtime integration", () => {
 
     expect(pinnedJob).toContain("needs: [security-tests, resolve-chrome-versions]");
     expect(pinnedJob).toContain("fromJson(needs.resolve-chrome-versions.outputs.versions)");
-    // Unlike installation-test's plain "run: npm run test:install" (asserted with that exact
-    // prefix further down), this job wraps the same command in a retry loop — see the comment
-    // above that step in ci.yml for why (a rare, already-root-caused-as-far-as-possible native
-    // Chrome crash, not a systematic bug this test suite should be masking). "run: |" starts the
-    // block; the loop still has to actually invoke the real script and still has to fail loudly
-    // (not silently pass CI) once every attempt is exhausted.
+    // Unlike installation-test's plain "run: npm run test:install", this job wraps it in a retry
+    // loop (a rare native Chrome crash, see ci.yml) — must still invoke the real script and fail loudly once exhausted.
     expect(pinnedJob).toContain("run: |");
     expect(pinnedJob).toContain("npm run test:install");
     expect(pinnedJob).toMatch(/for attempt in .+; do/);
@@ -182,10 +178,8 @@ describe("GitHub Actions cross-platform runtime integration", () => {
     expect(packageJson.scripts["test:security"]).toContain("tests/security.test.js");
   });
 
-  // Production dependencies are, and must stay, empty (see validate-extension.mjs), so this
-  // step passes trivially today — its value is as a regression guard: the moment a real
-  // runtime dependency is ever added, a known vulnerability in it fails the pipeline instead
-  // of only being caught by someone running `npm audit` by hand (see docs/THREAT_MODEL.md §6).
+  // Production dependencies are, and must stay, empty (validate-extension.mjs) — passes trivially
+  // today, but guards the moment a real runtime dependency is added (docs/THREAT_MODEL.md §6).
   it("audits production dependencies for known vulnerabilities in the security job", () => {
     const security = jobSource("security-tests", "installation-test");
 
