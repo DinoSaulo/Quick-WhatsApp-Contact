@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
   Ralph loop local e seguro para o Quick WhatsApp Contact: roda um agente de CLI
   (Claude Code por padrão, mas configurável) em iterações curtas contra
