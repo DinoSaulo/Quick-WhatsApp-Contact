@@ -1,5 +1,12 @@
 /* @vitest-environment jsdom */
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const sharedStyles = readFileSync(
+  resolve(import.meta.dirname, "../src/popup/styles.css"),
+  "utf8"
+);
 
 const mockStorage = vi.hoisted(() => ({
   getLastCountry: vi.fn(),
@@ -155,6 +162,61 @@ describe("country DDI screen mask integration", () => {
     expect(noResults.hidden).toBe(true);
   });
 
+  it("filters country options by dial code with or without the plus prefix", async () => {
+    const screen = await renderDdiScreen();
+    const trigger = screen.querySelector("#country-trigger");
+    const searchInput = screen.querySelector("#country-search");
+    const options = screen.querySelectorAll(".country-picker__option");
+
+    trigger.click();
+
+    searchInput.value = "+55";
+    searchInput.dispatchEvent(new Event("input", { bubbles: true }));
+    let visibleCodes = Array.from(options)
+      .filter((option) => !option.hidden)
+      .map((option) => option.getAttribute("data-country-code"));
+    expect(visibleCodes).toEqual(["BR"]);
+
+    searchInput.value = "55";
+    searchInput.dispatchEvent(new Event("input", { bubbles: true }));
+    visibleCodes = Array.from(options)
+      .filter((option) => !option.hidden)
+      .map((option) => option.getAttribute("data-country-code"));
+    expect(visibleCodes).toContain("BR");
+  });
+
+  it("filters country options by lowercase ISO2 code", async () => {
+    const screen = await renderDdiScreen();
+    const trigger = screen.querySelector("#country-trigger");
+    const searchInput = screen.querySelector("#country-search");
+    const options = screen.querySelectorAll(".country-picker__option");
+
+    trigger.click();
+    searchInput.value = "br";
+    searchInput.dispatchEvent(new Event("input", { bubbles: true }));
+
+    const visibleCodes = Array.from(options)
+      .filter((option) => !option.hidden)
+      .map((option) => option.getAttribute("data-country-code"));
+    expect(visibleCodes).toContain("BR");
+  });
+
+  it("normalizes accented user input so it still matches unaccented country names", async () => {
+    const screen = await renderDdiScreen();
+    const trigger = screen.querySelector("#country-trigger");
+    const searchInput = screen.querySelector("#country-search");
+    const options = screen.querySelectorAll(".country-picker__option");
+
+    trigger.click();
+    searchInput.value = "México";
+    searchInput.dispatchEvent(new Event("input", { bubbles: true }));
+
+    const visibleCodes = Array.from(options)
+      .filter((option) => !option.hidden)
+      .map((option) => option.getAttribute("data-country-code"));
+    expect(visibleCodes).toEqual(["MX"]);
+  });
+
   it("closes the search dropdown when Escape key is pressed", async () => {
     const screen = await renderDdiScreen();
     const trigger = screen.querySelector("#country-trigger");
@@ -181,6 +243,14 @@ describe("country DDI screen mask integration", () => {
 
     expect(menu.hidden).toBe(true);
     expect(trigger.getAttribute("aria-expanded")).toBe("false");
+  });
+
+  // ddi.js only toggles `hidden` (popup.js also sets style.display/aria-hidden); this proves the
+  // shared stylesheet forces display:none on [hidden], so both screens look identical anyway.
+  it("relies on the shared stylesheet to hide filtered-out options the same way popup.js does", () => {
+    expect(sharedStyles).toMatch(
+      /\.country-picker__option\[hidden\]\s*\{[^}]*display:\s*none\s*!important;/s
+    );
   });
 
   it("keeps the country menu open when clicking inside the picker", async () => {
