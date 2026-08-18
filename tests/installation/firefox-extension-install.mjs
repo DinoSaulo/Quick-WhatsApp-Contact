@@ -89,6 +89,41 @@ async function waitUntil(predicate, failureMessage, timeout = 10_000) {
   assert.fail(failureMessage);
 }
 
+// puppeteer-core 25's BiDi Page.setViewport() unconditionally fires two BiDi commands together
+// (browsingContext.setViewport for size + browsingContext.setScreenOrientationOverride for
+// orientation) for any non-CDP browser — confirmed in node_modules/puppeteer-core/lib/puppeteer/
+// bidi/Page.js, introduced by puppeteer/puppeteer#14043 ("use BiDi for screen orientation
+// emulation"). It does this even when the caller never sets isLandscape, as neither call site
+// below does. emulation.setScreenOrientationOverride is a newer addition to Firefox's own
+// WebDriver BiDi implementation; Firefox 140 ESR (see the Debian/Rocky matrix entries in ci.yml,
+// which deliberately trail the rapid-release train by design) doesn't have it yet, and rejects
+// with "unknown command emulation.setScreenOrientationOverride" — confirmed as a real CI failure
+// on exactly that entry. Neither call site here cares about screen orientation at all, only
+// width/height/deviceScaleFactor for the layout assertions that follow, so this tolerates that
+// specific, known upstream-version gap rather than failing the whole test over a command this
+// test never asked for. Deliberately narrow: anything else re-throws unchanged, since a genuinely
+// different setViewport failure should still fail loudly. Whether the viewport *size* half of the
+// pair actually applied despite the orientation half rejecting isn't independently confirmed here
+// (Promise.all rejects the whole call as soon as either promise does, even though both were sent
+// concurrently) — deliberately left to the layout assertions further down to be the real signal:
+// if size silently didn't apply either, "excedeu 720px" or the equivalent overflow assertion will
+// say so on its own, honestly, rather than this helper guessing and asserting something it can't
+// actually confirm.
+async function setViewportTolerantly(page, viewport) {
+  try {
+    await page.setViewport(viewport);
+  } catch (error) {
+    if (!String(error).includes("emulation.setScreenOrientationOverride")) {
+      throw error;
+    }
+    console.warn(
+      `⚠️  setViewport()'s screen-orientation half failed (this Firefox build's BiDi implementation ` +
+        `doesn't support emulation.setScreenOrientationOverride yet) — continuing, since this test ` +
+        `never sets isLandscape and only needs width/height/deviceScaleFactor: ${error.message}`,
+    );
+  }
+}
+
 async function connectWithRetries(browserWSEndpoint, { attempts = 30, delay = 300 } = {}) {
   for (let attempt = 1; attempt <= attempts; attempt++) {
     try {
@@ -379,7 +414,7 @@ try {
   // browsing context's underlying browser-window reference isn't attached yet. CSS layout still
   // recomputes correctly against the new viewport regardless of when it's set relative to load,
   // so this doesn't affect the layout assertions below.
-  await popup.setViewport({ width: 360, height: 600, deviceScaleFactor: 1 });
+  await setViewportTolerantly(popup, { width: 360, height: 600, deviceScaleFactor: 1 });
   await popup.waitForSelector("whatsapp-message-popup #country-trigger", { timeout: 10_000 });
   await popup.waitForSelector("#country-trigger .country-picker__flag-img", { timeout: 10_000 });
 
@@ -446,7 +481,7 @@ try {
     `${extensionOrigin}/${expectedManifest.options_ui.page}`,
   );
   // See the comment on the equivalent popup.setViewport() call above — must run after load.
-  await optionsPage.setViewport({ width: 1200, height: 800, deviceScaleFactor: 1 });
+  await setViewportTolerantly(optionsPage, { width: 1200, height: 800, deviceScaleFactor: 1 });
   await optionsPage.waitForSelector("extension-settings-page #country-trigger", {
     timeout: 10_000,
   });
