@@ -78,6 +78,9 @@ describe("Puppeteer stability helpers", () => {
   });
 
   it("cleans up browser resources without masking close errors", async () => {
+    // safeBrowserClose/safePageClose log-and-swallow close errors on purpose (best-effort
+    // cleanup) — spying keeps that real console.error out of stderr while still asserting it fired.
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
     const browser = { close: vi.fn().mockRejectedValue(new Error("already closed")) };
     const page = { close: vi.fn().mockRejectedValue(new Error("already closed")) };
 
@@ -85,6 +88,10 @@ describe("Puppeteer stability helpers", () => {
     await expect(safePageClose(page)).resolves.toBeUndefined();
     expect(browser.close).toHaveBeenCalledOnce();
     expect(page.close).toHaveBeenCalledOnce();
+    expect(consoleError).toHaveBeenCalledWith("Error closing browser: already closed");
+    expect(consoleError).toHaveBeenCalledWith("Error closing page: already closed");
+
+    consoleError.mockRestore();
   });
 
   it("captures useful diagnostics and returns an error object when inspection fails", async () => {
