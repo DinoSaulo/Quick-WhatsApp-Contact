@@ -8,10 +8,12 @@
     "lint": "node scripts/check-source.mjs",
     "lint:comments": "node scripts/check-comment-length.mjs",
     "lint:sast": "eslint .",
+    "pretest": "npm run build",
     "test": "vitest run",
-    "test:unit": "vitest run --exclude tests/**/*.integration.test.js",
+    "test:unit": "vitest run --exclude tests/**/*.integration.test.js --exclude tests/webExtLint.test.js",
     "test:integration": "vitest run .integration.test.js",
-    "test:security": "vitest run tests/security.test.js tests/networkSecurity.test.js tests/manifest.test.js tests/donationModalEscaping.test.js",
+    "test:security": "npm run build && vitest run tests/security.test.js tests/networkSecurity.test.js tests/manifest.test.js tests/donationModalEscaping.test.js tests/webExtLint.test.js",
+    "test:weblint": "npm run build && vitest run tests/webExtLint.test.js",
     "test:install": "npm run build && node tests/installation/extension-install.mjs",
     "test:install:firefox": "npm run build && node tests/installation/firefox-extension-install.mjs",
     "validate:extension": "node scripts/validate-extension.mjs",
@@ -19,7 +21,7 @@
     "lint:firefox": "npm run build && web-ext lint --source-dir=dist/extension",
     "package:firefox": "npm run build && web-ext build --source-dir=dist/extension --artifacts-dir=dist/firefox-zip --overwrite-dest",
     "generate:donation-qrcodes": "node scripts/generate-donation-qrcodes.mjs",
-    "verify": "npm run lint && npm run lint:comments && npm run lint:sast && npm run validate:extension && npm test && npm run build",
+    "verify": "npm run lint && npm run lint:comments && npm run lint:sast && npm run validate:extension && npm test",
     "ralph": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/ralph-loop.ps1"
   },
   "devDependencies": {

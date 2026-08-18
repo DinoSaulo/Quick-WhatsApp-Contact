@@ -176,7 +176,9 @@ jobs:
         shell: bash
         run: mkdir -p reports
 
-      - name: Executar testes de seguranca
+      # Builds, then runs the security suite plus the AMO validator (web-ext lint) in one
+      # execution — tests/webExtLint.test.js is a vitest file, so it needs no separate step.
+      - name: Executar testes de seguranca (incl. validador da AMO)
         run: >-
           npm run test:security --
           --reporter=default

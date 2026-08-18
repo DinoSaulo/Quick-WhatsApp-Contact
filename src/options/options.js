@@ -112,6 +112,7 @@ class ExtensionSettingsPage extends HTMLElement {
                 <input id="auto-highlight" type="checkbox" ${
                   this.settings.autoHighlightEnabled ? "checked" : ""
                 } aria-describedby="page-access-disclosure" />
+                <span class="toggle__track"><span class="toggle__thumb"></span></span>
               </label>
             </div>
             <p class="privacy-note" id="page-access-disclosure">${this.messages.optionAutoHighlightDisclosure}</p>
@@ -141,6 +142,7 @@ class ExtensionSettingsPage extends HTMLElement {
               <label class="option-label" for="dark-mode">${this.messages.optionDarkMode}</label>
               <label class="toggle option-control">
                 <input id="dark-mode" type="checkbox" ${this.settings.darkModeEnabled ? "checked" : ""} />
+                <span class="toggle__track"><span class="toggle__thumb"></span></span>
               </label>
             </div>
 
