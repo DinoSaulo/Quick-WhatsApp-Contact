@@ -50,7 +50,7 @@ jobs:
         run: dnf install -y --setopt=install_weak_deps=False git curl nodejs npm
 
       - name: Clonar repositorio
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Preparar ambiente Node.js
         uses: ./.github/actions/setup-node-env
@@ -121,7 +121,7 @@ jobs:
         run: dnf install -y --setopt=install_weak_deps=False git curl nodejs npm
 
       - name: Clonar repositorio
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Preparar ambiente Node.js
         uses: ./.github/actions/setup-node-env
@@ -159,7 +159,7 @@ jobs:
 
     steps:
       - name: Clonar repositorio
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Preparar ambiente Node.js
         uses: ./.github/actions/setup-node-env
@@ -252,7 +252,7 @@ jobs:
         run: ${{ matrix.setup }}
 
       - name: Clonar repositorio
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Preparar ambiente Node.js
         uses: ./.github/actions/setup-node-env
@@ -316,7 +316,7 @@ jobs:
 
     steps:
       - name: Clonar repositorio
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Preparar ambiente Node.js
         uses: ./.github/actions/setup-node-env
@@ -355,7 +355,7 @@ jobs:
 
     steps:
       - name: Clonar repositorio
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Preparar ambiente Node.js
         uses: ./.github/actions/setup-node-env
@@ -540,7 +540,7 @@ jobs:
         run: ${{ matrix.setup }}
 
       - name: Clonar repositorio
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Preparar ambiente Node.js
         uses: ./.github/actions/setup-node-env
@@ -588,7 +588,7 @@ jobs:
 
     steps:
       - name: Clonar repositorio
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Preparar ambiente Node.js
         uses: ./.github/actions/setup-node-env
@@ -613,7 +613,7 @@ jobs:
 
     steps:
       - name: Clonar repositorio
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Preparar ambiente Node.js
         uses: ./.github/actions/setup-node-env
@@ -657,7 +657,7 @@ jobs:
 
     steps:
       - name: Clonar repositorio
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Preparar ambiente Node.js
         uses: ./.github/actions/setup-node-env
@@ -680,7 +680,7 @@ jobs:
 
     steps:
       - name: Clonar repositorio
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Preparar ambiente Node.js
         uses: ./.github/actions/setup-node-env

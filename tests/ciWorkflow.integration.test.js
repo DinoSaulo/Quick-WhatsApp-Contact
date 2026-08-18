@@ -44,7 +44,7 @@ describe("GitHub Actions cross-platform runtime integration", () => {
     expect(workflow).not.toMatch(
       /actions\/(?:checkout|setup-node|upload-artifact|download-artifact)@v4/,
     );
-    expect(workflow).toContain("actions/checkout@v6");
+    expect(workflow).toContain("actions/checkout@v7");
     expect(workflow).toContain("actions/upload-artifact@v6");
     expect(workflow).toContain("actions/download-artifact@v7");
   });
