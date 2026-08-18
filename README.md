@@ -217,7 +217,7 @@ O repositório usa GitHub Actions com 6 níveis sequenciais. Cada nível precisa
 | 5️⃣ | Validação do pacote Manifest V3 | Ubuntu |
 | 6️⃣ | Publicação da release | Ubuntu *(somente branch `main`)* |
 
-Os testes de instalação usam helpers Puppeteer com tentativas automáticas para erros transitórios de frame, timeouts maiores em CI, flags de estabilidade e diagnóstico do navegador. O pacote Firefox também passa pelo validador `web-ext`, com avisos revisados e mantidos em uma lista explícita. A implementação Puppeteer está documentada em [PUPPETEER_STABILITY_IMPROVEMENTS.md](./docs/PUPPETEER_STABILITY_IMPROVEMENTS.md) e o resumo rápido está em [PUPPETEER_QUICK_REFERENCE.md](./docs/PUPPETEER_QUICK_REFERENCE.md).
+Os testes de instalação usam helpers Puppeteer com tentativas automáticas para erros transitórios de frame, timeouts maiores em CI, flags de estabilidade e diagnóstico do navegador. O pacote Firefox também passa pelo validador `web-ext`, com avisos revisados e mantidos em uma lista explícita.
 
 ---
 
