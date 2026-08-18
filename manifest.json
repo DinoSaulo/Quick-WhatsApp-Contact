@@ -8,7 +8,10 @@
   "browser_specific_settings": {
     "gecko": {
       "id": "quick-whatsapp-contact@dinosaulo.github.io",
-      "strict_min_version": "121.0"
+      "strict_min_version": "128.0",
+      "data_collection_permissions": {
+        "required": ["none"]
+      }
     }
   },
   "permissions": ["contextMenus", "scripting", "storage"],

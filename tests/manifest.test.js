@@ -105,9 +105,17 @@ describe("Firefox readiness", () => {
     );
   });
 
-  // Confirmed via MDN: Firefox never reads background.service_worker (bug 1573659) and, before
-  // 121, ignored background.scripts whenever service_worker was also present (bug 1860304) — 121.0 is the actual functional floor here.
-  it("sets strict_min_version to the first Firefox release that honors background.scripts alongside service_worker", () => {
-    expect(manifest.browser_specific_settings.gecko.strict_min_version).toBe("121.0");
+  // background.scripts alongside service_worker only needed 121 (MDN, bug 1860304), but this
+  // manifest's real floor is 128 — confirmed via `web-ext lint` — where optional_host_permissions first works.
+  it("sets strict_min_version to the actual functional floor (optional_host_permissions support)", () => {
+    expect(manifest.browser_specific_settings.gecko.strict_min_version).toBe("128.0");
+  });
+
+  // Firefox 140+ is required to recognize this key at all (per `web-ext lint`), but that's an
+  // advisory floor only — older clients just ignore it, so strict_min_version stays at 128.0.
+  it("declares no data collection, matching the no-backend/no-telemetry reality (docs/THREAT_MODEL.md)", () => {
+    expect(manifest.browser_specific_settings.gecko.data_collection_permissions).toEqual({
+      required: ["none"],
+    });
   });
 });
