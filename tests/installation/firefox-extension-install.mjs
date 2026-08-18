@@ -382,21 +382,60 @@ try {
   // on whether anything happened in between. The existing comment above already had to guess
   // between "just needs more time" (gradual progress) and something more stuck (near-total
   // silence) with no way to actually tell them apart from a single end-of-wait snapshot. Logging a
-  // throttled snapshot during the wait itself (not just on failure) answers that directly for
-  // whichever hypothesis the next occurrence supports, instead of another guess.
+  // throttled snapshot during the wait itself (not just on failure) answered that directly: the
+  // *next* real occurrence showed a second "about:blank" page appear a few seconds in, then never
+  // change again for the rest of the 30s window — real progress, then stuck, a third pattern
+  // neither of the original two hypotheses covered.
+  //
+  // That result points at a different bug entirely: candidate.url() below is Puppeteer's own
+  // navigation-tracking cache, not a live read. openExtensionTab() further down in this same file
+  // already had to work around exactly this — its own comment documents, from direct inspection,
+  // that a tab navigated via chrome.tabs.create() from the extension's own privileged code (not a
+  // navigation Puppeteer itself initiated) can leave page.url() reporting "about:blank" forever
+  // even after the tab has actually finished loading its real content. The onboarding tab is
+  // opened exactly that way, by background.js's own chrome.tabs.create() call — the same
+  // mechanism, just one level earlier than where the workaround already existed. Checking each
+  // candidate's actual document.location.href via evaluate() instead of trusting url() is the
+  // same fix openExtensionTab() already applies for readiness, now applied here too for
+  // discovery. The periodic snapshot below now logs both the cached and the live value side by
+  // side — if they diverge, that's direct confirmation of this theory on whichever run needs it.
   let lastSnapshotAt = 0;
   let driverPage;
   try {
     await waitUntil(
       async () => {
         const pages = await browser.pages();
-        driverPage = pages.find((candidate) => candidate.url().startsWith("moz-extension://"));
+
+        for (const candidate of pages) {
+          try {
+            const liveHref = await candidate.evaluate(() => document.location.href);
+            if (liveHref.startsWith("moz-extension://")) {
+              driverPage = candidate;
+              break;
+            }
+          } catch {
+            // Not evaluable yet (not fully attached, mid-navigation, or similar) — skip it and
+            // keep checking the rest; a real match on a later poll will still be found.
+          }
+        }
 
         if (!driverPage && Date.now() - lastSnapshotAt >= 5_000) {
           lastSnapshotAt = Date.now();
+          const snapshot = await Promise.all(
+            pages.map(async (page) => {
+              const cached = page.url();
+              let live;
+              try {
+                live = await page.evaluate(() => document.location.href);
+              } catch (evalError) {
+                live = `(evaluate failed: ${evalError?.message ?? evalError})`;
+              }
+              return cached === live ? cached : `${cached} (live: ${live})`;
+            }),
+          );
           console.log(
             `⏳ Still waiting for the onboarding tab (${pages.length} page(s) open: ` +
-              `${pages.map((page) => page.url()).join(", ") || "(none)"})...`,
+              `${snapshot.join(", ") || "(none)"})...`,
           );
         }
 
