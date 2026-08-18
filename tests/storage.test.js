@@ -159,6 +159,15 @@ describe("storage utils", () => {
     );
   });
 
+  it("ignores corrupted non-string country values from sync storage", async () => {
+    chrome.storage.sync.get.mockResolvedValue({
+      "quick-whatsapp-contact.default-country": { code: "PT" }
+    });
+
+    await expect(getDefaultCountry()).resolves.toBe("");
+    await expect(getSettings()).resolves.toMatchObject({ defaultCountry: "" });
+  });
+
   it("gets and sets the configured default country", async () => {
     chrome.storage.sync.get.mockResolvedValue({
       "quick-whatsapp-contact.default-country": "PT"
