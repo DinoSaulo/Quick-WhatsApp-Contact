@@ -9,8 +9,7 @@ const firefoxBuild = process.argv.includes("--firefox");
 
 if (firefoxBuild) {
   // Firefox ignores background.service_worker and reports it as an AMO warning. The source
-  // manifest keeps both keys for Chrome/Firefox development; the Firefox artifact only needs
-  // background.scripts, which is the supported Firefox form.
+  // manifest keeps both keys for Chrome/Firefox development; the Firefox artifact only needs background.scripts, which is the supported Firefox form.
   delete manifest.background.service_worker;
   delete manifest.background.type;
 }
