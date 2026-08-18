@@ -16,6 +16,8 @@
     "test:install:firefox": "npm run build && node tests/installation/firefox-extension-install.mjs",
     "validate:extension": "node scripts/validate-extension.mjs",
     "validate:store": "node scripts/validate-store-readiness.mjs",
+    "lint:firefox": "npm run build && web-ext lint --source-dir=dist/extension",
+    "package:firefox": "npm run build && web-ext build --source-dir=dist/extension --artifacts-dir=dist/firefox-zip --overwrite-dest",
     "generate:donation-qrcodes": "node scripts/generate-donation-qrcodes.mjs",
     "verify": "npm run lint && npm run lint:comments && npm run lint:sast && npm run validate:extension && npm test && npm run build",
     "ralph": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/ralph-loop.ps1"
