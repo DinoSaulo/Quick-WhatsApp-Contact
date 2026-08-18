@@ -225,6 +225,52 @@ describe("background selection security integration", () => {
     expect(chrome.action.openPopup).not.toHaveBeenCalled();
   });
 
+  it("ignores a context menu click on a different menu item", async () => {
+    await handlers.contextClicked({
+      menuItemId: "some-other-extension-item",
+      selectionText: "+351 912 345 678"
+    });
+
+    expect(chrome.tabs.create).not.toHaveBeenCalled();
+    expect(chrome.action.openPopup).not.toHaveBeenCalled();
+  });
+
+  it("ignores a context menu click without selected text", async () => {
+    await handlers.contextClicked({
+      menuItemId: "quick-whatsapp-contact.send",
+      selectionText: ""
+    });
+
+    expect(chrome.tabs.create).not.toHaveBeenCalled();
+    expect(chrome.action.openPopup).not.toHaveBeenCalled();
+  });
+
+  it("opens WhatsApp for an international number selected via the right-click context menu", async () => {
+    await handlers.contextClicked({
+      menuItemId: "quick-whatsapp-contact.send",
+      selectionText: "+351 912 345 678",
+      pageUrl: "https://example.pt"
+    });
+
+    expect(chrome.tabs.create).toHaveBeenCalledWith({
+      url: "https://wa.me/351912345678",
+      active: true
+    });
+  });
+
+  it("persists pending context and opens the popup for a local number selected via the context menu", async () => {
+    await handlers.contextClicked({
+      menuItemId: "quick-whatsapp-contact.send",
+      selectionText: "912 345 678",
+      pageUrl: "https://store.example.pt/product"
+    });
+
+    expect(mockStorage.setPendingContextCountry).toHaveBeenCalledWith("PT");
+    expect(mockStorage.setPendingContextNumber).toHaveBeenCalledWith("912345678");
+    expect(chrome.action.openPopup).toHaveBeenCalledOnce();
+    expect(chrome.tabs.create).not.toHaveBeenCalled();
+  });
+
   it("persists local selection context before opening the popup", async () => {
     await sendSelection("912 345 678", "https://store.example.pt/product");
 

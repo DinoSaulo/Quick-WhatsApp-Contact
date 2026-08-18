@@ -154,6 +154,47 @@ describe("country DDI screen mask integration", () => {
     expect(visibleOptions[0].getAttribute("data-country-code")).toBe("DE");
     expect(noResults.hidden).toBe(true);
   });
+
+  it("closes the search dropdown when Escape key is pressed", async () => {
+    const screen = await renderDdiScreen();
+    const trigger = screen.querySelector("#country-trigger");
+    const searchInput = screen.querySelector("#country-search");
+
+    trigger.click();
+    expect(screen.querySelector("#country-menu").hidden).toBe(false);
+
+    searchInput.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+
+    expect(screen.querySelector("#country-menu").hidden).toBe(true);
+    expect(document.activeElement).toBe(trigger);
+  });
+
+  it("closes the country menu when clicking outside the picker", async () => {
+    const screen = await renderDdiScreen();
+    const trigger = screen.querySelector("#country-trigger");
+    const menu = screen.querySelector("#country-menu");
+
+    trigger.click();
+    expect(menu.hidden).toBe(false);
+
+    document.body.dispatchEvent(new Event("click", { bubbles: true }));
+
+    expect(menu.hidden).toBe(true);
+    expect(trigger.getAttribute("aria-expanded")).toBe("false");
+  });
+
+  it("keeps the country menu open when clicking inside the picker", async () => {
+    const screen = await renderDdiScreen();
+    const trigger = screen.querySelector("#country-trigger");
+    const menu = screen.querySelector("#country-menu");
+
+    trigger.click();
+    expect(menu.hidden).toBe(false);
+
+    menu.dispatchEvent(new Event("click", { bubbles: true }));
+
+    expect(menu.hidden).toBe(false);
+  });
 });
 
 // ddi.js reads ?number= straight from window.location, bypassing background.js's isLikelyPhoneText

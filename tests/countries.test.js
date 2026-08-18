@@ -1,6 +1,7 @@
 import {
   COUNTRIES,
   getCountryByCode,
+  getCountryByIso2,
   getDefaultCountryCodeForLanguage,
   getTwemojiAssetName,
   renderEmojiHtml,
@@ -31,6 +32,16 @@ describe("countries ddi list", () => {
 
   it("resolves Brazil by country code", () => {
     expect(getCountryByCode("BR")?.dialCode).toBe("55");
+  });
+
+  it("resolves a country by ISO2 case-insensitively", () => {
+    expect(getCountryByIso2("br")?.code).toBe("BR");
+    expect(getCountryByIso2("BR")?.code).toBe("BR");
+  });
+
+  it("returns null for an ISO2 code with no matching country", () => {
+    expect(getCountryByIso2("ZZ")).toBeNull();
+    expect(getCountryByIso2("")).toBeNull();
   });
 
   it("defines default country by extension language", () => {

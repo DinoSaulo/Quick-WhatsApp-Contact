@@ -218,6 +218,28 @@ describe("onboarding tutorial page", () => {
     expect(page.querySelector(".title").textContent).toBe("Start a chat from any phone number");
   });
 
+  it("clamps step navigation to the first step for a negative index", async () => {
+    const page = await renderTutorialPage();
+    page.goToStep(3);
+    expect(page.querySelector(".title").textContent).not.toBe(
+      "Welcome to Quick WhatsApp Contact!"
+    );
+
+    page.goToStep(-5);
+
+    expect(page.querySelector(".title").textContent).toBe("Welcome to Quick WhatsApp Contact!");
+    expect(page.querySelector("#tutorial-back")).toBeNull();
+  });
+
+  it("clamps step navigation to the last step for an out-of-range index", async () => {
+    const page = await renderTutorialPage();
+
+    page.goToStep(999);
+
+    expect(page.querySelector(".title").textContent).toBe("Send your message");
+    expect(page.querySelector("#tutorial-finish")).not.toBeNull();
+  });
+
   it("closes the tab when Skip is clicked on the first step", async () => {
     const page = await renderTutorialPage();
 

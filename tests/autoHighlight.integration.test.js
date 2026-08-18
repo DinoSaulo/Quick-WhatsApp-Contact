@@ -132,6 +132,31 @@ describe("automatic tel link helper integration", () => {
     expect(dom.window.document.querySelectorAll(".qwc-tel-action")).toHaveLength(1);
   });
 
+  it("adds an action when an existing link's href is rewritten to tel: after load", async () => {
+    const { dom } = await createPage({
+      html: '<a id="phone" href="#">Call</a>'
+    });
+    expect(dom.window.document.querySelector(".qwc-tel-action")).toBeNull();
+
+    dom.window.document.getElementById("phone").setAttribute("href", "tel:+14155552671");
+    await new Promise((resolvePromise) => dom.window.setTimeout(resolvePromise, 150));
+
+    expect(dom.window.document.querySelectorAll(".qwc-tel-action")).toHaveLength(1);
+  });
+
+  it("removes the action when a link's href is rewritten away from tel:", async () => {
+    const { dom } = await createPage({
+      html: '<a id="phone" href="tel:+14155552671">Call</a>'
+    });
+    await new Promise((resolvePromise) => dom.window.setTimeout(resolvePromise, 150));
+    expect(dom.window.document.querySelectorAll(".qwc-tel-action")).toHaveLength(1);
+
+    dom.window.document.getElementById("phone").setAttribute("href", "https://example.com");
+    await new Promise((resolvePromise) => dom.window.setTimeout(resolvePromise, 150));
+
+    expect(dom.window.document.querySelector(".qwc-tel-action")).toBeNull();
+  });
+
   it("ignores empty tel links and storage changes from other areas", async () => {
     const { dom, storageListeners } = await createPage({
       html: '<a href="tel:   ">Empty</a>',

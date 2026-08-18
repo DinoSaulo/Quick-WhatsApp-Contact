@@ -131,7 +131,7 @@
       mutationTimer = window.setTimeout(() => {
         for (const mutation of mutations) {
           if (mutation.type === "attributes") {
-            processNode(mutation.target);
+            ensureActionForLink(mutation.target);
           } else {
             mutation.addedNodes.forEach((addedNode) => processNode(addedNode));
           }

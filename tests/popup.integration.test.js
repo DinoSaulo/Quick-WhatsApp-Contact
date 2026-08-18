@@ -470,6 +470,33 @@ describe("popup integration", () => {
     expect(options.every((option) => option.style.display === "")).toBe(true);
   });
 
+  it("closes the country menu when clicking outside the picker", async () => {
+    const popup = await renderPopup();
+    const trigger = popup.querySelector("#country-trigger");
+    const menu = popup.querySelector("#country-menu");
+
+    trigger.click();
+    expect(menu.hidden).toBe(false);
+
+    document.body.dispatchEvent(new Event("click", { bubbles: true }));
+
+    expect(menu.hidden).toBe(true);
+    expect(trigger.getAttribute("aria-expanded")).toBe("false");
+  });
+
+  it("keeps the country menu open when clicking inside the picker", async () => {
+    const popup = await renderPopup();
+    const trigger = popup.querySelector("#country-trigger");
+    const menu = popup.querySelector("#country-menu");
+
+    trigger.click();
+    expect(menu.hidden).toBe(false);
+
+    menu.dispatchEvent(new Event("click", { bubbles: true }));
+
+    expect(menu.hidden).toBe(false);
+  });
+
   it("flags the donation modal to auto-open, then opens the options page and closes the popup when the donation button is clicked", async () => {
     if (!customElements.get("whatsapp-message-popup")) {
       await import("../src/popup/popup.js");

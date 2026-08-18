@@ -111,4 +111,45 @@ describe("selected phone helper integration", () => {
     page.storageListeners[0]({ [LANGUAGE_KEY]: { newValue: "pt-BR" } }, "sync");
     expect(button.title).toBe("Abrir no WhatsApp");
   });
+
+  it("hides the button when the page scrolls", async () => {
+    const page = await createPage();
+    const button = await dispatchSelection(page);
+    expect(button.style.display).toBe("flex");
+
+    page.dom.window.document.dispatchEvent(new page.dom.window.Event("scroll", { bubbles: true }));
+
+    expect(button.style.display).toBe("none");
+  });
+
+  it("hides the button when the window loses focus", async () => {
+    const page = await createPage();
+    const button = await dispatchSelection(page);
+    expect(button.style.display).toBe("flex");
+
+    page.dom.window.dispatchEvent(new page.dom.window.Event("blur"));
+
+    expect(button.style.display).toBe("none");
+  });
+
+  it("still hides the button after activation even if the background script is unreachable", async () => {
+    const page = await createPage();
+    page.sendMessage.mockRejectedValueOnce(new Error("Extension context invalidated"));
+    const button = await dispatchSelection(page);
+
+    // finally-only cleanup (no catch) means a rejected sendMessage is an unhandled rejection too —
+    // capture and assert it instead of letting it fail the run or silently swallowing a regression.
+    const capturedRejections = [];
+    const captureRejection = (reason) => capturedRejections.push(reason);
+    process.once("unhandledRejection", captureRejection);
+
+    button.click();
+    await new Promise((resolvePromise) => page.dom.window.setTimeout(resolvePromise, 0));
+
+    process.removeListener("unhandledRejection", captureRejection);
+
+    expect(page.sendMessage).toHaveBeenCalledOnce();
+    expect(button.style.display).toBe("none");
+    expect(capturedRejections).toEqual([expect.objectContaining({ message: "Extension context invalidated" })]);
+  });
 });

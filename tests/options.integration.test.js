@@ -220,6 +220,33 @@ describe("options page integration", () => {
     expect(noResults.hidden).toBe(false);
   });
 
+  it("closes the country menu when clicking outside the picker", async () => {
+    const page = await renderOptionsPage();
+    const trigger = page.querySelector("#country-trigger");
+    const menu = page.querySelector("#country-menu");
+
+    trigger.click();
+    expect(menu.hidden).toBe(false);
+
+    document.body.dispatchEvent(new Event("click", { bubbles: true }));
+
+    expect(menu.hidden).toBe(true);
+    expect(trigger.getAttribute("aria-expanded")).toBe("false");
+  });
+
+  it("keeps the country menu open when clicking inside the picker", async () => {
+    const page = await renderOptionsPage();
+    const trigger = page.querySelector("#country-trigger");
+    const menu = page.querySelector("#country-menu");
+
+    trigger.click();
+    expect(menu.hidden).toBe(false);
+
+    menu.dispatchEvent(new Event("click", { bubbles: true }));
+
+    expect(menu.hidden).toBe(false);
+  });
+
   it("normalizes accents and restores all countries when the search is cleared", async () => {
     const page = await renderOptionsPage();
     const trigger = page.querySelector("#country-trigger");
