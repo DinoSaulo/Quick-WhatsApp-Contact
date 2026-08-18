@@ -130,15 +130,18 @@ Execute todos os testes:
 npm test
 ```
 
+`npm test` gera primeiro um build limpo em `dist/extension` e executa toda a suíte. Ela cobre os fluxos unitários e de integração, segurança, permissões opcionais, compatibilidade do manifesto, validação de assets da loja, limites do pacote publicado, recuperação de configurações corrompidas e a estabilidade dos helpers Puppeteer.
+
 Para executar apenas uma categoria:
 
 ```bash
 npm run test:unit        # regras e utilitários
 npm run test:integration # popup, opções, onboarding e conteúdo
 npm run test:security    # SAST, manifesto e regressões de segurança
+npm run test:weblint     # validador AMO/web-ext para o pacote Firefox
 ```
 
-Execute a verificação completa de sintaxe, manifesto, testes e build:
+Execute a verificação completa de sintaxe, comentários, SAST, manifesto, testes e build:
 
 ```bash
 npm run verify
@@ -154,6 +157,13 @@ Rode só a análise estática de segurança (SAST — sinks de DOM XSS e padrõe
 
 ```bash
 npm run lint:sast
+```
+
+Verifique também os limites de tamanho dos comentários e a compatibilidade do pacote com o Firefox:
+
+```bash
+npm run lint:comments
+npm run lint:firefox
 ```
 
 Execute o smoke test do ciclo de instalação e desinstalação em um Chrome ou Chromium real:
@@ -182,6 +192,12 @@ No Linux ou macOS:
 (cd dist/extension && zip -qr ../quick-whatsapp-contact.zip .)
 ```
 
+Para criar o pacote temporário do Firefox:
+
+```bash
+npm run package:firefox
+```
+
 Execute um arquivo de teste específico:
 
 ```bash
@@ -201,7 +217,7 @@ O repositório usa GitHub Actions com 6 níveis sequenciais. Cada nível precisa
 | 5️⃣ | Validação do pacote Manifest V3 | Ubuntu |
 | 6️⃣ | Publicação da release | Ubuntu *(somente branch `main`)* |
 
-Os testes de instalação usam helpers Puppeteer com tentativas automáticas para erros transitórios de frame, timeouts maiores em CI, flags de estabilidade e diagnóstico do navegador. A implementação está documentada em [PUPPETEER_STABILITY_IMPROVEMENTS.md](./docs/PUPPETEER_STABILITY_IMPROVEMENTS.md) e o resumo rápido está em [PUPPETEER_QUICK_REFERENCE.md](./docs/PUPPETEER_QUICK_REFERENCE.md).
+Os testes de instalação usam helpers Puppeteer com tentativas automáticas para erros transitórios de frame, timeouts maiores em CI, flags de estabilidade e diagnóstico do navegador. O pacote Firefox também passa pelo validador `web-ext`, com avisos revisados e mantidos em uma lista explícita. A implementação Puppeteer está documentada em [PUPPETEER_STABILITY_IMPROVEMENTS.md](./docs/PUPPETEER_STABILITY_IMPROVEMENTS.md) e o resumo rápido está em [PUPPETEER_QUICK_REFERENCE.md](./docs/PUPPETEER_QUICK_REFERENCE.md).
 
 ---
 
@@ -211,6 +227,7 @@ Os testes de instalação usam helpers Puppeteer com tentativas automáticas par
 - **Vanilla JS** — ES Modules, sem bundler, sem frameworks
 - **Web Components** nativos (`HTMLElement` + `customElements.define`)
 - **Vitest** + **jsdom** para testes unitários e de integração
+- **web-ext** para validação do pacote Firefox antes da publicação
 
 ### Assets de terceiros
 
@@ -234,3 +251,4 @@ Os recursos que leem seleção e links `tel:` em páginas são opcionais, ficam 
 - Links externos são limitados a HTTPS e abertos com `rel="noopener noreferrer"` para isolar a aba de origem.
 - O manifesto não declara `externally_connectable`; mensagens para o service worker permanecem restritas aos contextos da própria extensão.
 - A validação do pacote e os testes automatizados mantêm essas proteções como verificações de regressão.
+- Preferências inválidas ou corrompidas no `chrome.storage.sync` retornam aos valores padrão antes de chegar à interface.
