@@ -1,7 +1,7 @@
 // Downloads and extracts an exact Chrome for Testing build for the version resolve-chrome-versions.mjs
 // picked. Prints the executable's absolute path on stdout for the workflow step to capture as CHROME_PATH.
 import { execFileSync } from "node:child_process";
-import { chmodSync, mkdirSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 const KNOWN_GOOD_VERSIONS_URL =
@@ -15,6 +15,14 @@ const version = process.argv[2];
 if (!version) {
   console.error("Usage: node scripts/install-chrome-version.mjs <exact Chrome version>");
   process.exit(1);
+}
+
+// Idempotent: ci.yml caches .chrome-for-testing/<version> keyed by exact version (actions/cache),
+// so a cache hit means this executable already exists — skip the network round-trip entirely.
+const cachedExecutablePath = resolve(".chrome-for-testing", version, "chrome-linux64", "chrome");
+if (existsSync(cachedExecutablePath)) {
+  console.log(cachedExecutablePath);
+  process.exit(0);
 }
 
 const catalogResponse = await fetch(KNOWN_GOOD_VERSIONS_URL);

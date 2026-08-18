@@ -19,6 +19,13 @@ if (versions.length !== 3) {
   );
 }
 
+// Optional extra exact version (e.g. "151.0.7922.71") from ci.yml's workflow_dispatch input —
+// replaces what used to be a hardcoded, easy-to-forget matrix `include` entry for ad-hoc bisection.
+const extraVersion = process.argv[2]?.trim();
+if (extraVersion && !versions.includes(extraVersion)) {
+  versions.push(extraVersion);
+}
+
 // Consumed by the workflow step as `>> "$GITHUB_OUTPUT"`, then read back by
 // installation-test-pinned's matrix via fromJson(needs.resolve-chrome-versions.outputs.versions).
 console.log(`versions=${JSON.stringify(versions)}`);

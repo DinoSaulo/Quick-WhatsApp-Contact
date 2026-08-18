@@ -19,6 +19,13 @@ if (versions.length !== 3) {
   );
 }
 
+// Optional extra exact version from ci.yml's workflow_dispatch input — see the matching comment
+// in resolve-chrome-versions.mjs.
+const extraVersion = process.argv[2]?.trim();
+if (extraVersion && !versions.includes(extraVersion)) {
+  versions.push(extraVersion);
+}
+
 // Consumed by the workflow step as `>> "$GITHUB_OUTPUT"`, then read back by
 // installation-test-firefox-pinned's matrix via fromJson(needs.resolve-firefox-versions.outputs.versions).
 console.log(`versions=${JSON.stringify(versions)}`);

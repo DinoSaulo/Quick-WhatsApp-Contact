@@ -47,9 +47,32 @@ describe("GitHub Actions cross-platform runtime integration", () => {
     expect(workflow).not.toMatch(
       /actions\/(?:checkout|setup-node|upload-artifact|download-artifact)@v4/,
     );
-    expect(workflow).toContain("actions/checkout@v6");
-    expect(workflow).toContain("actions/upload-artifact@v6");
-    expect(workflow).toContain("actions/download-artifact@v7");
+    expect(workflow).toContain("actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6");
+    expect(workflow).toContain("actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6");
+    expect(workflow).toContain("actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7");
+  });
+
+  // Supply-chain hardening: a tag can be recreated to point at a different commit, a SHA cannot —
+  // every third-party `uses:` line must be a 40-char SHA with a trailing `# vX` comment.
+  it("pins every third-party action to a commit SHA, not a mutable tag", () => {
+    const usesLines = [
+      ...workflow.matchAll(/^\s*uses:\s*(\S+)/gm),
+      ...setupNodeEnvAction.matchAll(/^\s*uses:\s*(\S+)/gm),
+    ].map((match) => match[1]);
+
+    expect(usesLines.length).toBeGreaterThan(0);
+
+    for (const reference of usesLines) {
+      if (reference.startsWith("./")) continue; // local composite action, not a supply-chain risk
+      expect(reference, reference).toMatch(/^[^@]+@[0-9a-f]{40}$/);
+    }
+
+    expect(workflow).toContain(
+      "uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3",
+    );
+    expect(setupNodeEnvAction).toContain(
+      "uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6",
+    );
   });
 
   it("bootstraps Node and npm in every Fedora matrix job", () => {
@@ -99,6 +122,14 @@ describe("GitHub Actions cross-platform runtime integration", () => {
     expect(packageJson.devDependencies["puppeteer-core"]).toBe("25.8.0");
   });
 
+  it("exposes workflow_dispatch inputs for one-off Chrome/Firefox bisection versions", () => {
+    const trigger = workflow.slice(workflow.indexOf("on:"), workflow.indexOf("permissions:"));
+
+    expect(trigger).toContain("workflow_dispatch:");
+    expect(trigger).toContain("extra_chrome_version:");
+    expect(trigger).toContain("extra_firefox_version:");
+  });
+
   it("resolves and pins installation-test-pinned's matrix to the last 3 Chrome majors dynamically", () => {
     const resolveJob = jobSource("resolve-chrome-versions", "installation-test-pinned");
     const pinnedJob = jobSource("installation-test-pinned", "installation-test-firefox");
@@ -107,10 +138,16 @@ describe("GitHub Actions cross-platform runtime integration", () => {
     expect(resolveJob).toContain("needs: integration-tests");
     expect(resolveJob).toContain("outputs:");
     expect(resolveJob).toContain("versions: ${{ steps.resolve.outputs.versions }}");
-    expect(resolveJob).toContain('run: node scripts/resolve-chrome-versions.mjs >> "$GITHUB_OUTPUT"');
+    expect(resolveJob).toContain("node scripts/resolve-chrome-versions.mjs");
+    expect(resolveJob).toContain('"${{ inputs.extra_chrome_version }}"');
+    expect(resolveJob).toContain('>> "$GITHUB_OUTPUT"');
 
     expect(pinnedJob).toContain("needs: [security-tests, resolve-chrome-versions]");
     expect(pinnedJob).toContain("fromJson(needs.resolve-chrome-versions.outputs.versions)");
+    // The old hardcoded "151.0.7922.71" bisection entry is gone — one-off versions now flow
+    // through extra_chrome_version (workflow_dispatch input) into the resolve script itself.
+    expect(pinnedJob).not.toContain("include:");
+    expect(pinnedJob).not.toContain("TEMPORARY");
     // Unlike installation-test's plain "run: npm run test:install", this job wraps it in a retry
     // loop (a rare native Chrome crash, see ci.yml) — must still invoke the real script and fail loudly once exhausted.
     expect(pinnedJob).toContain("run: |");
@@ -119,6 +156,9 @@ describe("GitHub Actions cross-platform runtime integration", () => {
     expect(pinnedJob).toContain("exit 1");
     expect(pinnedJob).toContain("scripts/install-chrome-version.mjs");
     expect(pinnedJob).toContain("scripts/verify-chrome-version.mjs");
+    // Cached by exact version — install-chrome-version.mjs itself skips the download on a hit.
+    expect(pinnedJob).toContain("path: .chrome-for-testing/${{ matrix.chromeVersion }}");
+    expect(pinnedJob).toContain("key: chrome-for-testing-${{ matrix.chromeVersion }}");
     // This job is deliberately Ubuntu-only (precise version coverage, not OS diversity — see the
     // comment above it in ci.yml), unlike installation-test's cross-platform matrix.
     expect(pinnedJob).not.toContain("windows-latest");
@@ -133,13 +173,17 @@ describe("GitHub Actions cross-platform runtime integration", () => {
     expect(resolveJob).toContain("needs: integration-tests");
     expect(resolveJob).toContain("outputs:");
     expect(resolveJob).toContain("versions: ${{ steps.resolve.outputs.versions }}");
-    expect(resolveJob).toContain('run: node scripts/resolve-firefox-versions.mjs >> "$GITHUB_OUTPUT"');
+    expect(resolveJob).toContain("node scripts/resolve-firefox-versions.mjs");
+    expect(resolveJob).toContain('"${{ inputs.extra_firefox_version }}"');
+    expect(resolveJob).toContain('>> "$GITHUB_OUTPUT"');
 
     expect(pinnedJob).toContain("needs: [security-tests, resolve-firefox-versions]");
     expect(pinnedJob).toContain("fromJson(needs.resolve-firefox-versions.outputs.versions)");
     expect(pinnedJob).toContain("run: npm run test:install:firefox");
     expect(pinnedJob).toContain("scripts/install-firefox-version.mjs");
     expect(pinnedJob).toContain("scripts/verify-firefox-version.mjs");
+    expect(pinnedJob).toContain("path: .firefox-releases/${{ matrix.firefoxVersion }}");
+    expect(pinnedJob).toContain("key: firefox-releases-${{ matrix.firefoxVersion }}");
     expect(pinnedJob).not.toContain("windows-latest");
     expect(pinnedJob).not.toContain("macos-latest");
   });

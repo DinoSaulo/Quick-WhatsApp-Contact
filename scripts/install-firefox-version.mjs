@@ -1,7 +1,7 @@
 // Downloads and extracts an exact Firefox release for the version resolve-firefox-versions.mjs picked
 // (mirrors install-chrome-version.mjs, against Mozilla's release archive). Prints the path as FIREFOX_PATH.
 import { execFileSync } from "node:child_process";
-import { chmodSync, mkdirSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 // Confirmed live against archive.mozilla.org: current releases ship as firefox-<version>.tar.xz
@@ -13,6 +13,14 @@ const version = process.argv[2];
 if (!version) {
   console.error("Usage: node scripts/install-firefox-version.mjs <exact Firefox version>");
   process.exit(1);
+}
+
+// Idempotent: ci.yml caches .firefox-releases/<version> keyed by exact version (actions/cache),
+// so a cache hit means this executable already exists — skip the network round-trip entirely.
+const cachedExecutablePath = resolve(".firefox-releases", version, "firefox", "firefox");
+if (existsSync(cachedExecutablePath)) {
+  console.log(cachedExecutablePath);
+  process.exit(0);
 }
 
 const downloadUrl = `https://archive.mozilla.org/pub/firefox/releases/${version}/${PLATFORM_DIR}/en-US/firefox-${version}.tar.xz`;

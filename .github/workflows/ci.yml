@@ -4,6 +4,15 @@ on:
   push:
   pull_request:
   workflow_dispatch:
+    inputs:
+      extra_chrome_version:
+        description: "Exact Chrome for Testing version to add to installation-test-pinned's matrix (e.g. 151.0.7922.71), for one-off bisection"
+        required: false
+        type: string
+      extra_firefox_version:
+        description: "Exact Firefox version to add to installation-test-firefox-pinned's matrix, for one-off bisection"
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -46,7 +55,7 @@ jobs:
         run: dnf install -y --setopt=install_weak_deps=False git curl nodejs npm
 
       - name: Clonar repositorio
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
       - name: Preparar ambiente Node.js
         uses: ./.github/actions/setup-node-env
@@ -74,7 +83,7 @@ jobs:
 
       - name: Anexar relatorio JUnit
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: relatorio-unitarios-${{ matrix.label }}
           path: reports/unit.xml
@@ -87,7 +96,7 @@ jobs:
 
       - name: Salvar build como artefato
         if: matrix.label == 'Ubuntu'
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: extension-build
           path: dist/extension/
@@ -120,7 +129,7 @@ jobs:
         run: dnf install -y --setopt=install_weak_deps=False git curl nodejs npm
 
       - name: Clonar repositorio
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
       - name: Preparar ambiente Node.js
         uses: ./.github/actions/setup-node-env
@@ -142,7 +151,7 @@ jobs:
 
       - name: Anexar relatorio JUnit
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: relatorio-integracao-${{ matrix.label }}
           path: reports/integration.xml
@@ -158,7 +167,7 @@ jobs:
 
     steps:
       - name: Clonar repositorio
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
       - name: Preparar ambiente Node.js
         uses: ./.github/actions/setup-node-env
@@ -188,7 +197,7 @@ jobs:
 
       - name: Anexar relatorio JUnit
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: relatorio-seguranca
           path: reports/security.xml
@@ -247,7 +256,7 @@ jobs:
         run: ${{ matrix.setup }}
 
       - name: Clonar repositorio
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
       - name: Preparar ambiente Node.js
         uses: ./.github/actions/setup-node-env
@@ -266,7 +275,7 @@ jobs:
         run: npm ci
 
       - name: Baixar build da etapa anterior
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
         with:
           name: extension-build
           path: dist/extension/
@@ -278,7 +287,7 @@ jobs:
       # failed run's evidence is still here to upload. if-no-files-found: ignore is the expected common case, not an error.
       - name: Anexar diagnosticos do Chrome (em caso de falha)
         if: failure()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: diagnosticos-chrome-${{ matrix.label }}
           path: ci-diagnostics/
@@ -297,14 +306,16 @@ jobs:
 
     steps:
       - name: Clonar repositorio
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
       - name: Preparar ambiente Node.js
         uses: ./.github/actions/setup-node-env
 
       - name: Resolver as 3 versoes major mais recentes do Chrome
         id: resolve
-        run: node scripts/resolve-chrome-versions.mjs >> "$GITHUB_OUTPUT"
+        run: >-
+          node scripts/resolve-chrome-versions.mjs "${{ inputs.extra_chrome_version }}"
+          >> "$GITHUB_OUTPUT"
 
   # ── Level 4b: Installation test pinned to Chrome N / N-1 / N-2, downloaded straight from Chrome
   # for Testing. Ubuntu-only: this job's purpose is precise version coverage, not OS diversity (installation-test's Fedora/Debian/Rocky/Arch entries cover that).
@@ -315,16 +326,14 @@ jobs:
     timeout-minutes: 15
     strategy:
       fail-fast: false
+      # extra_chrome_version (workflow_dispatch input) folds into this array in
+      # resolve-chrome-versions.mjs itself, instead of a separate, easy-to-forget matrix entry.
       matrix:
         chromeVersion: ${{ fromJson(needs.resolve-chrome-versions.outputs.versions) }}
-        # TEMPORARY diagnostic entry, remove once answered: every chased SIGSEGV was against
-        # 151.0.7922.138; this earlier 151.x patch tells us whether it's a .138-specific regression or the whole 151.x line.
-        include:
-          - chromeVersion: "151.0.7922.71"
 
     steps:
       - name: Clonar repositorio
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
       - name: Preparar ambiente Node.js
         uses: ./.github/actions/setup-node-env
@@ -333,7 +342,7 @@ jobs:
         run: npm ci
 
       - name: Baixar build da etapa anterior
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
         with:
           name: extension-build
           path: dist/extension/
@@ -344,6 +353,14 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y google-chrome-stable
+
+      # Keyed by the exact pinned version, never by a floating label — a version's binary never
+      # changes once published, so a cache hit is always safe to reuse as-is.
+      - name: Cache do Chrome for Testing ${{ matrix.chromeVersion }}
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: .chrome-for-testing/${{ matrix.chromeVersion }}
+          key: chrome-for-testing-${{ matrix.chromeVersion }}
 
       - name: Baixar Chrome for Testing ${{ matrix.chromeVersion }}
         run: |
@@ -398,7 +415,7 @@ jobs:
       # means an EARLIER failed attempt's diagnostics would otherwise go missing once a LATER attempt succeeds and the step reports success.
       - name: Anexar diagnosticos do Chrome (em caso de falha em qualquer tentativa)
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: diagnosticos-chrome-${{ matrix.chromeVersion }}
           path: ci-diagnostics/
@@ -454,7 +471,7 @@ jobs:
         run: ${{ matrix.setup }}
 
       - name: Clonar repositorio
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
       - name: Preparar ambiente Node.js
         uses: ./.github/actions/setup-node-env
@@ -467,7 +484,7 @@ jobs:
         run: npm ci
 
       - name: Baixar build da etapa anterior
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
         with:
           name: extension-build
           path: dist/extension/
@@ -479,7 +496,7 @@ jobs:
       # (failure) path, so this is safe as if: failure() even without an explicit delete-on-success.
       - name: Anexar diagnosticos do Firefox (em caso de falha)
         if: failure()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: diagnosticos-firefox-${{ matrix.label }}
           path: ci-diagnostics/
@@ -498,14 +515,16 @@ jobs:
 
     steps:
       - name: Clonar repositorio
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
       - name: Preparar ambiente Node.js
         uses: ./.github/actions/setup-node-env
 
       - name: Resolver as 3 versoes major mais recentes do Firefox
         id: resolve
-        run: node scripts/resolve-firefox-versions.mjs >> "$GITHUB_OUTPUT"
+        run: >-
+          node scripts/resolve-firefox-versions.mjs "${{ inputs.extra_firefox_version }}"
+          >> "$GITHUB_OUTPUT"
 
   # ── Level 4e: Installation test pinned to Firefox N / N-1 / N-2, the Firefox counterpart of
   # installation-test-pinned (downloads each major from Mozilla's archive). Ubuntu-only, same precise-version-coverage reasoning as the Chrome pinned job.
@@ -516,12 +535,14 @@ jobs:
     timeout-minutes: 15
     strategy:
       fail-fast: false
+      # extra_firefox_version (workflow_dispatch input) folds into this array the same way as
+      # installation-test-pinned's Chrome equivalent above.
       matrix:
         firefoxVersion: ${{ fromJson(needs.resolve-firefox-versions.outputs.versions) }}
 
     steps:
       - name: Clonar repositorio
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
       - name: Preparar ambiente Node.js
         uses: ./.github/actions/setup-node-env
@@ -530,10 +551,17 @@ jobs:
         run: npm ci
 
       - name: Baixar build da etapa anterior
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
         with:
           name: extension-build
           path: dist/extension/
+
+      # Same reasoning as installation-test-pinned's equivalent Chrome cache step above.
+      - name: Cache do Firefox ${{ matrix.firefoxVersion }}
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: .firefox-releases/${{ matrix.firefoxVersion }}
+          key: firefox-releases-${{ matrix.firefoxVersion }}
 
       - name: Baixar Firefox ${{ matrix.firefoxVersion }}
         run: |
@@ -549,7 +577,7 @@ jobs:
       # Same reasoning as installation-test-firefox's equivalent step above.
       - name: Anexar diagnosticos do Firefox (em caso de falha)
         if: failure()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: diagnosticos-firefox-${{ matrix.firefoxVersion }}
           path: ci-diagnostics/
@@ -565,7 +593,7 @@ jobs:
 
     steps:
       - name: Clonar repositorio
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
       - name: Preparar ambiente Node.js
         uses: ./.github/actions/setup-node-env
@@ -588,13 +616,13 @@ jobs:
 
     steps:
       - name: Clonar repositorio
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
       - name: Preparar ambiente Node.js
         uses: ./.github/actions/setup-node-env
 
       - name: Baixar build da etapa de testes
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
         with:
           name: extension-build
           path: dist/extension/
@@ -609,7 +637,7 @@ jobs:
           (cd dist/extension && zip -qr "../../dist/quick-whatsapp-contact-v${{ steps.version.outputs.value }}.zip" .)
 
       - name: Publicar release no GitHub
-        uses: softprops/action-gh-release@v3
+        uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3
         with:
           tag_name: v${{ steps.version.outputs.value }}
           name: Quick WhatsApp Contact v${{ steps.version.outputs.value }}
