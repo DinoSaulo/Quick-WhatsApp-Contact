@@ -5,3 +5,4 @@ assets/twemoji/
 tasks/ralph/logs/
 .chrome-for-testing/
 .firefox-releases/
+ci-diagnostics/

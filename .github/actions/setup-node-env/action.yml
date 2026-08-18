@@ -1,0 +1,27 @@
+name: Setup Node.js environment
+description: >-
+  Configura a versao fixada do Node.js (env.NODE_VERSION no workflow chamador) com cache de npm,
+  e confirma que a versao realmente instalada bate com a esperada - os dois passos que se
+  repetiam, identicos, em todo job de .github/workflows/ci.yml. Composite actions herdam o
+  contexto env: do job chamador, entao env.NODE_VERSION resolve normalmente aqui sem precisar de
+  um input proprio.
+  NAO inclui o checkout: acoes locais (uses: ./caminho) sao resolvidas contra o filesystem local
+  do runner, entao o job chamador precisa ja ter clonado o repositorio antes de referenciar esta
+  action - colocar o checkout aqui dentro criaria uma dependencia circular (o runner precisaria
+  do action.yml para rodar o passo que baixa o action.yml).
+
+runs:
+  using: composite
+  steps:
+    - name: Configurar Node.js
+      uses: actions/setup-node@v6
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: npm
+
+    # shell: bash e obrigatorio em passos run: de composite actions (nao ha shell padrao
+    # inferido por SO aqui, diferente de um step normal de workflow) - funciona nos 3 SOs via
+    # Git Bash nos runners hospedados pelo GitHub, incluindo windows-latest.
+    - name: Verificar versao do Node.js
+      shell: bash
+      run: node -e "const actual = process.versions.node; const expected = process.env.NODE_VERSION; if (actual !== expected) { console.error('Expected Node.js ' + expected + ', but found ' + actual); process.exit(1); } console.log('Using Node.js ' + actual);"

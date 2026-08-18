@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdtempSync, readFileSync, rmSync, statSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { basename, join, resolve } from "node:path";
 import puppeteer from "puppeteer-core";
 import {
   createBrowserArgs,
@@ -66,7 +66,16 @@ assert.ok(
 // a newly attached listener. A log *file* has no such requirement: Chrome writes it continuously
 // regardless of whether anything is "listening", so reading it after the fact — however late —
 // still sees everything written so far.
-const chromeLogDir = mkdtempSync(join(tmpdir(), "quick-whatsapp-contact-chrome-log-"));
+// A fixed, workspace-relative directory rather than os.tmpdir(): CI needs a known, glob-able path
+// to hand actions/upload-artifact so a failed run's diagnostics (log file, crash dumps) survive
+// past the ephemeral runner as a downloadable artifact instead of only ever reaching a human via
+// console.error's text — see the "Anexar diagnosticos" step in ci.yml's installation-test* jobs.
+// mkdtempSync's uniqueness suffix still applies within this directory, so retry-loop attempts
+// (ci.yml wraps this test in up to 3 attempts) each get their own subdirectory rather than
+// overwriting the previous attempt's evidence.
+const diagnosticsRoot = resolve(projectRoot, "ci-diagnostics");
+mkdirSync(diagnosticsRoot, { recursive: true });
+const chromeLogDir = mkdtempSync(join(diagnosticsRoot, "chrome-log-"));
 const chromeLogFile = join(chromeLogDir, "chrome.log");
 // A real CI run segfaulted Chrome outright (confirmed via the exit-event diagnostics below), with
 // --enable-logging's own output above staying silent about it — expected, since Chrome's own crash
@@ -75,7 +84,12 @@ const chromeLogFile = join(chromeLogDir, "chrome.log");
 // --disable-crash-reporter unconditionally (see the matching comment in browser-environment.mjs).
 // An explicit userDataDir — rather than the random temp one puppeteer-core would otherwise
 // generate — is what makes it possible to find whatever the crash reporter writes afterward,
-// since the dump location lives under it.
+// since the dump location lives under it. Deliberately NOT under diagnosticsRoot like
+// chromeLogDir above: this is Chrome's entire profile directory (confirmed directly — tens of MB
+// of ShaderCache/GPUCache/WidevineCdm/etc. once Chrome actually runs), not something worth
+// uploading wholesale as a CI artifact. captureCrashDumpDiagnostics() below copies out just the
+// one file that matters (a .dmp, if any) into chromeLogDir instead; this directory itself is
+// always cleaned up regardless of pass/fail, unlike chromeLogDir.
 const chromeUserDataDir = mkdtempSync(join(tmpdir(), "quick-whatsapp-contact-chrome-userdata-"));
 let chromeProcess;
 // A bare synchronous read of chromeProcess.exitCode/signalCode races Node's own event loop: if
@@ -197,7 +211,15 @@ function captureLinkerDiagnostics(execPath) {
 // symbol files and a tool like minidump_stackwalk, disproportionate for a CI smoke test) but even
 // just confirming one exists, and where, turns "SIGSEGV, no other information" into something a
 // human can actually pull down and inspect from the CI artifact if this keeps recurring.
-function captureCrashDumpDiagnostics(userDataDir) {
+//
+// copyDestDir: userDataDir itself is NOT what ci.yml uploads as an artifact — confirmed directly
+// (a local synthetic-failure run) that it's the *entire* Chrome profile, tens of MB of
+// ShaderCache/GPUCache/WidevineCdm/etc. that have nothing to do with debugging a crash, not
+// something worth asking actions/upload-artifact to ship. Any dump actually found gets copied
+// into copyDestDir (chromeLogDir — small, already the thing ci.yml uploads, sits right next to
+// chrome.log) instead, so the one file that matters survives without dragging the rest of the
+// profile along.
+function captureCrashDumpDiagnostics(userDataDir, copyDestDir) {
   if (process.platform !== "linux") {
     return "(crash-dump diagnostics only implemented for Linux)";
   }
@@ -214,7 +236,12 @@ function captureCrashDumpDiagnostics(userDataDir) {
     const withSizes = found.map((dumpPath) => {
       try {
         const { size } = statSync(dumpPath);
-        return `${dumpPath} (${size} bytes)`;
+        try {
+          copyFileSync(dumpPath, join(copyDestDir, basename(dumpPath)));
+          return `${dumpPath} (${size} bytes, copied to ${copyDestDir})`;
+        } catch (copyError) {
+          return `${dumpPath} (${size} bytes, copy to ${copyDestDir} failed: ${copyError.message})`;
+        }
       } catch (error) {
         return `${dumpPath} (stat failed: ${error.message})`;
       }
@@ -226,6 +253,11 @@ function captureCrashDumpDiagnostics(userDataDir) {
 }
 
 let browser;
+// Guards the diagnostics-directory cleanup in finally below: only delete ci-diagnostics/ on a
+// genuine pass. On failure it needs to survive this process exiting so ci.yml's own
+// actions/upload-artifact step (which runs as a separate, later step, after this script has
+// already exited) can still find it on disk.
+let testSucceeded = false;
 
 try {
   // GitHub Actions job containers run as root. Chromium refuses to start as
@@ -677,6 +709,7 @@ try {
     "O popup e/ou a página de opções não foram fechados automaticamente ao desinstalar com as abas abertas.",
   );
 
+  testSucceeded = true;
   console.log("✅ Chrome/Chromium extension lifecycle smoke test passed.");
   console.log(`Browser: ${await browser.version()}`);
   console.log(`Extension ID: ${extensionId}`);
@@ -696,7 +729,7 @@ try {
   console.error(await formatChromeDiagnostics());
   console.error(captureSystemDiagnostics());
   console.error(captureLinkerDiagnostics(executablePath));
-  console.error(captureCrashDumpDiagnostics(chromeUserDataDir));
+  console.error(captureCrashDumpDiagnostics(chromeUserDataDir, chromeLogDir));
   if (browser) {
     try {
       const diag = await captureBrowserDiagnostics(browser);
@@ -709,19 +742,29 @@ try {
 } finally {
   console.log("🔒 Closing browser...");
   await safeBrowserClose(browser);
-  // Best-effort: on Windows specifically, the log file can still be held open by Chrome's own
-  // process for a brief moment after close() resolves, which turns rmSync into EBUSY/EPERM
-  // instead of silently no-op'ing the way a missing path does even with force: true. Harmless to
-  // leave behind in CI (ephemeral runners), so this must never let a cleanup failure mask the
-  // actual test result.
-  try {
-    rmSync(chromeLogDir, { recursive: true, force: true });
-  } catch {
-    // Ignored — see comment above.
-  }
+  // Best-effort throughout: on Windows specifically, a log/profile file can still be held open by
+  // Chrome's own process for a brief moment after close() resolves, which turns rmSync into
+  // EBUSY/EPERM instead of silently no-op'ing the way a missing path does even with force: true.
+  // This must never let a cleanup failure mask the actual test result.
+  //
+  // chromeUserDataDir: always removed, pass or fail — it's Chrome's whole profile directory (see
+  // the comment where it's created), never itself uploaded as a CI artifact, so there's no reason
+  // to keep it around after a failure the way chromeLogDir is kept below.
   try {
     rmSync(chromeUserDataDir, { recursive: true, force: true });
   } catch {
-    // Ignored — same reasoning as chromeLogDir above.
+    // Ignored — see comment above.
+  }
+  // chromeLogDir: only cleaned up on a genuine pass — see the comment on testSucceeded above. On
+  // failure, this deliberately leaves chrome.log and any copied crash dumps on disk so ci.yml's
+  // "Anexar diagnosticos do Chrome" step (actions/upload-artifact, if: failure()) can pick them up
+  // as a downloadable artifact; ephemeral CI runners discard the whole directory regardless once
+  // the job ends, and locally this is a small, git-ignored directory safe to delete by hand.
+  if (testSucceeded) {
+    try {
+      rmSync(chromeLogDir, { recursive: true, force: true });
+    } catch {
+      // Ignored — see comment above.
+    }
   }
 }

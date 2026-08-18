@@ -48,7 +48,7 @@
 // regression this extension's code could actually break — unlike the Chrome test, which reuses
 // one browser profile across install → uninstall → reinstall).
 import assert from "node:assert/strict";
-import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import puppeteer from "puppeteer-core";
@@ -152,6 +152,14 @@ async function connectWithRetries(browserWSEndpoint, { attempts = 30, delay = 30
 // originally captured it — see the comment on that handler for why.
 const firefoxDiagnostics = { lines: [], firefoxProcess: null };
 
+// A fixed, workspace-relative directory rather than os.tmpdir(): CI needs a known, glob-able path
+// to hand actions/upload-artifact so a failed run's Firefox stdout/stderr survives past the
+// ephemeral runner as a downloadable artifact instead of only ever reaching a human via
+// console.error's text — see the "Anexar diagnosticos do Firefox" step in ci.yml's
+// installation-test-firefox* jobs, and the equivalent (chromeLogDir) in extension-install.mjs.
+const diagnosticsRoot = resolve(projectRoot, "ci-diagnostics");
+const firefoxLogFile = join(diagnosticsRoot, "firefox.log");
+
 function captureFirefoxProcessOutput(extensionRunner) {
   const firefoxProcess = extensionRunner?.extensionRunners?.[0]?.runningInfo?.firefox;
   firefoxDiagnostics.firefoxProcess = firefoxProcess ?? null;
@@ -168,6 +176,16 @@ function formatFirefoxDiagnostics() {
     ? `Firefox child process: exitCode=${firefoxProcess.exitCode} signalCode=${firefoxProcess.signalCode} killed=${firefoxProcess.killed}`
     : "Firefox child process handle unavailable (web-ext's internal shape may have changed, or it crashed before web-ext exposed it).";
   const outputTail = lines.slice(-60).join("") || "(nothing captured)";
+  // Best-effort, and deliberately the FULL capture (not just the last-60 tail above) — this is
+  // the one copy meant to survive for actions/upload-artifact, so it shouldn't be truncated the
+  // way the inline console.error text is. Must never throw: a diagnostics side effect failing
+  // should not mask whatever real error this function was called to help explain.
+  try {
+    mkdirSync(diagnosticsRoot, { recursive: true });
+    writeFileSync(firefoxLogFile, `${processState}\n--- all captured Firefox stdout/stderr lines ---\n${lines.join("") || "(nothing captured)"}`);
+  } catch {
+    // Ignored — see comment above.
+  }
   return `${processState}\n--- last Firefox stdout/stderr lines ---\n${outputTail}`;
 }
 

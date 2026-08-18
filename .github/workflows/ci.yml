@@ -52,14 +52,8 @@ jobs:
       - name: Clonar repositorio
         uses: actions/checkout@v6
 
-      - name: Configurar Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: npm
-
-      - name: Verificar versao do Node.js
-        run: node -e "const actual = process.versions.node; const expected = process.env.NODE_VERSION; if (actual !== expected) { console.error('Expected Node.js ' + expected + ', but found ' + actual); process.exit(1); } console.log('Using Node.js ' + actual);"
+      - name: Preparar ambiente Node.js
+        uses: ./.github/actions/setup-node-env
 
       - name: Instalar dependencias
         run: npm ci
@@ -129,14 +123,8 @@ jobs:
       - name: Clonar repositorio
         uses: actions/checkout@v6
 
-      - name: Configurar Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: npm
-
-      - name: Verificar versao do Node.js
-        run: node -e "const actual = process.versions.node; const expected = process.env.NODE_VERSION; if (actual !== expected) { console.error('Expected Node.js ' + expected + ', but found ' + actual); process.exit(1); } console.log('Using Node.js ' + actual);"
+      - name: Preparar ambiente Node.js
+        uses: ./.github/actions/setup-node-env
 
       - name: Instalar dependencias
         run: npm ci
@@ -173,14 +161,8 @@ jobs:
       - name: Clonar repositorio
         uses: actions/checkout@v6
 
-      - name: Configurar Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: npm
-
-      - name: Verificar versao do Node.js
-        run: node -e "const actual = process.versions.node; const expected = process.env.NODE_VERSION; if (actual !== expected) { console.error('Expected Node.js ' + expected + ', but found ' + actual); process.exit(1); } console.log('Using Node.js ' + actual);"
+      - name: Preparar ambiente Node.js
+        uses: ./.github/actions/setup-node-env
 
       - name: Instalar dependencias
         run: npm ci
@@ -272,14 +254,8 @@ jobs:
       - name: Clonar repositorio
         uses: actions/checkout@v6
 
-      - name: Configurar Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: npm
-
-      - name: Verificar versao do Node.js
-        run: node -e "const actual = process.versions.node; const expected = process.env.NODE_VERSION; if (actual !== expected) { console.error('Expected Node.js ' + expected + ', but found ' + actual); process.exit(1); } console.log('Using Node.js ' + actual);"
+      - name: Preparar ambiente Node.js
+        uses: ./.github/actions/setup-node-env
 
       - name: Verificar Chromium no Fedora
         if: matrix.label == 'Chrome 151 - Fedora'
@@ -307,14 +283,32 @@ jobs:
       - name: Testar instalacao e desinstalacao no Chrome
         run: npm run test:install
 
+      # extension-install.mjs writes its Chrome log file and any crash dumps to ci-diagnostics/
+      # (a fixed, workspace-relative path — see the comment on chromeLogDir there) and only
+      # deletes that directory on a genuine pass, so a failed run's evidence is still on disk
+      # here to upload. if-no-files-found: ignore because most runs pass and leave nothing behind
+      # to upload, which is expected, not an error.
+      - name: Anexar diagnosticos do Chrome (em caso de falha)
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: diagnosticos-chrome-${{ matrix.label }}
+          path: ci-diagnostics/
+          if-no-files-found: ignore
+          retention-days: 7
+
   # ── Level 4a: Resolve the 3 most recent Chrome majors (N, N-1, N-2) ────────
   # Feeds installation-test-pinned's matrix below via fromJson, so pinning to "the last 3 major
   # Chrome versions" is computed fresh on every run instead of being 3 numbers someone has to
   # remember to bump by hand (unlike installation-test's chromeMajor labels above, which track
   # whatever each OS/distro package manager ships and are only asserted, not chosen).
+  # needs: integration-tests, not security-tests — this job only makes a network call and needs
+  # Node, nothing from security-tests' own results. Running it alongside security-tests instead of
+  # strictly after it (both only need integration-tests) shaves security-tests' own duration off
+  # how soon installation-test-pinned below can start, since that job needs this one's output too.
   resolve-chrome-versions:
     name: "4a · Resolver versoes do Chrome"
-    needs: security-tests
+    needs: integration-tests
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
@@ -324,14 +318,8 @@ jobs:
       - name: Clonar repositorio
         uses: actions/checkout@v6
 
-      - name: Configurar Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: npm
-
-      - name: Verificar versao do Node.js
-        run: node -e "const actual = process.versions.node; const expected = process.env.NODE_VERSION; if (actual !== expected) { console.error('Expected Node.js ' + expected + ', but found ' + actual); process.exit(1); } console.log('Using Node.js ' + actual);"
+      - name: Preparar ambiente Node.js
+        uses: ./.github/actions/setup-node-env
 
       - name: Resolver as 3 versoes major mais recentes do Chrome
         id: resolve
@@ -369,14 +357,8 @@ jobs:
       - name: Clonar repositorio
         uses: actions/checkout@v6
 
-      - name: Configurar Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: npm
-
-      - name: Verificar versao do Node.js
-        run: node -e "const actual = process.versions.node; const expected = process.env.NODE_VERSION; if (actual !== expected) { console.error('Expected Node.js ' + expected + ', but found ' + actual); process.exit(1); } console.log('Using Node.js ' + actual);"
+      - name: Preparar ambiente Node.js
+        uses: ./.github/actions/setup-node-env
 
       - name: Instalar dependencias
         run: npm ci
@@ -484,6 +466,23 @@ jobs:
           done
           exit 1
 
+      # if: always(), not if: failure() (unlike this job's non-retrying siblings below) — this
+      # step's own retry loop above means an EARLIER failed attempt's diagnostics would otherwise
+      # go missing whenever a LATER attempt succeeds and the overall step reports success:
+      # extension-install.mjs only deletes its own attempt's ci-diagnostics/ subdirectory on that
+      # attempt's own pass (see testSucceeded there), so a failed attempt 1 followed by a passing
+      # attempt 3 still leaves attempt 1's log/crash-dump evidence on disk, uploadable here, even
+      # though the step as a whole didn't fail. Exactly the kind of intermittent evidence this
+      # retry loop exists alongside — see the comment above it.
+      - name: Anexar diagnosticos do Chrome (em caso de falha em qualquer tentativa)
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: diagnosticos-chrome-${{ matrix.chromeVersion }}
+          path: ci-diagnostics/
+          if-no-files-found: ignore
+          retention-days: 7
+
   # ── Level 4c: Installation test (Firefox, OS/distro diversity) ─────────────
   # Firefox counterpart of installation-test above. Package-manager versions were confirmed live
   # (packages.fedoraproject.org, Debian's own security-announce list, repology.org) for the 4
@@ -543,14 +542,8 @@ jobs:
       - name: Clonar repositorio
         uses: actions/checkout@v6
 
-      - name: Configurar Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: npm
-
-      - name: Verificar versao do Node.js
-        run: node -e "const actual = process.versions.node; const expected = process.env.NODE_VERSION; if (actual !== expected) { console.error('Expected Node.js ' + expected + ', but found ' + actual); process.exit(1); } console.log('Using Node.js ' + actual);"
+      - name: Preparar ambiente Node.js
+        uses: ./.github/actions/setup-node-env
 
       - name: Verificar versao do Firefox
         if: matrix.firefoxMajor != ''
@@ -568,12 +561,26 @@ jobs:
       - name: Testar instalacao e desinstalacao no Firefox
         run: npm run test:install:firefox
 
+      # firefox-extension-install.mjs writes Firefox's captured stdout/stderr to ci-diagnostics/
+      # (a fixed, workspace-relative path — see the comment on diagnosticsRoot there) on every
+      # diagnostics-formatting call, not just on a clean pass, so this is safe as if: failure()
+      # even though that file isn't explicitly deleted on success (see if-no-files-found below).
+      - name: Anexar diagnosticos do Firefox (em caso de falha)
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: diagnosticos-firefox-${{ matrix.label }}
+          path: ci-diagnostics/
+          if-no-files-found: ignore
+          retention-days: 7
+
   # ── Level 4d: Resolve the 3 most recent Firefox majors (N, N-1, N-2) ───────
   # Firefox counterpart of resolve-chrome-versions above, against Mozilla's own release-history
-  # API instead of Chrome for Testing.
+  # API instead of Chrome for Testing. Same reasoning for needs: integration-tests instead of
+  # security-tests — see the comment on resolve-chrome-versions above.
   resolve-firefox-versions:
     name: "4d · Resolver versoes do Firefox"
-    needs: security-tests
+    needs: integration-tests
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
@@ -583,14 +590,8 @@ jobs:
       - name: Clonar repositorio
         uses: actions/checkout@v6
 
-      - name: Configurar Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: npm
-
-      - name: Verificar versao do Node.js
-        run: node -e "const actual = process.versions.node; const expected = process.env.NODE_VERSION; if (actual !== expected) { console.error('Expected Node.js ' + expected + ', but found ' + actual); process.exit(1); } console.log('Using Node.js ' + actual);"
+      - name: Preparar ambiente Node.js
+        uses: ./.github/actions/setup-node-env
 
       - name: Resolver as 3 versoes major mais recentes do Firefox
         id: resolve
@@ -614,14 +615,8 @@ jobs:
       - name: Clonar repositorio
         uses: actions/checkout@v6
 
-      - name: Configurar Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: npm
-
-      - name: Verificar versao do Node.js
-        run: node -e "const actual = process.versions.node; const expected = process.env.NODE_VERSION; if (actual !== expected) { console.error('Expected Node.js ' + expected + ', but found ' + actual); process.exit(1); } console.log('Using Node.js ' + actual);"
+      - name: Preparar ambiente Node.js
+        uses: ./.github/actions/setup-node-env
 
       - name: Instalar dependencias
         run: npm ci
@@ -643,6 +638,16 @@ jobs:
       - name: Testar instalacao e desinstalacao no Firefox
         run: npm run test:install:firefox
 
+      # Same reasoning as installation-test-firefox's equivalent step above.
+      - name: Anexar diagnosticos do Firefox (em caso de falha)
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: diagnosticos-firefox-${{ matrix.firefoxVersion }}
+          path: ci-diagnostics/
+          if-no-files-found: ignore
+          retention-days: 7
+
   # ── Level 5: Validate extension package ────────────────────────────────────
   validate-extension:
     name: "5 · Validar Extensao"
@@ -654,14 +659,8 @@ jobs:
       - name: Clonar repositorio
         uses: actions/checkout@v6
 
-      - name: Configurar Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: npm
-
-      - name: Verificar versao do Node.js
-        run: node -e "const actual = process.versions.node; const expected = process.env.NODE_VERSION; if (actual !== expected) { console.error('Expected Node.js ' + expected + ', but found ' + actual); process.exit(1); } console.log('Using Node.js ' + actual);"
+      - name: Preparar ambiente Node.js
+        uses: ./.github/actions/setup-node-env
 
       - name: Instalar dependencias
         run: npm ci
@@ -683,13 +682,8 @@ jobs:
       - name: Clonar repositorio
         uses: actions/checkout@v6
 
-      - name: Configurar Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-
-      - name: Verificar versao do Node.js
-        run: node -e "const actual = process.versions.node; const expected = process.env.NODE_VERSION; if (actual !== expected) { console.error('Expected Node.js ' + expected + ', but found ' + actual); process.exit(1); } console.log('Using Node.js ' + actual);"
+      - name: Preparar ambiente Node.js
+        uses: ./.github/actions/setup-node-env
 
       - name: Baixar build da etapa de testes
         uses: actions/download-artifact@v7

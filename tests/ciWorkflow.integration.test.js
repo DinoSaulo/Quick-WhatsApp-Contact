@@ -10,6 +10,10 @@ const workflow = readFileSync(
 const packageJson = JSON.parse(
   readFileSync(resolve(projectRoot, "package.json"), "utf8"),
 );
+const setupNodeEnvAction = readFileSync(
+  resolve(projectRoot, ".github", "actions", "setup-node-env", "action.yml"),
+  "utf8",
+);
 
 function jobSource(jobName, nextJobName) {
   const start = workflow.indexOf(`  ${jobName}:`);
@@ -22,10 +26,18 @@ function jobSource(jobName, nextJobName) {
 
 describe("GitHub Actions cross-platform runtime integration", () => {
   it("pins the same exact Node.js version in every job", () => {
+    // The three steps this used to check individually (checkout, setup-node, verify) got
+    // extracted into a shared composite action (.github/actions/setup-node-env) to kill the
+    // duplication of an identical block across all 11 jobs — see that action's own file for the
+    // setup-node/verify half (checkout still can't move there: a local action reference isn't
+    // resolvable until the repo housing it is already checked out, so every job still checks out
+    // explicitly first). This test now checks both halves: the action itself pins the right
+    // version once, and every job actually references that action rather than reimplementing it.
     expect(workflow).toContain('NODE_VERSION: "22.23.2"');
-    expect(workflow.match(/actions\/setup-node@v6/g)).toHaveLength(11);
-    expect(workflow.match(/node-version: \$\{\{ env\.NODE_VERSION \}\}/g)).toHaveLength(11);
-    expect(workflow.match(/name: Verificar versao do Node\.js/g)).toHaveLength(11);
+    expect(setupNodeEnvAction).toContain("node-version: ${{ env.NODE_VERSION }}");
+    expect(setupNodeEnvAction).toContain("name: Verificar versao do Node.js");
+    expect(workflow.match(/uses: \.\/\.github\/actions\/setup-node-env/g)).toHaveLength(11);
+    expect(workflow).not.toContain("actions/setup-node@v6");
   });
 
   it("uses Node 24 runtime releases for every official JavaScript action", () => {
@@ -89,7 +101,10 @@ describe("GitHub Actions cross-platform runtime integration", () => {
     const resolveJob = jobSource("resolve-chrome-versions", "installation-test-pinned");
     const pinnedJob = jobSource("installation-test-pinned", "installation-test-firefox");
 
-    expect(resolveJob).toContain("needs: security-tests");
+    // needs: integration-tests, not security-tests — this job only needs Node and a network
+    // call, nothing from security-tests' own results, so it runs alongside security-tests
+    // instead of waiting on it needlessly (see the matching comment in ci.yml).
+    expect(resolveJob).toContain("needs: integration-tests");
     expect(resolveJob).toContain("outputs:");
     expect(resolveJob).toContain("versions: ${{ steps.resolve.outputs.versions }}");
     expect(resolveJob).toContain('run: node scripts/resolve-chrome-versions.mjs >> "$GITHUB_OUTPUT"');
@@ -118,7 +133,8 @@ describe("GitHub Actions cross-platform runtime integration", () => {
     const resolveJob = jobSource("resolve-firefox-versions", "installation-test-firefox-pinned");
     const pinnedJob = jobSource("installation-test-firefox-pinned", "validate-extension");
 
-    expect(resolveJob).toContain("needs: security-tests");
+    // Same reasoning as resolve-chrome-versions above.
+    expect(resolveJob).toContain("needs: integration-tests");
     expect(resolveJob).toContain("outputs:");
     expect(resolveJob).toContain("versions: ${{ steps.resolve.outputs.versions }}");
     expect(resolveJob).toContain('run: node scripts/resolve-firefox-versions.mjs >> "$GITHUB_OUTPUT"');
