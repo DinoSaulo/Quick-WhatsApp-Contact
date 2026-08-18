@@ -26,7 +26,7 @@
     "eslint-plugin-security": "4.0.1",
     "globals": "17.11.0",
     "jsdom": "^30.0.1",
-    "puppeteer-core": "24.8.1",
+    "puppeteer-core": "25.8.0",
     "qrcode": "^1.5.4",
     "vitest": "^4.1.10",
     "web-ext": "10.6.0"

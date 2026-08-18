@@ -43,24 +43,77 @@ describe("installation browser environment", () => {
     ).toBeUndefined();
   });
 
-  it("adds Chromium sandbox overrides only for a root container", () => {
-    expect(createBrowserArgs({ isRoot: true })).toEqual([
+  it("adds Chromium sandbox overrides for a root container", () => {
+    // isCI/isLinux are pinned explicitly here: createBrowserArgs() defaults both from the real
+    // process.env.CI/GITHUB_ACTIONS and process.platform, and GitHub Actions sets/runs on Linux
+    // for most jobs. Leaving either ambient made this test's outcome depend on where it ran
+    // instead of on the isRoot behavior it's actually meant to verify.
+    expect(createBrowserArgs({ isRoot: true, isLinux: false, isCI: false })).toEqual([
       "--no-first-run",
       "--no-default-browser-check",
+      "--disable-dev-shm-usage",
+      "--disable-gpu",
       "--no-sandbox",
       "--disable-setuid-sandbox",
     ]);
-    expect(createBrowserArgs({ isRoot: false })).toEqual([
+    expect(createBrowserArgs({ isRoot: false, isLinux: false, isCI: false })).toEqual([
       "--no-first-run",
       "--no-default-browser-check",
+      "--disable-dev-shm-usage",
+      "--disable-gpu",
     ]);
   });
 
+  it("adds Chromium sandbox overrides on Linux even without root", () => {
+    // Confirmed root cause of a real CI failure (installation-test-pinned): a non-root bare
+    // ubuntu-latest runner launching a manually-downloaded (not apt-installed) Chrome build hits
+    // the same AppArmor user-namespace restriction as the earlier Firefox fix, unrelated to which
+    // uid is running it. See the matching comment on createBrowserArgs() itself.
+    expect(createBrowserArgs({ isRoot: false, isLinux: true, isCI: false })).toEqual([
+      "--no-first-run",
+      "--no-default-browser-check",
+      "--disable-dev-shm-usage",
+      "--disable-gpu",
+      "--no-sandbox",
+      "--disable-setuid-sandbox",
+    ]);
+    expect(createBrowserArgs({ isRoot: false, isLinux: false, isCI: false })).not.toContain(
+      "--no-sandbox",
+    );
+  });
+
+  it("adds CI stability flags only when running in CI", () => {
+    const args = createBrowserArgs({ isRoot: false, isCI: true });
+
+    expect(args).toEqual(
+      expect.arrayContaining([
+        "--disable-background-networking",
+        "--enable-features=NetworkService,NetworkServiceInProcess",
+      ]),
+    );
+    expect(createBrowserArgs({ isRoot: false, isCI: false })).not.toContain(
+      "--disable-background-networking",
+    );
+  });
+
+  it("never adds --disable-extensions, in CI or not", () => {
+    // extension-install.mjs always launches with enableExtensions: true specifically to load and
+    // test our own extension. --disable-extensions has no "re-enable" counterpart a later flag
+    // can undo, so its mere presence anywhere on the command line silently defeats
+    // enableExtensions — the extension "installs" (Puppeteer's CDP bookkeeping doesn't check
+    // whether Chrome actually loaded it) but its service worker never starts, and
+    // browser.waitForTarget() for it times out. This exact flag was accidentally reintroduced
+    // once already via this file's CI_STABILITY_FLAGS after being removed from
+    // puppeteer-helpers.mjs's separate copy — a real, confirmed CI regression, not a hypothetical.
+    expect(createBrowserArgs({ isRoot: true, isCI: true })).not.toContain("--disable-extensions");
+    expect(createBrowserArgs({ isRoot: false, isCI: true })).not.toContain("--disable-extensions");
+  });
+
   it("returns a fresh argument array for every browser launch", () => {
-    const first = createBrowserArgs({ isRoot: false });
+    const first = createBrowserArgs({ isRoot: false, isCI: false });
     first.push("--unexpected-shared-state");
 
-    expect(createBrowserArgs({ isRoot: false })).not.toContain(
+    expect(createBrowserArgs({ isRoot: false, isCI: false })).not.toContain(
       "--unexpected-shared-state",
     );
   });
