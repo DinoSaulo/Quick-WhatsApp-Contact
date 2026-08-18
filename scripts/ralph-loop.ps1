@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
   Ralph loop local e seguro para o Quick WhatsApp Contact: roda um agente de CLI
   (Claude Code por padrão, mas configurável) em iterações curtas contra
@@ -46,11 +46,70 @@ function Get-ArgValue {
     return $Default
 }
 
+# Só entra em ação quando ninguém passou -AgentCommand/--agent-command explicitamente (ou seja,
+# ainda vale o Default 'claude' do Get-ArgValue) e esse nome não existe no PATH. Aqui o Claude Code
+# só está instalado como extensão do VS Code, que empacota seu próprio binário sob um caminho com
+# a versão da extensão embutida — por isso a busca por padrão em vez de um caminho fixo, para
+# sobreviver a atualizações da extensão sem precisar editar este script de novo.
+function Resolve-AgentCommand {
+    param([string]$RequestedCommand)
+
+    if ((Get-Command $RequestedCommand -ErrorAction SilentlyContinue) -or $RequestedCommand -ne 'claude') {
+        return $RequestedCommand
+    }
+
+    $bundled = Get-ChildItem "$env:USERPROFILE\.vscode\extensions" -Directory -ErrorAction SilentlyContinue |
+        Where-Object { $_.Name -match '^anthropic\.claude-code-' } |
+        Sort-Object {
+            if ($_.Name -match '(?<ver>[\d.]+)-win32-x64$') { [version]$Matches.ver } else { [version]'0.0.0' }
+        } -Descending |
+        ForEach-Object { Join-Path $_.FullName 'resources\native-binary\claude.exe' } |
+        Where-Object { Test-Path $_ } |
+        Select-Object -First 1
+
+    if ($bundled) {
+        Write-Host "Comando 'claude' nao esta no PATH; usando o binario da extensao do VS Code: $bundled"
+        return $bundled
+    }
+
+    return $RequestedCommand
+}
+
+# Start-Process -ArgumentList não cita cada elemento do array por conta própria (ao contrário do
+# operador `&`): um elemento com espaços chega ao processo filho já quebrado em vários argumentos
+# separados. Sem isto, o prompt inteiro e a lista de --allowedTools chegavam fragmentados ao
+# agente. Implementa as mesmas regras de escaping de aspas/barras invertidas que CommandLineToArgvW
+# (e portanto Node.js, que empacota o claude.exe) espera.
+function ConvertTo-WindowsQuotedArg {
+    param([string]$Value)
+    if ($Value -eq "") { return '""' }
+    if ($Value -notmatch '[\s"]') { return $Value }
+
+    $sb = New-Object System.Text.StringBuilder
+    [void]$sb.Append('"')
+    $backslashes = 0
+    foreach ($ch in $Value.ToCharArray()) {
+        if ($ch -eq '\') {
+            $backslashes++
+        } elseif ($ch -eq '"') {
+            [void]$sb.Append('\' * ($backslashes * 2 + 1))
+            [void]$sb.Append('"')
+            $backslashes = 0
+        } else {
+            if ($backslashes -gt 0) { [void]$sb.Append('\' * $backslashes); $backslashes = 0 }
+            [void]$sb.Append($ch)
+        }
+    }
+    if ($backslashes -gt 0) { [void]$sb.Append('\' * ($backslashes * 2)) }
+    [void]$sb.Append('"')
+    return $sb.ToString()
+}
+
 # --- Aceita tanto -MaxIterations 5 (estilo PowerShell) quanto --max-iterations 5
 # (estilo GNU, como no `npm run ralph -- --max-iterations 5` sugerido no PRD). ---
 $MaxIterations   = [int](Get-ArgValue -Names @('MaxIterations', 'max-iterations') -Default '5')
 $Branch          = Get-ArgValue -Names @('Branch', 'branch') -Default $null
-$AgentCommand    = Get-ArgValue -Names @('AgentCommand', 'agent-command') -Default 'claude'
+$AgentCommand    = Resolve-AgentCommand (Get-ArgValue -Names @('AgentCommand', 'agent-command') -Default 'claude')
 $TimeoutMinutes  = [int](Get-ArgValue -Names @('TimeoutMinutes', 'timeout-minutes') -Default '20')
 $StagnationLimit = [int](Get-ArgValue -Names @('StagnationLimit', 'stagnation-limit') -Default '2')
 
@@ -206,7 +265,7 @@ for ($iteration = 1; $iteration -le $MaxIterations; $iteration++) {
         '-p', $promptText,
         '--permission-mode', 'acceptEdits',
         '--allowedTools', 'Read Edit Write Grep Glob Bash(npm run *) Bash(npx vitest *) Bash(git status) Bash(git diff *)'
-    )
+    ) | ForEach-Object { ConvertTo-WindowsQuotedArg $_ }
 
     $proc = Start-Process -FilePath $AgentCommand -ArgumentList $agentArgs -NoNewWindow -PassThru `
         -RedirectStandardOutput $logFile -RedirectStandardError "$logFile.err"

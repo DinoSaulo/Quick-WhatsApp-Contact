@@ -30,7 +30,7 @@
         "Busca por múltiplas palavras fora de ordem (ex.: 'sul africa')",
         "Qualquer mudança em manifest.json, permissões ou workflows"
       ],
-      "passes": false
+      "passes": true
     }
   ]
 }

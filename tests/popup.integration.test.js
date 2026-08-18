@@ -448,6 +448,61 @@ describe("popup integration", () => {
     expect(noResults.hidden).toBe(false);
   });
 
+  it("filters country dropdown options by dial code with or without the plus prefix", async () => {
+    const popup = await renderPopup();
+    const trigger = popup.querySelector("#country-trigger");
+    const searchInput = popup.querySelector("#country-search");
+    const options = popup.querySelectorAll(".country-picker__option");
+
+    trigger.click();
+
+    searchInput.value = "+55";
+    searchInput.dispatchEvent(new Event("input", { bubbles: true }));
+    let visibleCodes = Array.from(options)
+      .filter((option) => !option.hidden)
+      .map((option) => option.getAttribute("data-country-code"));
+    expect(visibleCodes).toEqual(["BR"]);
+
+    searchInput.value = "55";
+    searchInput.dispatchEvent(new Event("input", { bubbles: true }));
+    visibleCodes = Array.from(options)
+      .filter((option) => !option.hidden)
+      .map((option) => option.getAttribute("data-country-code"));
+    expect(visibleCodes).toContain("BR");
+  });
+
+  it("filters country dropdown options by lowercase ISO2 code", async () => {
+    const popup = await renderPopup();
+    const trigger = popup.querySelector("#country-trigger");
+    const searchInput = popup.querySelector("#country-search");
+    const options = popup.querySelectorAll(".country-picker__option");
+
+    trigger.click();
+    searchInput.value = "br";
+    searchInput.dispatchEvent(new Event("input", { bubbles: true }));
+
+    const visibleCodes = Array.from(options)
+      .filter((option) => !option.hidden)
+      .map((option) => option.getAttribute("data-country-code"));
+    expect(visibleCodes).toContain("BR");
+  });
+
+  it("normalizes accented user input so it still matches unaccented country names", async () => {
+    const popup = await renderPopup();
+    const trigger = popup.querySelector("#country-trigger");
+    const searchInput = popup.querySelector("#country-search");
+    const options = popup.querySelectorAll(".country-picker__option");
+
+    trigger.click();
+    searchInput.value = "México";
+    searchInput.dispatchEvent(new Event("input", { bubbles: true }));
+
+    const visibleCodes = Array.from(options)
+      .filter((option) => !option.hidden)
+      .map((option) => option.getAttribute("data-country-code"));
+    expect(visibleCodes).toEqual(["MX"]);
+  });
+
   it("keeps the search focused and resets filtered countries when reopened", async () => {
     const popup = await renderPopup();
     const trigger = popup.querySelector("#country-trigger");
