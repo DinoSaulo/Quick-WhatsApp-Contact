@@ -46,11 +46,40 @@ function Get-ArgValue {
     return $Default
 }
 
+# Só entra em ação quando ninguém passou -AgentCommand/--agent-command explicitamente (ou seja,
+# ainda vale o Default 'claude' do Get-ArgValue) e esse nome não existe no PATH. Aqui o Claude Code
+# só está instalado como extensão do VS Code, que empacota seu próprio binário sob um caminho com
+# a versão da extensão embutida — por isso a busca por padrão em vez de um caminho fixo, para
+# sobreviver a atualizações da extensão sem precisar editar este script de novo.
+function Resolve-AgentCommand {
+    param([string]$RequestedCommand)
+
+    if ((Get-Command $RequestedCommand -ErrorAction SilentlyContinue) -or $RequestedCommand -ne 'claude') {
+        return $RequestedCommand
+    }
+
+    $bundled = Get-ChildItem "$env:USERPROFILE\.vscode\extensions" -Directory -ErrorAction SilentlyContinue |
+        Where-Object { $_.Name -match '^anthropic\.claude-code-' } |
+        Sort-Object {
+            if ($_.Name -match '(?<ver>[\d.]+)-win32-x64$') { [version]$Matches.ver } else { [version]'0.0.0' }
+        } -Descending |
+        ForEach-Object { Join-Path $_.FullName 'resources\native-binary\claude.exe' } |
+        Where-Object { Test-Path $_ } |
+        Select-Object -First 1
+
+    if ($bundled) {
+        Write-Host "Comando 'claude' nao esta no PATH; usando o binario da extensao do VS Code: $bundled"
+        return $bundled
+    }
+
+    return $RequestedCommand
+}
+
 # --- Aceita tanto -MaxIterations 5 (estilo PowerShell) quanto --max-iterations 5
 # (estilo GNU, como no `npm run ralph -- --max-iterations 5` sugerido no PRD). ---
 $MaxIterations   = [int](Get-ArgValue -Names @('MaxIterations', 'max-iterations') -Default '5')
 $Branch          = Get-ArgValue -Names @('Branch', 'branch') -Default $null
-$AgentCommand    = Get-ArgValue -Names @('AgentCommand', 'agent-command') -Default 'claude'
+$AgentCommand    = Resolve-AgentCommand (Get-ArgValue -Names @('AgentCommand', 'agent-command') -Default 'claude')
 $TimeoutMinutes  = [int](Get-ArgValue -Names @('TimeoutMinutes', 'timeout-minutes') -Default '20')
 $StagnationLimit = [int](Get-ArgValue -Names @('StagnationLimit', 'stagnation-limit') -Default '2')
 
