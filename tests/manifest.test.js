@@ -105,17 +105,21 @@ describe("Firefox readiness", () => {
     );
   });
 
-  // background.scripts alongside service_worker only needed 121 (MDN, bug 1860304), but this
-  // manifest's real floor is 128 — confirmed via `web-ext lint` — where optional_host_permissions first works.
-  it("sets strict_min_version to the actual functional floor (optional_host_permissions support)", () => {
-    expect(manifest.browser_specific_settings.gecko.strict_min_version).toBe("128.0");
+  // 140.0 is the real floor now: data_collection_permissions below needs Firefox 140+ to be
+  // recognized (per `web-ext lint`/AMO validation) — higher than the 128 optional_host_permissions alone would require.
+  it("sets strict_min_version to cover both optional_host_permissions and data_collection_permissions", () => {
+    expect(manifest.browser_specific_settings.gecko.strict_min_version).toBe("140.0");
   });
 
-  // Firefox 140+ is required to recognize this key at all (per `web-ext lint`), but that's an
-  // advisory floor only — older clients just ignore it, so strict_min_version stays at 128.0.
   it("declares no data collection, matching the no-backend/no-telemetry reality (docs/THREAT_MODEL.md)", () => {
     expect(manifest.browser_specific_settings.gecko.data_collection_permissions).toEqual({
       required: ["none"],
     });
+  });
+
+  // gecko_android's own strict_min_version is a separate track from gecko's — Firefox for Android
+  // only recognized data_collection_permissions from 142, one release after desktop's 140.
+  it("sets gecko_android's own, higher floor for data_collection_permissions support", () => {
+    expect(manifest.browser_specific_settings.gecko_android.strict_min_version).toBe("142.0");
   });
 });
