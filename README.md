@@ -6,7 +6,7 @@
 
 > Extensão do Chrome para iniciar conversas no WhatsApp a partir de números encontrados em qualquer página web.
 
-`Chrome Extension` · `Manifest V3` · `Vanilla JS` · `Vitest`
+`Chrome Extension` · `Firefox WebExtension` · `Manifest V3` · `Vanilla JS` · `Vitest`
 
 [![Pipeline](https://github.com/DinoSaulo/Quick-WhatsApp-Contact/actions/workflows/ci.yml/badge.svg)](https://github.com/DinoSaulo/Quick-WhatsApp-Contact/actions/workflows/ci.yml)
 
@@ -17,6 +17,8 @@
 **Quick WhatsApp Contact** detecta números de telefone em páginas web e abre o WhatsApp com um clique. A extensão trata automaticamente DDI, aplica a máscara do país selecionado e permite enviar uma mensagem personalizada — tudo sem sair da aba atual.
 
 A interface está disponível em **Inglês (EN-US)** e **Português (PT-BR)**.
+
+O projeto é distribuído como uma extensão Manifest V3 para **Chrome/Chromium** e como WebExtension para **Firefox**. Os fluxos de instalação, atualização e remoção são verificados automaticamente nos dois navegadores.
 
 ---
 
@@ -57,11 +59,22 @@ O botão flutuante **Buy me a coffee** também fica disponível nas configuraç�
 
 ## 📦 Como instalar
 
+### Chrome ou Chromium
+
 1. Clone ou baixe este repositório e execute `npm ci` e `npm run build`.
 2. Abra o Chrome e acesse `chrome://extensions`.
 3. Ative o **Modo do desenvolvedor** (canto superior direito).
 4. Clique em **Carregar sem compactação**.
 5. Selecione a pasta `dist/extension`.
+
+### Firefox (desenvolvimento)
+
+1. Execute `npm ci` e `npm run build`.
+2. Abra `about:debugging#/runtime/this-firefox`.
+3. Clique em **Carregar extensão temporária...**.
+4. Selecione o arquivo `dist/extension/manifest.json`.
+
+Uma extensão temporária é removida quando o Firefox é fechado. Para uma instalação permanente, use o pacote assinado publicado no Firefox Add-ons.
 
 ---
 
@@ -117,6 +130,14 @@ Execute todos os testes:
 npm test
 ```
 
+Para executar apenas uma categoria:
+
+```bash
+npm run test:unit        # regras e utilitários
+npm run test:integration # popup, opções, onboarding e conteúdo
+npm run test:security    # SAST, manifesto e regressões de segurança
+```
+
 Execute a verificação completa de sintaxe, manifesto, testes e build:
 
 ```bash
@@ -139,6 +160,12 @@ Execute o smoke test do ciclo de instalação e desinstalação em um Chrome ou 
 
 ```bash
 npm run test:install
+```
+
+Para executar o mesmo smoke test no Firefox:
+
+```bash
+npm run test:install:firefox
 ```
 
 O teste constrói e instala a extensão, confirma o service worker Manifest V3, abre o popup e verifica os assets locais. Em seguida, desinstala a extensão e confirma que seus processos desaparecem e que o popup deixa de ser acessível. Se o navegador não estiver em um caminho padrão, informe `CHROME_PATH` ou `CHROMIUM_PATH` com o caminho do executável.
@@ -170,9 +197,11 @@ O repositório usa GitHub Actions com 6 níveis sequenciais. Cada nível precisa
 | 1️⃣ | Testes unitários + lint | Ubuntu · Fedora · macOS · Windows |
 | 2️⃣ | Testes de integração | Ubuntu · Fedora · macOS · Windows |
 | 3️⃣ | Segurança (SAST + testes de segurança) | Ubuntu |
-| 4️⃣ | Instalação no Chrome | Ubuntu · Fedora · macOS · Windows |
+| 4️⃣ | Instalação e remoção no Chrome e Firefox | Ubuntu · Fedora · macOS · Windows |
 | 5️⃣ | Validação do pacote Manifest V3 | Ubuntu |
 | 6️⃣ | Publicação da release | Ubuntu *(somente branch `main`)* |
+
+Os testes de instalação usam helpers Puppeteer com tentativas automáticas para erros transitórios de frame, timeouts maiores em CI, flags de estabilidade e diagnóstico do navegador. A implementação está documentada em [PUPPETEER_STABILITY_IMPROVEMENTS.md](./docs/PUPPETEER_STABILITY_IMPROVEMENTS.md) e o resumo rápido está em [PUPPETEER_QUICK_REFERENCE.md](./docs/PUPPETEER_QUICK_REFERENCE.md).
 
 ---
 
@@ -186,6 +215,10 @@ O repositório usa GitHub Actions com 6 níveis sequenciais. Cada nível precisa
 ### Assets de terceiros
 
 As bandeiras e o ícone de seleção automática usam gráficos [Twemoji](https://github.com/jdecked/twemoji) empacotados localmente. Os gráficos Twemoji são licenciados sob [CC-BY 4.0](https://creativecommons.org/licenses/by/4.0/); nenhum emoji é carregado de CDN durante a execução.
+
+### Materiais da Chrome Web Store
+
+Os screenshots, tiles promocionais e instruções para publicação ficam em [`store-assets/`](./store-assets/). Consulte também o [guia dos assets](./store-assets/README.md) antes de enviar o pacote final à loja.
 
 ---
 
