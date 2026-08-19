@@ -245,7 +245,14 @@ export function getCountryByIso2(iso2) {
 }
 
 export function getDefaultCountryCodeForLanguage(language = "en-US") {
-  return String(language || "").toLowerCase() === "pt-br" ? "BR" : "US";
+  const normalized = String(language || "").toLowerCase();
+  if (normalized === "pt-br") {
+    return "BR";
+  }
+  if (normalized === "es-es") {
+    return "ES";
+  }
+  return "US";
 }
 
 export function getTwemojiAssetName(emoji) {

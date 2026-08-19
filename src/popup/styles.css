@@ -219,6 +219,11 @@ body {
   object-fit: contain;
 }
 
+.country-picker__flag--pair {
+  min-width: 44px;
+  gap: 2px;
+}
+
 .country-picker__name {
   flex: 1;
 }

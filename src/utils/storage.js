@@ -15,7 +15,14 @@ export const DEFAULT_SETTINGS = {
 };
 
 export function normalizeLanguage(language = "") {
-  return String(language || "").toLowerCase() === "pt-br" ? "pt-BR" : "en-US";
+  const normalized = String(language || "").toLowerCase();
+  if (normalized === "pt-br") {
+    return "pt-BR";
+  }
+  if (normalized === "es-es") {
+    return "es-ES";
+  }
+  return "en-US";
 }
 
 function normalizeDefaultCountry(countryCode) {

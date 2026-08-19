@@ -27,7 +27,7 @@ COMO USAR
 RECURSOS
 • Seletor de país com bandeira, DDI e máscara de telefone que se adapta ao país escolhido.
 • Detecção automática de país pelo idioma do navegador ou pelo domínio da página.
-• Tema claro/escuro e interface em Inglês ou Português.
+• Tema claro/escuro e interface em Inglês, Português ou Espanhol.
 • Tutorial ilustrado na primeira instalação, reaberto a qualquer momento pelas configurações.
 
 PRIVACIDADE
@@ -53,7 +53,7 @@ HOW TO USE IT
 FEATURES
 • Country picker with flag, dial code, and a phone mask that adapts to the selected country.
 • Automatic country detection from your browser language or the page's domain.
-• Light/dark theme and an English or Portuguese interface.
+• Light/dark theme and an English, Portuguese, or Spanish interface.
 • An illustrated first-run tutorial you can reopen anytime from Settings.
 
 PRIVACY

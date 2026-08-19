@@ -53,7 +53,7 @@ describe("tutorial steps config", () => {
     }
   );
 
-  it.each(["en-US", "pt-BR"])(
+  it.each(["en-US", "pt-BR", "es-ES"])(
     "resolves a real title and description for every step in %s",
     (language) => {
       const messages = getMessages(language);

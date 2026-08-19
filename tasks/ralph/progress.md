@@ -34,3 +34,6 @@ O `ralph-loop.ps1` tambÃ©m acrescenta uma linha de auditoria prÃ³pria (commit, r
 
 ### [ralph-loop] validação final — verify=OK test:install exit=0
 
+
+### [ralph-loop] validação final — verify=OK test:install exit=0
+

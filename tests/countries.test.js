@@ -48,7 +48,8 @@ describe("countries ddi list", () => {
     expect(getDefaultCountryCodeForLanguage("pt-BR")).toBe("BR");
     expect(getDefaultCountryCodeForLanguage("PT-br")).toBe("BR");
     expect(getDefaultCountryCodeForLanguage("en-US")).toBe("US");
-    expect(getDefaultCountryCodeForLanguage("es-ES")).toBe("US");
+    expect(getDefaultCountryCodeForLanguage("es-ES")).toBe("ES");
+    expect(getDefaultCountryCodeForLanguage("ES-es")).toBe("ES");
   });
 
   it("renders a local Twemoji flag without remote resources", () => {

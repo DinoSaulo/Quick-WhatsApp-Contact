@@ -253,6 +253,18 @@ describe("country DDI screen mask integration", () => {
     );
   });
 
+  // The base rule sets display:flex (which would defeat plain `hidden` alone), so the [hidden]
+  // override below is load-bearing, not redundant — ddi.js's bare `.hidden = true` depends on it.
+  it("invariant — styles.css both needs and provides the [hidden] override that ddi.js's simpler filterCountries relies on", () => {
+    const baseRuleMatch = sharedStyles.match(/\.country-picker__option\s*\{([^}]*)\}/s);
+    expect(baseRuleMatch, "base .country-picker__option rule not found").not.toBeNull();
+    expect(baseRuleMatch[1]).toMatch(/display:\s*flex;/);
+
+    expect(sharedStyles).toMatch(
+      /\.country-picker__option\[hidden\]\s*\{[^}]*display:\s*none\s*!important;/s
+    );
+  });
+
   it("keeps the country menu open when clicking inside the picker", async () => {
     const screen = await renderDdiScreen();
     const trigger = screen.querySelector("#country-trigger");

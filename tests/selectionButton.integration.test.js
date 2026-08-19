@@ -110,6 +110,9 @@ describe("selected phone helper integration", () => {
 
     page.storageListeners[0]({ [LANGUAGE_KEY]: { newValue: "pt-BR" } }, "sync");
     expect(button.title).toBe("Abrir no WhatsApp");
+
+    page.storageListeners[0]({ [LANGUAGE_KEY]: { newValue: "es-ES" } }, "sync");
+    expect(button.title).toBe("Abrir en WhatsApp");
   });
 
   it("hides the button when the page scrolls", async () => {

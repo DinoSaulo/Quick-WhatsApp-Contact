@@ -120,7 +120,7 @@ describe("options page integration", () => {
     expect(rowLabelIds).toEqual([
       "auto-highlight",
       "country-trigger",
-      "language",
+      "language-trigger",
       "dark-mode",
       "tutorial-button"
     ]);
@@ -152,7 +152,8 @@ describe("options page integration", () => {
 
     expect(page.querySelector("#auto-highlight").checked).toBe(true);
     expect(page.querySelector("#dark-mode").checked).toBe(true);
-    expect(page.querySelector("#language").value).toBe("pt-BR");
+    expect(page.querySelector("#language-hidden").value).toBe("pt-BR");
+    expect(page.querySelector("#language-trigger").textContent).toContain("Português");
     expect(page.querySelector("#default-country-hidden").value).toBe("PT");
     expect(page.querySelector("#country-trigger").textContent).toContain("Portugal");
     expect(document.documentElement.dataset.theme).toBe("dark");
@@ -187,6 +188,93 @@ describe("options page integration", () => {
     expect(trigger.textContent).toContain("+351");
     expect(trigger.querySelector(".country-picker__flag-img")?.getAttribute("src"))
       .toBe("chrome-extension://options-id/assets/twemoji/1f1f5-1f1f9.svg");
+  });
+
+  it("shows only the language name, without a locale-code suffix", async () => {
+    const page = await renderOptionsPage();
+    const trigger = page.querySelector("#language-trigger");
+
+    expect(trigger.textContent.trim()).toBe("English");
+    expect(trigger.textContent).not.toMatch(/EN-US|en-US/);
+  });
+
+  it("shows the pair of regional flags for each language option", async () => {
+    const page = await renderOptionsPage();
+
+    page.querySelector("#language-trigger").click();
+    const options = page.querySelectorAll("#language-options .country-picker__option");
+    const flagSrcsFor = (languageCode) =>
+      Array.from(
+        page.querySelector(`[data-language-code="${languageCode}"]`).querySelectorAll("img")
+      ).map((img) => img.getAttribute("src"));
+
+    expect(options).toHaveLength(3);
+    expect(flagSrcsFor("en-US")).toEqual([
+      "chrome-extension://options-id/assets/twemoji/1f1fa-1f1f8.svg",
+      "chrome-extension://options-id/assets/twemoji/1f1ec-1f1e7.svg"
+    ]);
+    expect(flagSrcsFor("pt-BR")).toEqual([
+      "chrome-extension://options-id/assets/twemoji/1f1e7-1f1f7.svg",
+      "chrome-extension://options-id/assets/twemoji/1f1f5-1f1f9.svg"
+    ]);
+    expect(flagSrcsFor("es-ES")).toEqual([
+      "chrome-extension://options-id/assets/twemoji/1f1ea-1f1f8.svg",
+      "chrome-extension://options-id/assets/twemoji/1f1f2-1f1fd.svg"
+    ]);
+  });
+
+  it("switches the saved language and re-renders when a language option is clicked", async () => {
+    const page = await renderOptionsPage();
+
+    page.querySelector("#language-trigger").click();
+    page.querySelector('[data-language-code="pt-BR"]').click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(mockStorage.setLanguage).toHaveBeenCalledWith("pt-BR");
+    expect(mockStorage.saveSettings).toHaveBeenCalledWith(
+      expect.objectContaining({ language: "pt-BR" })
+    );
+    expect(page.querySelector("#language-hidden").value).toBe("pt-BR");
+    expect(page.querySelector("#language-trigger").textContent.trim()).toBe("Português");
+    expect(document.documentElement.lang).toBe("pt-BR");
+  });
+
+  it("offers Spanish from Spain and renders the options page in Spanish", async () => {
+    const page = await renderOptionsPage();
+
+    page.querySelector("#language-trigger").click();
+    page.querySelector('[data-language-code="es-ES"]').click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(mockStorage.setLanguage).toHaveBeenCalledWith("es-ES");
+    expect(page.querySelector("#language-hidden").value).toBe("es-ES");
+    expect(page.querySelector("#language-trigger").textContent.trim()).toBe("Español");
+    expect(page.querySelector(".title").textContent).toBe("Ajustes de la extensión");
+    expect(document.documentElement.lang).toBe("es-ES");
+  });
+
+  it("toggles aria-expanded on the language trigger and closes on outside click, with es-ES already selected", async () => {
+    mockStorage.getSettings.mockResolvedValue({
+      language: "es-ES",
+      darkModeEnabled: false,
+      autoHighlightEnabled: true,
+      defaultCountry: ""
+    });
+    const page = await renderOptionsPage();
+    const trigger = page.querySelector("#language-trigger");
+    const menu = page.querySelector("#language-menu");
+
+    expect(trigger.getAttribute("aria-expanded")).toBe("false");
+    expect(menu.hidden).toBe(true);
+
+    trigger.click();
+    expect(trigger.getAttribute("aria-expanded")).toBe("true");
+    expect(menu.hidden).toBe(false);
+
+    document.body.dispatchEvent(new Event("click", { bubbles: true }));
+
+    expect(trigger.getAttribute("aria-expanded")).toBe("false");
+    expect(menu.hidden).toBe(true);
   });
 
   it("filters country dropdown options by search query in options page", async () => {

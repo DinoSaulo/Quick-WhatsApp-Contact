@@ -116,6 +116,10 @@ describe("automatic tel link helper integration", () => {
     const button = dom.window.document.querySelector(".qwc-tel-action-button");
     expect(button.title).toBe("Abrir no WhatsApp");
     expect(button.getAttribute("aria-label")).toBe("Abrir no WhatsApp");
+
+    storageListeners[0]({ [LANGUAGE_KEY]: { newValue: "es-ES" } }, "sync");
+    expect(button.title).toBe("Abrir en WhatsApp");
+    expect(button.getAttribute("aria-label")).toBe("Abrir en WhatsApp");
   });
 
   it("processes telephone links added after page load without duplicating actions", async () => {

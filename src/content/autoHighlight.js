@@ -7,7 +7,8 @@
 
   const TEXTS = {
     "en-US": { actionWhatsapp: "Open in WhatsApp" },
-    "pt-BR": { actionWhatsapp: "Abrir no WhatsApp" }
+    "pt-BR": { actionWhatsapp: "Abrir no WhatsApp" },
+    "es-ES": { actionWhatsapp: "Abrir en WhatsApp" }
   };
 
   let isEnabled = true;
@@ -55,7 +56,10 @@
   }
 
   function normalizeLanguage(value) {
-    return String(value || "").toLowerCase() === "pt-br" ? "pt-BR" : "en-US";
+    const normalized = String(value || "").toLowerCase();
+    if (normalized === "pt-br") return "pt-BR";
+    if (normalized === "es-es") return "es-ES";
+    return "en-US";
   }
 
   function getText(key) {

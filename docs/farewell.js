@@ -16,13 +16,23 @@ const MESSAGES = {
     message:
       "Esperamos ter ajudado você a conversar mais rápido no WhatsApp. Se quiser nos contar o " +
       "motivo da desinstalação ou sugerir algo, sinta-se à vontade para abrir uma issue no GitHub."
+  },
+  "es-ES": {
+    eyebrow: "Quick WhatsApp Contact",
+    title: "¡Gracias por usar Quick WhatsApp Contact!",
+    message:
+      "Esperamos haberte ayudado a iniciar conversaciones más rápido en WhatsApp. Si quieres " +
+      "contarnos por qué la has desinstalado o sugerir algo, puedes abrir una incidencia en GitHub."
   }
 };
 
-// Mirrors normalizeLanguage() in src/utils/i18n.js: only "pt-br" is recognized (case-insensitive);
-// anything else — missing, garbled, or unrecognized — falls back to en-US.
+// Mirrors normalizeLanguage() in src/utils/storage.js; missing, garbled, or unrecognized values
+// fall back to en-US.
 export function normalizeFarewellLanguage(rawLanguage) {
-  return String(rawLanguage || "").toLowerCase() === "pt-br" ? "pt-BR" : "en-US";
+  const normalized = String(rawLanguage || "").toLowerCase();
+  if (normalized === "pt-br") return "pt-BR";
+  if (normalized === "es-es") return "es-ES";
+  return "en-US";
 }
 
 export function pickFarewellCopy(search = "") {
