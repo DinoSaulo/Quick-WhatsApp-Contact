@@ -762,8 +762,10 @@ jobs:
         if: steps.safari-install-test.outcome == 'failure'
         run: echo "::warning::Nivel 4f (WebKit/Playwright) nao passou (best-effort) — ver diagnosticos-safari."
 
+      # failure() alone misses the WebKit step's continue-on-error case (its conclusion reads
+      # "success" even on a real failure); the explicit outcome check below covers that gap.
       - name: Anexar diagnosticos do Safari (em caso de falha)
-        if: steps.safari-install-test.outcome == 'failure'
+        if: failure() || steps.safari-install-test.outcome == 'failure'
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: diagnosticos-safari

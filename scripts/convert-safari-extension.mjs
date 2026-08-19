@@ -2,9 +2,9 @@
 // macOS Safari Web Extension app via xcrun's converter, then compiles it with xcodebuild.
 
 // Prints the built .app's absolute path on stdout, for the workflow step to capture as SAFARI_APP_PATH.
-import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, rmSync } from "node:fs";
-import { resolve } from "node:path";
+import { execFileSync, spawnSync } from "node:child_process";
+import { copyFileSync, existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { basename, resolve } from "node:path";
 
 const projectRoot = resolve(import.meta.dirname, "..");
 const extensionPath = resolve(projectRoot, "dist", "extension");
@@ -63,27 +63,62 @@ if (projectSearch.length !== 1) {
 const xcodeprojPath = projectSearch[0];
 const derivedDataPath = resolve(outputRoot, "DerivedData");
 
+const diagnosticsRoot = resolve(projectRoot, "ci-diagnostics");
+mkdirSync(diagnosticsRoot, { recursive: true });
+const xcodebuildLogFile = resolve(diagnosticsRoot, "safari-xcodebuild.log");
+
 // Ad-hoc signing, not disabled: ValidateEmbeddedBinary checks the .appex's signature even with
 // CODE_SIGNING_ALLOWED=NO (confirmed by a real CI failure); "-" is Xcode's no-certificate identity.
-execFileSync(
-  "xcodebuild",
-  [
-    "-project",
-    xcodeprojPath,
-    "-scheme",
-    APP_NAME,
-    "-configuration",
-    "Release",
-    "-derivedDataPath",
-    derivedDataPath,
-    "CODE_SIGNING_ALLOWED=YES",
-    "CODE_SIGNING_REQUIRED=NO",
-    "CODE_SIGN_IDENTITY=-",
-    "CODE_SIGN_STYLE=Manual",
-    "build",
-  ],
-  { stdio: "inherit" },
-);
+
+// -verbose + captured (not inherited) output: xcodebuild otherwise only prints phase names like
+// "ValidateEmbeddedBinary ... (2 failures)" on a plain failure, with no further detail anywhere else.
+const xcodebuildArgs = [
+  "-project",
+  xcodeprojPath,
+  "-scheme",
+  APP_NAME,
+  "-configuration",
+  "Release",
+  "-derivedDataPath",
+  derivedDataPath,
+  "CODE_SIGNING_ALLOWED=YES",
+  "CODE_SIGNING_REQUIRED=NO",
+  "CODE_SIGN_IDENTITY=-",
+  "CODE_SIGN_STYLE=Manual",
+  "-verbose",
+  "build",
+];
+
+const xcodebuildResult = spawnSync("xcodebuild", xcodebuildArgs, { encoding: "utf8" });
+const xcodebuildOutput = `${xcodebuildResult.stdout ?? ""}${xcodebuildResult.stderr ?? ""}`;
+writeFileSync(xcodebuildLogFile, xcodebuildOutput, "utf8");
+// stderr, not stdout: ci.yml captures this script's stdout via $(...) as SAFARI_APP_PATH, so the
+// transcript must never land there — it would corrupt that variable with the whole log's text.
+console.error(xcodebuildOutput);
+
+// Xcode's own binary build log has richer per-phase detail than even -verbose's stdout/stderr for
+// some failures. Best-effort, raw copy only (no parsing of its gzipped format) — never fatal.
+try {
+  const activityLogs = execFileSync(
+    "find",
+    [resolve(derivedDataPath, "Logs", "Build"), "-name", "*.xcactivitylog"],
+    { encoding: "utf8" },
+  )
+    .split("\n")
+    .filter(Boolean);
+  for (const logPath of activityLogs) {
+    copyFileSync(logPath, resolve(diagnosticsRoot, basename(logPath)));
+  }
+} catch (activityLogError) {
+  console.warn(`⚠️  Não foi possível copiar diagnósticos .xcactivitylog: ${activityLogError.message}`);
+}
+
+if (xcodebuildResult.status !== 0) {
+  throw new Error(
+    `xcodebuild falhou (exit ${xcodebuildResult.status ?? "null"}, signal ${xcodebuildResult.signal ?? "none"}). ` +
+      `Log completo em ${xcodebuildLogFile}.`,
+  );
+}
 
 const appPath = resolve(derivedDataPath, "Build", "Products", "Release", `${APP_NAME}.app`);
 
