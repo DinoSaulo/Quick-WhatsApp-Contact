@@ -271,7 +271,20 @@ jobs:
         if: matrix.chromeMajor != ''
         run: node scripts/verify-chrome-version.mjs "${{ matrix.chromeMajor }}"
 
+      # node_modules e mais caro de reconstruir nestes contêineres bare-metal do que em Ubuntu; um
+      # cache-hit exato pula o npm ci por completo. Restrito a Fedora/Rocky Linux por pedido explicito.
+      - name: Cache de node_modules (Fedora/Rocky Linux)
+        id: cache-node-modules
+        if: matrix.label == 'Chrome 151 - Fedora' || matrix.label == 'Chrome 151 - Rocky Linux'
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: node_modules
+          key: node-modules-${{ matrix.label }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            node-modules-${{ matrix.label }}-
+
       - name: Instalar dependencias
+        if: steps.cache-node-modules.outputs.cache-hit != 'true'
         run: npm ci
 
       - name: Baixar build da etapa anterior
@@ -480,7 +493,20 @@ jobs:
         if: matrix.firefoxMajor != ''
         run: node scripts/verify-firefox-version.mjs "${{ matrix.firefoxMajor }}"
 
+      # Mesma logica do cache de node_modules de installation-test acima, restrito as pernas
+      # Fedora/Rocky Linux deste job.
+      - name: Cache de node_modules (Fedora/Rocky Linux)
+        id: cache-node-modules
+        if: matrix.label == 'Firefox 153 - Fedora' || matrix.label == 'Firefox 140 (ESR) - Rocky Linux'
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: node_modules
+          key: node-modules-${{ matrix.label }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            node-modules-${{ matrix.label }}-
+
       - name: Instalar dependencias
+        if: steps.cache-node-modules.outputs.cache-hit != 'true'
         run: npm ci
 
       - name: Baixar build da etapa anterior
