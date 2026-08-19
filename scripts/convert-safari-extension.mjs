@@ -26,9 +26,16 @@ const outputRoot = resolve(projectRoot, ".safari-build");
 rmSync(outputRoot, { recursive: true, force: true });
 mkdirSync(outputRoot, { recursive: true });
 
+const diagnosticsRoot = resolve(projectRoot, "ci-diagnostics");
+mkdirSync(diagnosticsRoot, { recursive: true });
+const converterLogFile = resolve(diagnosticsRoot, "safari-web-extension-converter.log");
+
+// Captured (not inherited): the converter prints an "App Name: ..." summary to stdout, which a
+// real CI run showed corrupts ci.yml's $(...) capture of this script's own final stdout line.
+
 // --macos-only skips generating an iOS target (and its simulator/signing requirements), which this
 // CI smoke test never needs. --no-open/--force keep the tool non-interactive and idempotent.
-execFileSync(
+const converterResult = spawnSync(
   "xcrun",
   [
     "safari-web-extension-converter",
@@ -44,8 +51,20 @@ execFileSync(
     "--force",
     "--swift",
   ],
-  { stdio: "inherit" },
+  { encoding: "utf8" },
 );
+const converterOutput = `${converterResult.stdout ?? ""}${converterResult.stderr ?? ""}`;
+writeFileSync(converterLogFile, converterOutput, "utf8");
+// stderr, not stdout — same reasoning as xcodebuildOutput below: this script's stdout must stay
+// reserved for the final console.log(appPath) line that ci.yml captures via $(...).
+console.error(converterOutput);
+
+if (converterResult.status !== 0) {
+  throw new Error(
+    `xcrun safari-web-extension-converter falhou (exit ${converterResult.status ?? "null"}, ` +
+      `signal ${converterResult.signal ?? "none"}). Log completo em ${converterLogFile}.`,
+  );
+}
 
 const projectSearch = execFileSync(
   "find",
@@ -63,9 +82,6 @@ if (projectSearch.length !== 1) {
 
 const xcodeprojPath = projectSearch[0];
 const derivedDataPath = resolve(outputRoot, "DerivedData");
-
-const diagnosticsRoot = resolve(projectRoot, "ci-diagnostics");
-mkdirSync(diagnosticsRoot, { recursive: true });
 const xcodebuildLogFile = resolve(diagnosticsRoot, "safari-xcodebuild.log");
 
 // Ad-hoc signing, not disabled: ValidateEmbeddedBinary checks the .appex's signature even with
