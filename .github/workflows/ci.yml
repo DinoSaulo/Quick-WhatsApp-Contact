@@ -89,7 +89,7 @@ jobs:
 
       - name: Anexar relatorio JUnit
         if: always()
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: relatorio-unitarios-${{ matrix.label }}
           path: reports/unit.xml
@@ -102,7 +102,7 @@ jobs:
 
       - name: Salvar build como artefato
         if: matrix.label == 'Ubuntu'
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: extension-build
           path: dist/extension/
@@ -202,7 +202,7 @@ jobs:
 
       - name: Anexar relatorio JUnit
         if: always()
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: relatorio-integracao-${{ matrix.label }}
           path: reports/integration.xml
@@ -260,7 +260,7 @@ jobs:
 
       - name: Anexar relatorio JUnit
         if: always()
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: relatorio-seguranca
           path: reports/security.xml
@@ -362,7 +362,7 @@ jobs:
       # failed run's evidence is still here to upload. if-no-files-found: ignore is the expected common case, not an error.
       - name: Anexar diagnosticos do Chrome (em caso de falha)
         if: failure()
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: diagnosticos-chrome-${{ matrix.label }}
           path: ci-diagnostics/
@@ -501,7 +501,7 @@ jobs:
       # means an EARLIER failed attempt's diagnostics would otherwise go missing once a LATER attempt succeeds and the step reports success.
       - name: Anexar diagnosticos do Chrome (em caso de falha em qualquer tentativa)
         if: always()
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: diagnosticos-chrome-${{ matrix.chromeVersion }}
           path: ci-diagnostics/
@@ -594,7 +594,7 @@ jobs:
       # (failure) path, so this is safe as if: failure() even without an explicit delete-on-success.
       - name: Anexar diagnosticos do Firefox (em caso de falha)
         if: failure()
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: diagnosticos-firefox-${{ matrix.label }}
           path: ci-diagnostics/
@@ -686,7 +686,7 @@ jobs:
       # Same reasoning as installation-test-firefox's equivalent step above.
       - name: Anexar diagnosticos do Firefox (em caso de falha)
         if: failure()
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: diagnosticos-firefox-${{ matrix.firefoxVersion }}
           path: ci-diagnostics/
@@ -766,7 +766,7 @@ jobs:
       # "success" even on a real failure); the explicit outcome check below covers that gap.
       - name: Anexar diagnosticos do Safari (em caso de falha)
         if: failure() || steps.safari-install-test.outcome == 'failure'
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: diagnosticos-safari
           path: ci-diagnostics/
