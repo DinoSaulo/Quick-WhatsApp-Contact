@@ -136,6 +136,19 @@ body {
   cursor: pointer;
 }
 
+/* Chevron sinalizando que o gatilho abre um menu, como um <select> nativo —
+   necessario pois este e um <button> custom, sem a seta que o navegador desenha sozinho. */
+.country-picker__trigger::after {
+  content: "";
+  flex: none;
+  width: 7px;
+  height: 7px;
+  margin-left: auto;
+  border-right: 2px solid var(--muted);
+  border-bottom: 2px solid var(--muted);
+  transform: rotate(45deg) translateY(-2px);
+}
+
 .country-picker__menu {
   position: absolute;
   z-index: 30;
