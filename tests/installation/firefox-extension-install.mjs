@@ -353,7 +353,7 @@ try {
       shellWidth: bounds?.width,
       autoHighlight: document.querySelector("#auto-highlight")?.checked,
       darkMode: document.querySelector("#dark-mode")?.checked,
-      language: document.querySelector("#language")?.value,
+      language: document.querySelector("#language-hidden")?.value,
       defaultCountry: document.querySelector("#default-country-hidden")?.value,
       theme: document.documentElement.dataset.theme,
       brandComplete: brand?.complete,

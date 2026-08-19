@@ -373,7 +373,7 @@ try {
       viewportCenter: window.innerWidth / 2,
       autoHighlight: document.querySelector("#auto-highlight")?.checked,
       darkMode: document.querySelector("#dark-mode")?.checked,
-      language: document.querySelector("#language")?.value,
+      language: document.querySelector("#language-hidden")?.value,
       defaultCountry: document.querySelector("#default-country-hidden")?.value,
       theme: document.documentElement.dataset.theme,
       brandUrl: brand?.src,
@@ -503,7 +503,7 @@ try {
   const reinstalledSettings = await safeEvaluate(reinstalledOptions, () => ({
     autoHighlight: document.querySelector("#auto-highlight")?.checked,
     darkMode: document.querySelector("#dark-mode")?.checked,
-    language: document.querySelector("#language")?.value,
+    language: document.querySelector("#language-hidden")?.value,
     defaultCountry: document.querySelector("#default-country-hidden")?.value,
   }));
 
