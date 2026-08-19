@@ -31,7 +31,7 @@ describe("GitHub Actions cross-platform runtime integration", () => {
     expect(workflow).toContain('NODE_VERSION: "22.23.2"');
     expect(setupNodeEnvAction).toContain("node-version: ${{ env.NODE_VERSION }}");
     expect(setupNodeEnvAction).toContain("name: Verificar versao do Node.js");
-    expect(workflow.match(/uses: \.\/\.github\/actions\/setup-node-env/g)).toHaveLength(11);
+    expect(workflow.match(/uses: \.\/\.github\/actions\/setup-node-env/g)).toHaveLength(12);
     expect(workflow).not.toContain("actions/setup-node@v6");
   });
 
@@ -167,7 +167,7 @@ describe("GitHub Actions cross-platform runtime integration", () => {
 
   it("resolves and pins installation-test-firefox-pinned's matrix to the last 3 Firefox majors dynamically", () => {
     const resolveJob = jobSource("resolve-firefox-versions", "installation-test-firefox-pinned");
-    const pinnedJob = jobSource("installation-test-firefox-pinned", "validate-extension");
+    const pinnedJob = jobSource("installation-test-firefox-pinned", "installation-test-safari");
 
     // Same reasoning as resolve-chrome-versions above.
     expect(resolveJob).toContain("needs: integration-tests");
@@ -199,7 +199,7 @@ describe("GitHub Actions cross-platform runtime integration", () => {
     const validate = jobSource("validate-extension", "release");
 
     expect(workflow).toContain(
-      "needs: [installation-test, installation-test-pinned, installation-test-firefox, installation-test-firefox-pinned]",
+      "needs: [installation-test, installation-test-pinned, installation-test-firefox, installation-test-firefox-pinned, installation-test-safari]",
     );
     expect(validate).toContain("run: npm run validate:extension");
   });
@@ -241,6 +241,7 @@ describe("GitHub Actions cross-platform runtime integration", () => {
       "installation-test-firefox",
       "resolve-firefox-versions",
       "installation-test-firefox-pinned",
+      "installation-test-safari",
       "validate-extension",
       "release",
     ];

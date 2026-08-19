@@ -665,10 +665,88 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
+  # Level 4f: Safari (macOS-only), two disconnected smoke tests: xcrun+xcodebuild still convert
+  # and compile the real extension; the later WebKit step is Playwright's generic engine only.
+  installation-test-safari:
+    name: "4f · Instalacao Safari"
+    needs: security-tests
+    runs-on: macos-latest
+    timeout-minutes: 20
+    env:
+      PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/.playwright-browsers
+
+    steps:
+      - name: Clonar repositorio
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - name: Preparar ambiente Node.js
+        uses: ./.github/actions/setup-node-env
+
+      # Sem matrix.label de distro (job so roda em macos-latest); chave usa apenas runner.os.
+      - name: Cache de node_modules
+        id: cache-node-modules
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: node_modules
+          key: node-modules-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            node-modules-${{ runner.os }}-
+
+      - name: Instalar dependencias
+        if: steps.cache-node-modules.outputs.cache-hit != 'true'
+        run: npm ci
+
+      - name: Baixar build da etapa anterior
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          name: extension-build
+          path: dist/extension/
+
+      - name: Verificar ferramentas do Xcode
+        run: |
+          xcrun --version
+          xcodebuild -version
+
+      - name: Converter e compilar a Safari Web Extension
+        run: |
+          APP_PATH=$(node scripts/convert-safari-extension.mjs)
+          echo "SAFARI_APP_PATH=$APP_PATH" >> "$GITHUB_ENV"
+
+      # Chave nova e isolada (nao reutiliza chrome-for-testing-*/firefox-releases-*); npx playwright
+      # install ja e idempotente/rapido num cache-hit, sem precisar de skip condicional aqui.
+      - name: Cache do WebKit do Playwright
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: .playwright-browsers
+          key: playwright-webkit-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+
+      - name: Instalar o WebKit do Playwright
+        run: npx playwright install webkit
+
+      # continue-on-error apenas aqui: falhas de build/conversao acima ainda derrubam o job.
+      # Este passo nao abre o .app convertido nem o Safari real — ver cabecalho do script chamado.
+      - name: Smoke test do motor WebKit via Playwright (nao e o Safari real)
+        id: safari-install-test
+        continue-on-error: true
+        run: npm run test:install:safari
+
+      - name: Avisar sobre resultado best-effort do WebKit
+        if: steps.safari-install-test.outcome == 'failure'
+        run: echo "::warning::Nivel 4f (WebKit/Playwright) nao passou (best-effort) — ver diagnosticos-safari."
+
+      - name: Anexar diagnosticos do Safari (em caso de falha)
+        if: steps.safari-install-test.outcome == 'failure'
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: diagnosticos-safari
+          path: ci-diagnostics/
+          if-no-files-found: ignore
+          retention-days: 7
+
   # ── Level 5: Validate extension package ────────────────────────────────────
   validate-extension:
     name: "5 · Validar Extensao"
-    needs: [installation-test, installation-test-pinned, installation-test-firefox, installation-test-firefox-pinned]
+    needs: [installation-test, installation-test-pinned, installation-test-firefox, installation-test-firefox-pinned, installation-test-safari]
     runs-on: ubuntu-latest
     timeout-minutes: 5
 
