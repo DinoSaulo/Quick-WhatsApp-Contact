@@ -35,12 +35,14 @@ describe("GitHub Actions cross-platform runtime integration", () => {
     expect(workflow).not.toContain("actions/setup-node@v6");
   });
 
-  it("runs lint and comment-length checks in a dedicated, needs-less lint job", () => {
-    const unit = jobSource("unit-tests", "lint");
-    const lint = jobSource("lint", "integration-tests");
+  it("runs lint and comment-length checks in a dedicated, sequential lint job", () => {
+    const lint = jobSource("lint", "unit-tests");
+    const unit = jobSource("unit-tests", "integration-tests");
 
-    // Extracted out of unit-tests so it starts immediately, in parallel — not gated on it.
+    // Extracted out of unit-tests into its own job that now gates it — fail-fast on cheap lint
+    // errors before spending runners on unit tests across 4 platforms.
     expect(unit).not.toContain("run: npm run lint");
+    expect(unit).toContain("needs: lint");
     expect(lint).not.toContain("needs:");
     expect(lint).toMatch(/run: npm run lint(?!:)/);
     expect(lint).toContain("run: npm run lint:comments");
@@ -81,7 +83,7 @@ describe("GitHub Actions cross-platform runtime integration", () => {
   });
 
   it("bootstraps Node and npm in every Fedora matrix job", () => {
-    const unit = jobSource("unit-tests", "lint");
+    const unit = jobSource("unit-tests", "integration-tests");
     const integration = jobSource("integration-tests", "security-tests");
     const installation = jobSource("installation-test", "resolve-chrome-versions");
     const installationFirefox = jobSource("installation-test-firefox", "resolve-firefox-versions");
@@ -94,7 +96,7 @@ describe("GitHub Actions cross-platform runtime integration", () => {
   });
 
   it("installs and verifies Fedora Chromium only where the browser is required", () => {
-    const unit = jobSource("unit-tests", "lint");
+    const unit = jobSource("unit-tests", "integration-tests");
     const integration = jobSource("integration-tests", "security-tests");
     const installation = jobSource("installation-test", "resolve-chrome-versions");
 
@@ -240,10 +242,10 @@ describe("GitHub Actions cross-platform runtime integration", () => {
     expect(security).toContain("run: npm audit --omit=dev");
   });
 
-  it("orders the pipeline as (Unit + Lint) -> (Integration + Security) -> Installation (Chrome + Firefox, distro + pinned) -> Validate -> Release", () => {
+  it("orders the pipeline as Lint -> Unit -> (Integration + Security) -> Installation (Chrome + Firefox, distro + pinned) -> Validate -> Release", () => {
     const jobIds = [
-      "unit-tests",
       "lint",
+      "unit-tests",
       "integration-tests",
       "security-tests",
       "installation-test",
