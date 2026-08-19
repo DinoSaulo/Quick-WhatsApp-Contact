@@ -60,7 +60,19 @@ jobs:
       - name: Preparar ambiente Node.js
         uses: ./.github/actions/setup-node-env
 
+      # Escopada por runner.os + matrix.label para nunca misturar Linux/macOS/Windows nem Fedora
+      # com Ubuntu; hit exato pula o npm ci por completo.
+      - name: Cache de node_modules
+        id: cache-node-modules
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: node_modules
+          key: node-modules-${{ runner.os }}-${{ matrix.label }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            node-modules-${{ runner.os }}-${{ matrix.label }}-
+
       - name: Instalar dependencias
+        if: steps.cache-node-modules.outputs.cache-hit != 'true'
         run: npm ci
 
       - name: Verificar sintaxe
@@ -134,7 +146,18 @@ jobs:
       - name: Preparar ambiente Node.js
         uses: ./.github/actions/setup-node-env
 
+      # Mesma logica de cache de node_modules do job 1 (Unitarios) acima.
+      - name: Cache de node_modules
+        id: cache-node-modules
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: node_modules
+          key: node-modules-${{ runner.os }}-${{ matrix.label }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            node-modules-${{ runner.os }}-${{ matrix.label }}-
+
       - name: Instalar dependencias
+        if: steps.cache-node-modules.outputs.cache-hit != 'true'
         run: npm ci
 
       - name: Preparar diretorio de relatorios
@@ -172,7 +195,19 @@ jobs:
       - name: Preparar ambiente Node.js
         uses: ./.github/actions/setup-node-env
 
+      # Sem matrix.label (job roda so em ubuntu-latest, sem distro variavel) — chave usa apenas
+      # runner.os.
+      - name: Cache de node_modules
+        id: cache-node-modules
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: node_modules
+          key: node-modules-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            node-modules-${{ runner.os }}-
+
       - name: Instalar dependencias
+        if: steps.cache-node-modules.outputs.cache-hit != 'true'
         run: npm ci
 
       - name: Auditar dependencias de producao
@@ -271,17 +306,16 @@ jobs:
         if: matrix.chromeMajor != ''
         run: node scripts/verify-chrome-version.mjs "${{ matrix.chromeMajor }}"
 
-      # node_modules e mais caro de reconstruir nestes contêineres bare-metal do que em Ubuntu; um
-      # cache-hit exato pula o npm ci por completo. Restrito a Fedora/Rocky Linux por pedido explicito.
-      - name: Cache de node_modules (Fedora/Rocky Linux)
+      # Escopada por runner.os + matrix.label (cada distro/SO tem chave propria); hit exato pula
+      # o npm ci por completo, em todas as pernas do job (nao so Fedora/Rocky Linux).
+      - name: Cache de node_modules
         id: cache-node-modules
-        if: matrix.label == 'Chrome 151 - Fedora' || matrix.label == 'Chrome 151 - Rocky Linux'
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: node_modules
-          key: node-modules-${{ matrix.label }}-${{ hashFiles('package-lock.json') }}
+          key: node-modules-${{ runner.os }}-${{ matrix.label }}-${{ hashFiles('package-lock.json') }}
           restore-keys: |
-            node-modules-${{ matrix.label }}-
+            node-modules-${{ runner.os }}-${{ matrix.label }}-
 
       - name: Instalar dependencias
         if: steps.cache-node-modules.outputs.cache-hit != 'true'
@@ -351,7 +385,18 @@ jobs:
       - name: Preparar ambiente Node.js
         uses: ./.github/actions/setup-node-env
 
+      # Sem matrix.label de distro (job so roda em ubuntu-latest); chave usa apenas runner.os.
+      - name: Cache de node_modules
+        id: cache-node-modules
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: node_modules
+          key: node-modules-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            node-modules-${{ runner.os }}-
+
       - name: Instalar dependencias
+        if: steps.cache-node-modules.outputs.cache-hit != 'true'
         run: npm ci
 
       - name: Baixar build da etapa anterior
@@ -493,17 +538,16 @@ jobs:
         if: matrix.firefoxMajor != ''
         run: node scripts/verify-firefox-version.mjs "${{ matrix.firefoxMajor }}"
 
-      # Mesma logica do cache de node_modules de installation-test acima, restrito as pernas
-      # Fedora/Rocky Linux deste job.
-      - name: Cache de node_modules (Fedora/Rocky Linux)
+      # Mesma logica de cache de node_modules de installation-test acima, agora em todas as
+      # pernas do job (runner.os + matrix.label), nao so Fedora/Rocky Linux.
+      - name: Cache de node_modules
         id: cache-node-modules
-        if: matrix.label == 'Firefox 153 - Fedora' || matrix.label == 'Firefox 140 (ESR) - Rocky Linux'
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: node_modules
-          key: node-modules-${{ matrix.label }}-${{ hashFiles('package-lock.json') }}
+          key: node-modules-${{ runner.os }}-${{ matrix.label }}-${{ hashFiles('package-lock.json') }}
           restore-keys: |
-            node-modules-${{ matrix.label }}-
+            node-modules-${{ runner.os }}-${{ matrix.label }}-
 
       - name: Instalar dependencias
         if: steps.cache-node-modules.outputs.cache-hit != 'true'
@@ -573,7 +617,18 @@ jobs:
       - name: Preparar ambiente Node.js
         uses: ./.github/actions/setup-node-env
 
+      # Sem matrix.label de distro (job so roda em ubuntu-latest); chave usa apenas runner.os.
+      - name: Cache de node_modules
+        id: cache-node-modules
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: node_modules
+          key: node-modules-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            node-modules-${{ runner.os }}-
+
       - name: Instalar dependencias
+        if: steps.cache-node-modules.outputs.cache-hit != 'true'
         run: npm ci
 
       - name: Baixar build da etapa anterior
@@ -624,7 +679,18 @@ jobs:
       - name: Preparar ambiente Node.js
         uses: ./.github/actions/setup-node-env
 
+      # Sem matrix.label de distro (job so roda em ubuntu-latest); chave usa apenas runner.os.
+      - name: Cache de node_modules
+        id: cache-node-modules
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: node_modules
+          key: node-modules-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            node-modules-${{ runner.os }}-
+
       - name: Instalar dependencias
+        if: steps.cache-node-modules.outputs.cache-hit != 'true'
         run: npm ci
 
       - name: Validar pacote Manifest V3
