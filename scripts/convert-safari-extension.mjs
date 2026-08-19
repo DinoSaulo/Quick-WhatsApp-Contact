@@ -17,9 +17,10 @@ if (!existsSync(manifestPath)) {
 }
 
 const APP_NAME = "Quick WhatsApp Contact";
-// CI-only identifier — never used for a signed/published build, so it doesn't need to match
-// whatever bundle ID a future real Mac App Store submission would use.
-const BUNDLE_ID = "dev.dinosaulo.quickwhatsappcontact.safari-ci";
+// Real CI failure's root cause: host app ID = <prefix>.<sanitized APP_NAME>, extension ID =
+// "<BUNDLE_ID>.Extension" verbatim — a fixed last component made them cousins, not parent/child.
+const BUNDLE_ID_BASE = "dev.dinosaulo.quickwhatsappcontact";
+const BUNDLE_ID = `${BUNDLE_ID_BASE}.${APP_NAME.replace(/\s+/g, "-")}`;
 
 const outputRoot = resolve(projectRoot, ".safari-build");
 rmSync(outputRoot, { recursive: true, force: true });
