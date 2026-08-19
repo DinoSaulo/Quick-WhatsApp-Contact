@@ -4,11 +4,12 @@
   <img src="./icons/logo-generated-512.png" alt="Quick WhatsApp Contact" width="280" />
 </p>
 
-> Extensão do Chrome para iniciar conversas no WhatsApp a partir de números encontrados em qualquer página web.
+> Extensão para iniciar conversas no WhatsApp a partir de números encontrados em qualquer página web.
 
-`Chrome Extension` · `Firefox WebExtension` · `Manifest V3` · `Vanilla JS` · `Vitest`
+`Chrome Extension` · `Firefox WebExtension` · `Safari Web Extension` · `Manifest V3` · `Vanilla JS` · `Vitest`
 
 [![Pipeline](https://github.com/DinoSaulo/Quick-WhatsApp-Contact/actions/workflows/ci.yml/badge.svg)](https://github.com/DinoSaulo/Quick-WhatsApp-Contact/actions/workflows/ci.yml)
+<a href="https://chromewebstore.google.com/detail/quick-whatsapp-contact/eplpemmogghafabofbbopdilpjnlolpk" target="_blank" rel="noopener noreferrer"><img src="https://img.shields.io/badge/Chrome_Web_Store-Install-4285F4?logo=googlechrome&amp;logoColor=white" alt="Install from the Chrome Web Store"></a>
 
 ---
 
@@ -18,7 +19,7 @@
 
 A interface está disponível em **Inglês (EN-US)** e **Português (PT-BR)**.
 
-O projeto é distribuído como uma extensão Manifest V3 para **Chrome/Chromium** e como WebExtension para **Firefox**. Os fluxos de instalação, atualização e remoção são verificados automaticamente nos dois navegadores.
+O projeto é distribuído como uma extensão Manifest V3 para **Chrome/Chromium** e como WebExtension para **Firefox**. No macOS, o mesmo build também é convertido e compilado como **Safari Web Extension** para validar sua compatibilidade. Os fluxos completos de instalação, atualização e remoção são verificados automaticamente no Chrome e no Firefox; no Safari, a CI valida a conversão e a compilação com Xcode e executa separadamente um smoke test do motor WebKit.
 
 ---
 
@@ -75,6 +76,18 @@ O botão flutuante **Buy me a coffee** também fica disponível nas configuraç�
 4. Selecione o arquivo `dist/extension/manifest.json`.
 
 Uma extensão temporária é removida quando o Firefox é fechado. Para uma instalação permanente, use o pacote assinado publicado no Firefox Add-ons.
+
+### Safari (desenvolvimento no macOS)
+
+É necessário ter o Xcode e suas ferramentas de linha de comando instalados.
+
+```bash
+npm ci
+npm run build
+node scripts/convert-safari-extension.mjs
+```
+
+O script usa `safari-web-extension-converter`, gera o projeto nativo em `.safari-build/`, compila o app em modo Release com `xcodebuild` e imprime o caminho final do `.app`. Essa etapa valida o pacote convertido, mas não publica nem assina a extensão para distribuição na App Store.
 
 ---
 
@@ -178,7 +191,16 @@ Para executar o mesmo smoke test no Firefox:
 npm run test:install:firefox
 ```
 
-O teste constrói e instala a extensão, confirma o service worker Manifest V3, abre o popup e verifica os assets locais. Em seguida, desinstala a extensão e confirma que seus processos desaparecem e que o popup deixa de ser acessível. Se o navegador não estiver em um caminho padrão, informe `CHROME_PATH` ou `CHROMIUM_PATH` com o caminho do executável.
+Os testes do Chrome e do Firefox constroem e instalam a extensão, abrem suas páginas, verificam os assets locais e validam o encerramento ou a remoção. Se o navegador não estiver em um caminho padrão, informe `CHROME_PATH`, `CHROMIUM_PATH`, `FIREFOX_PATH` ou `PUPPETEER_EXECUTABLE_PATH`.
+
+No macOS, converta e compile primeiro a extensão com Xcode, conforme a seção de instalação do Safari. O smoke test complementar usa o WebKit fornecido pelo Playwright:
+
+```bash
+npx playwright install webkit
+npm run test:install:safari
+```
+
+Esse teste apenas confirma que o motor WebKit inicia e navega corretamente: ele não abre o Safari, não carrega o `.app` convertido e não substitui uma validação manual da extensão no navegador.
 
 O build publicável é gerado em `dist/extension` e contém somente o manifesto, o código da extensão, os ícones e os assets locais de Twemoji, onboarding e doações. Para criar o ZIP no Windows:
 
@@ -213,11 +235,11 @@ O repositório usa GitHub Actions com 6 níveis sequenciais. Cada nível precisa
 | 1️⃣ | Testes unitários + lint | Ubuntu · Fedora · macOS · Windows |
 | 2️⃣ | Testes de integração | Ubuntu · Fedora · macOS · Windows |
 | 3️⃣ | Segurança (SAST + testes de segurança) | Ubuntu |
-| 4️⃣ | Instalação e remoção no Chrome e Firefox | Ubuntu · Fedora · macOS · Windows |
+| 4️⃣ | Ciclo de vida no Chrome e Firefox; conversão/compilação para Safari e smoke test WebKit | Ubuntu · Fedora · Debian · Rocky Linux · Arch Linux · macOS · Windows |
 | 5️⃣ | Validação do pacote Manifest V3 | Ubuntu |
 | 6️⃣ | Publicação da release | Ubuntu *(somente branch `main`)* |
 
-Os testes de instalação usam helpers Puppeteer com tentativas automáticas para erros transitórios de frame, timeouts maiores em CI, flags de estabilidade e diagnóstico do navegador. O pacote Firefox também passa pelo validador `web-ext`, com avisos revisados e mantidos em uma lista explícita.
+Chrome e Firefox são testados em diferentes sistemas e distribuições, além de matrizes com as três versões principais mais recentes (N, N-1 e N-2). Os testes usam helpers Puppeteer, tentativas controladas para falhas transitórias e artefatos de diagnóstico. O pacote Firefox também passa pelo validador `web-ext`. No job macOS do Safari, falhas na conversão ou compilação com Xcode bloqueiam a pipeline; o smoke test separado do WebKit é informativo (`best-effort`) porque o Playwright não carrega Safari Web Extensions.
 
 ---
 
@@ -228,6 +250,8 @@ Os testes de instalação usam helpers Puppeteer com tentativas automáticas par
 - **Web Components** nativos (`HTMLElement` + `customElements.define`)
 - **Vitest** + **jsdom** para testes unitários e de integração
 - **web-ext** para validação do pacote Firefox antes da publicação
+- **Xcode** + `safari-web-extension-converter` para converter e compilar o build no macOS
+- **Playwright WebKit** para o smoke test complementar do motor usado na validação do Safari
 
 ### Assets de terceiros
 
