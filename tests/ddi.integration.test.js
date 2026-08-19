@@ -47,6 +47,18 @@ describe("country DDI screen mask integration", () => {
     window.close = vi.fn();
   });
 
+  it("shows country names localized to the extension's active language, not always Portuguese", async () => {
+    mockStorage.getSettings.mockResolvedValue({
+      language: "en-US",
+      darkModeEnabled: false,
+      defaultCountry: "DE"
+    });
+
+    const screen = await renderDdiScreen();
+    expect(screen.querySelector("#country-trigger").textContent).toContain("Germany");
+    expect(screen.querySelector("#country-trigger").textContent).not.toContain("Alemanha");
+  });
+
   it("uses the selected country's placeholder on first render", async () => {
     const screen = await renderDdiScreen();
 

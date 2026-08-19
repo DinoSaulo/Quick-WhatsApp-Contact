@@ -239,6 +239,35 @@ describe("options page integration", () => {
     expect(document.documentElement.lang).toBe("pt-BR");
   });
 
+  it("relocalizes the already-selected default country's name when the extension language changes", async () => {
+    mockStorage.getSettings.mockResolvedValue({
+      language: "en-US",
+      darkModeEnabled: false,
+      autoHighlightEnabled: true,
+      defaultCountry: "DE"
+    });
+
+    const page = await renderOptionsPage();
+    expect(page.querySelector("#country-trigger").textContent).toContain("Germany");
+
+    page.querySelector("#language-trigger").click();
+    page.querySelector('[data-language-code="pt-BR"]').click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(page.querySelector("#country-trigger").textContent).toContain("Alemanha");
+    expect(page.querySelector("#country-trigger").textContent).not.toContain("Germany");
+    expect(page.querySelector("#default-country-hidden").value).toBe("DE");
+  });
+
+  it("lists country picker options with names localized to the active language", async () => {
+    const page = await renderOptionsPage();
+
+    page.querySelector("#country-trigger").click();
+    const germanyOption = page.querySelector('[data-country-code="DE"]');
+    expect(germanyOption.textContent).toContain("Germany");
+    expect(germanyOption.textContent).not.toContain("Alemanha");
+  });
+
   it("offers Spanish from Spain and renders the options page in Spanish", async () => {
     const page = await renderOptionsPage();
 
@@ -282,7 +311,7 @@ describe("options page integration", () => {
     const trigger = page.querySelector("#country-trigger");
     const searchInput = page.querySelector("#country-search");
     const noResults = page.querySelector("#country-no-results");
-    const options = page.querySelectorAll(".country-picker__option");
+    const options = page.querySelectorAll("#country-options .country-picker__option");
 
     trigger.click();
     expect(page.querySelector("#country-menu").hidden).toBe(false);
@@ -306,6 +335,20 @@ describe("options page integration", () => {
     const visibleAfterNoMatch = Array.from(options).filter((option) => !option.hidden);
     expect(visibleAfterNoMatch.length).toBe(0);
     expect(noResults.hidden).toBe(false);
+  });
+
+  it("also matches the locale-appropriate spelling, not just the default Portuguese one", async () => {
+    const page = await renderOptionsPage();
+    const trigger = page.querySelector("#country-trigger");
+    const searchInput = page.querySelector("#country-search");
+    const options = page.querySelectorAll("#country-options .country-picker__option");
+
+    trigger.click();
+    searchInput.value = "Germany";
+    searchInput.dispatchEvent(new Event("input", { bubbles: true }));
+
+    const visibleOptions = Array.from(options).filter((option) => !option.hidden);
+    expect(visibleOptions.map((option) => option.getAttribute("data-country-code"))).toEqual(["DE"]);
   });
 
   it("closes the country menu when clicking outside the picker", async () => {
@@ -339,7 +382,7 @@ describe("options page integration", () => {
     const page = await renderOptionsPage();
     const trigger = page.querySelector("#country-trigger");
     const searchInput = page.querySelector("#country-search");
-    const options = Array.from(page.querySelectorAll(".country-picker__option"));
+    const options = Array.from(page.querySelectorAll("#country-options .country-picker__option"));
 
     trigger.click();
     expect(document.activeElement).toBe(searchInput);
@@ -368,7 +411,7 @@ describe("options page integration", () => {
 
     expect(mockStorage.setDefaultCountry).toHaveBeenCalledWith("BR");
     expect(page.querySelector("#default-country-hidden").value).toBe("BR");
-    expect(trigger.textContent).toContain("Brasil");
+    expect(trigger.textContent).toContain("Brazil");
     expect(trigger.textContent).toContain("+55");
     expect(page.querySelector("#saved-status").textContent).toBe("Settings saved");
   });

@@ -1,7 +1,8 @@
 import {
-  COUNTRIES,
   getCountryByCode,
   getCountryByIso2,
+  getLocalizedCountries,
+  getLocalizedCountryName,
   renderCountryFlagHtml,
   renderEmojiHtml
 } from "../utils/countries.js";
@@ -57,8 +58,8 @@ class ExtensionSettingsPage extends HTMLElement {
       </button>
     `;
 
-    const items = COUNTRIES.map((country) => {
-      const searchKey = `${country.name.toLowerCase()} ${country.code.toLowerCase()} ${country.dialCode} +${country.dialCode} ${country.flag}`.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const items = getLocalizedCountries(this.settings.language).map((country) => {
+      const searchKey = `${country.name.toLowerCase()} ${country.defaultName.toLowerCase()} ${country.code.toLowerCase()} ${country.dialCode} +${country.dialCode} ${country.flag}`.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
       return `
         <button class="country-picker__option" type="button" data-country-code="${country.code}" data-search="${searchKey}">
           <span class="country-picker__flag">${renderCountryFlagHtml(country)}</span>
@@ -74,7 +75,7 @@ class ExtensionSettingsPage extends HTMLElement {
 
     const triggerNameMarkup = isAutomatic || !selectedCountry
       ? this.messages.optionDefaultCountryNone
-      : selectedCountry.name;
+      : getLocalizedCountryName(selectedCountry, this.settings.language);
 
     const triggerDdiMarkup = isAutomatic || !selectedCountry
       ? ""
@@ -202,7 +203,9 @@ class ExtensionSettingsPage extends HTMLElement {
     const hiddenInput = this.querySelector("#default-country-hidden");
     const searchInput = this.querySelector("#country-search");
     const noResults = this.querySelector("#country-no-results");
-    const optionButtons = this.querySelectorAll(".country-picker__option");
+    // Scoped to #country-options: the language picker reuses the same .country-picker__option
+    // class, and an unscoped query here would also wire up its buttons as country options.
+    const optionButtons = this.querySelectorAll("#country-options .country-picker__option");
 
     const filterCountries = (queryText) => {
       const query = String(queryText || "")
@@ -280,7 +283,7 @@ class ExtensionSettingsPage extends HTMLElement {
             : `<span class="country-picker__flag">${renderCountryFlagHtml(selectedCountry)}</span>`;
           const nameMarkup = isAutomatic || !selectedCountry
             ? this.messages.optionDefaultCountryNone
-            : selectedCountry.name;
+            : getLocalizedCountryName(selectedCountry, this.settings.language);
           const ddiMarkup = isAutomatic || !selectedCountry
             ? ""
             : `+${selectedCountry.dialCode}`;

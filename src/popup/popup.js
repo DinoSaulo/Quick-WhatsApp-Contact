@@ -1,8 +1,9 @@
 import {
-  COUNTRIES,
   DEFAULT_COUNTRY_CODE,
   getCountryByCode,
   getDefaultCountryCodeForLanguage,
+  getLocalizedCountries,
+  getLocalizedCountryName,
   renderCountryFlagHtml
 } from "../utils/countries.js";
 import { getMessages, t } from "../utils/i18n.js";
@@ -103,8 +104,8 @@ class WhatsAppMessagePopup extends HTMLElement {
 
   buildCountryPickerMarkup(selectedCode) {
     const selectedCountry = getCountryByCode(selectedCode);
-    const items = COUNTRIES.map((country) => {
-      const searchKey = `${country.name.toLowerCase()} ${country.code.toLowerCase()} ${country.dialCode} +${country.dialCode} ${country.flag}`.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const items = getLocalizedCountries(this.language).map((country) => {
+      const searchKey = `${country.name.toLowerCase()} ${country.defaultName.toLowerCase()} ${country.code.toLowerCase()} ${country.dialCode} +${country.dialCode} ${country.flag}`.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
       return `
         <button class="country-picker__option" type="button" data-country-code="${country.code}" data-search="${searchKey}">
           <span class="country-picker__flag">${renderCountryFlagHtml(country)}</span>
@@ -119,7 +120,7 @@ class WhatsAppMessagePopup extends HTMLElement {
         <input id="country-hidden" name="country" type="hidden" value="${selectedCountry.code}" />
         <button class="country-picker__trigger" id="country-trigger" type="button" aria-expanded="false">
           <span class="country-picker__flag">${renderCountryFlagHtml(selectedCountry)}</span>
-          <span class="country-picker__name">${selectedCountry.name}</span>
+          <span class="country-picker__name">${getLocalizedCountryName(selectedCountry, this.language)}</span>
           <span class="country-picker__ddi">+${selectedCountry.dialCode}</span>
         </button>
         <div class="country-picker__menu" id="country-menu" hidden>
@@ -250,7 +251,7 @@ class WhatsAppMessagePopup extends HTMLElement {
           // eslint-disable-next-line no-unsanitized/property
           trigger.innerHTML = `
             <span class="country-picker__flag">${renderCountryFlagHtml(selectedCountry)}</span>
-            <span class="country-picker__name">${selectedCountry.name}</span>
+            <span class="country-picker__name">${getLocalizedCountryName(selectedCountry, this.language)}</span>
             <span class="country-picker__ddi">+${selectedCountry.dialCode}</span>
           `;
         }
