@@ -31,14 +31,19 @@ describe("GitHub Actions cross-platform runtime integration", () => {
     expect(workflow).toContain('NODE_VERSION: "22.23.2"');
     expect(setupNodeEnvAction).toContain("node-version: ${{ env.NODE_VERSION }}");
     expect(setupNodeEnvAction).toContain("name: Verificar versao do Node.js");
-    expect(workflow.match(/uses: \.\/\.github\/actions\/setup-node-env/g)).toHaveLength(12);
+    expect(workflow.match(/uses: \.\/\.github\/actions\/setup-node-env/g)).toHaveLength(13);
     expect(workflow).not.toContain("actions/setup-node@v6");
   });
 
-  it("runs the comment-length lint in the unit-tests job", () => {
-    const unit = jobSource("unit-tests", "integration-tests");
+  it("runs lint and comment-length checks in a dedicated, needs-less lint job", () => {
+    const unit = jobSource("unit-tests", "lint");
+    const lint = jobSource("lint", "integration-tests");
 
-    expect(unit).toContain("run: npm run lint:comments");
+    // Extracted out of unit-tests so it starts immediately, in parallel — not gated on it.
+    expect(unit).not.toContain("run: npm run lint");
+    expect(lint).not.toContain("needs:");
+    expect(lint).toMatch(/run: npm run lint(?!:)/);
+    expect(lint).toContain("run: npm run lint:comments");
     expect(packageJson.scripts["lint:comments"]).toBe("node scripts/check-comment-length.mjs");
     expect(packageJson.scripts.verify).toContain("npm run lint:comments");
   });
@@ -76,7 +81,7 @@ describe("GitHub Actions cross-platform runtime integration", () => {
   });
 
   it("bootstraps Node and npm in every Fedora matrix job", () => {
-    const unit = jobSource("unit-tests", "integration-tests");
+    const unit = jobSource("unit-tests", "lint");
     const integration = jobSource("integration-tests", "security-tests");
     const installation = jobSource("installation-test", "resolve-chrome-versions");
     const installationFirefox = jobSource("installation-test-firefox", "resolve-firefox-versions");
@@ -89,7 +94,7 @@ describe("GitHub Actions cross-platform runtime integration", () => {
   });
 
   it("installs and verifies Fedora Chromium only where the browser is required", () => {
-    const unit = jobSource("unit-tests", "integration-tests");
+    const unit = jobSource("unit-tests", "lint");
     const integration = jobSource("integration-tests", "security-tests");
     const installation = jobSource("installation-test", "resolve-chrome-versions");
 
@@ -97,11 +102,14 @@ describe("GitHub Actions cross-platform runtime integration", () => {
     expect(integration).not.toContain(" chromium");
     expect(installation).toContain("nodejs npm chromium");
     expect(installation).toContain("run: chromium-browser --version");
+    // Explicit now that security-tests no longer transitively guarantees integration-tests passed.
+    expect(installation).toContain("needs: [integration-tests, security-tests]");
   });
 
   it("installs Fedora/Debian/Rocky/Arch Firefox packages with live-confirmed expected majors", () => {
     const installationFirefox = jobSource("installation-test-firefox", "resolve-firefox-versions");
 
+    expect(installationFirefox).toContain("needs: [integration-tests, security-tests]");
     expect(installationFirefox).toContain("nodejs npm firefox");
     expect(installationFirefox).toContain("firefox-esr");
     // The rapid-release train (Fedora/Arch) and ESR train (Debian/Rocky) sit many majors apart on purpose.
@@ -134,8 +142,8 @@ describe("GitHub Actions cross-platform runtime integration", () => {
     const resolveJob = jobSource("resolve-chrome-versions", "installation-test-pinned");
     const pinnedJob = jobSource("installation-test-pinned", "installation-test-firefox");
 
-    // needs: integration-tests, not security-tests — only needs Node and a network call, so it runs alongside security-tests instead of waiting on it.
-    expect(resolveJob).toContain("needs: integration-tests");
+    // needs: [integration-tests, security-tests] — uniform Level 4 convention (see ci.yml comment).
+    expect(resolveJob).toContain("needs: [integration-tests, security-tests]");
     expect(resolveJob).toContain("outputs:");
     expect(resolveJob).toContain("versions: ${{ steps.resolve.outputs.versions }}");
     expect(resolveJob).toContain("node scripts/resolve-chrome-versions.mjs");
@@ -170,7 +178,7 @@ describe("GitHub Actions cross-platform runtime integration", () => {
     const pinnedJob = jobSource("installation-test-firefox-pinned", "installation-test-safari");
 
     // Same reasoning as resolve-chrome-versions above.
-    expect(resolveJob).toContain("needs: integration-tests");
+    expect(resolveJob).toContain("needs: [integration-tests, security-tests]");
     expect(resolveJob).toContain("outputs:");
     expect(resolveJob).toContain("versions: ${{ steps.resolve.outputs.versions }}");
     expect(resolveJob).toContain("node scripts/resolve-firefox-versions.mjs");
@@ -207,7 +215,9 @@ describe("GitHub Actions cross-platform runtime integration", () => {
   it("runs the security job on Linux only, between integration and installation", () => {
     const security = jobSource("security-tests", "installation-test");
 
-    expect(security).toContain("needs: integration-tests");
+    // Decoupled from integration-tests on purpose — both now only wait on [unit-tests, lint],
+    // so they run in parallel; installation-test's own needs re-adds the wait on both.
+    expect(security).toContain("needs: [unit-tests, lint]");
     expect(security).toContain("runs-on: ubuntu-latest");
     // A dedicated Linux-only job: no build matrix (unlike unit/integration/installation,
     // which run across Ubuntu/Fedora/macOS/Windows), same shape as validate-extension/release.
@@ -230,9 +240,10 @@ describe("GitHub Actions cross-platform runtime integration", () => {
     expect(security).toContain("run: npm audit --omit=dev");
   });
 
-  it("orders the pipeline as Unit -> Integration -> Security -> Installation (Chrome + Firefox, distro + pinned) -> Validate -> Release", () => {
+  it("orders the pipeline as (Unit + Lint) -> (Integration + Security) -> Installation (Chrome + Firefox, distro + pinned) -> Validate -> Release", () => {
     const jobIds = [
       "unit-tests",
+      "lint",
       "integration-tests",
       "security-tests",
       "installation-test",

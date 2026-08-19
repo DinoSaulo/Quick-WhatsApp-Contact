@@ -24,8 +24,8 @@ concurrency:
   group: pipeline-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-# Pipeline: Unit -> Integration -> Security -> Installation (Chrome + Firefox, OS/distro diversity
-# + N/N-1/N-2 exact-version pins per browser) -> Validate -> Release
+# Pipeline: Lint (0, standalone) + Unit -> (Integration + Security in parallel) -> Installation
+# (Chrome + Firefox, OS/distro diversity + N/N-1/N-2 exact-version pins per browser) -> Validate -> Release
 
 jobs:
 
@@ -75,12 +75,6 @@ jobs:
         if: steps.cache-node-modules.outputs.cache-hit != 'true'
         run: npm ci
 
-      - name: Verificar sintaxe
-        run: npm run lint
-
-      - name: Verificar comprimento dos comentarios
-        run: npm run lint:comments
-
       - name: Preparar diretorio de relatorios
         shell: bash
         run: mkdir -p reports
@@ -113,6 +107,40 @@ jobs:
           name: extension-build
           path: dist/extension/
           retention-days: 1
+
+  # ── Level 0: Linting e estilo (sem matriz). Sem needs — comeca imediatamente, antes/em paralelo
+  # com unit-tests (nao faz parte da cadeia sequencial Unit -> ... -> Release).
+  lint:
+    name: "0 · Linting e Estilo"
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Clonar repositorio
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - name: Preparar ambiente Node.js
+        uses: ./.github/actions/setup-node-env
+
+      # Sem matrix.label de distro (job so roda em ubuntu-latest); chave usa apenas runner.os.
+      - name: Cache de node_modules
+        id: cache-node-modules
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: node_modules
+          key: node-modules-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            node-modules-${{ runner.os }}-
+
+      - name: Instalar dependencias
+        if: steps.cache-node-modules.outputs.cache-hit != 'true'
+        run: npm ci
+
+      - name: Verificar sintaxe
+        run: npm run lint
+
+      - name: Verificar comprimento dos comentarios
+        run: npm run lint:comments
 
   # ── Level 2: Integration tests (all platforms) ─────────────────────────────
   integration-tests:
@@ -184,7 +212,7 @@ jobs:
   # ── Level 3: Security tests (Linux only) ────────────────────────────────────
   security-tests:
     name: "3 · Seguranca"
-    needs: integration-tests
+    needs: [unit-tests, lint]
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -243,7 +271,7 @@ jobs:
   # `setup` bootstraps git/curl/nodejs/npm first. `chromeMajor` is asserted below so drift fails loudly.
   installation-test:
     name: "4 · Instalacao · ${{ matrix.label }}"
-    needs: security-tests
+    needs: [integration-tests, security-tests]
     runs-on: ${{ matrix.os }}
     container: ${{ matrix.container }}
     timeout-minutes: 15
@@ -342,10 +370,10 @@ jobs:
           retention-days: 7
 
   # ── Level 4a: Resolve the 3 most recent Chrome majors (N, N-1, N-2), computed fresh via fromJson
-  # instead of hand-bumped numbers. needs: integration-tests (not security-tests) lets it run alongside security-tests since installation-test-pinned needs its output too.
+  # instead of hand-bumped numbers. needs: [integration-tests, security-tests] now (uniform Level 4 convention) — this job no longer runs in parallel with security-tests, even though installation-test-pinned's own needs already guaranteed waiting for it.
   resolve-chrome-versions:
     name: "4a · Resolver versoes do Chrome"
-    needs: integration-tests
+    needs: [integration-tests, security-tests]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
@@ -484,7 +512,7 @@ jobs:
   # Only the 4 container entries assert firefoxMajor; Ubuntu/macOS/Windows use whatever the runner preinstalls. Debian/Rocky trail on the ESR train by design.
   installation-test-firefox:
     name: "4c · Instalacao Firefox · ${{ matrix.label }}"
-    needs: security-tests
+    needs: [integration-tests, security-tests]
     runs-on: ${{ matrix.os }}
     container: ${{ matrix.container }}
     timeout-minutes: 15
@@ -574,10 +602,10 @@ jobs:
           retention-days: 7
 
   # ── Level 4d: Resolve the 3 most recent Firefox majors (N, N-1, N-2), the Firefox counterpart of
-  # resolve-chrome-versions above (Mozilla's release-history API); same needs: integration-tests reasoning.
+  # resolve-chrome-versions above (Mozilla's release-history API); same needs: [integration-tests, security-tests] reasoning as that job's comment.
   resolve-firefox-versions:
     name: "4d · Resolver versoes do Firefox"
-    needs: integration-tests
+    needs: [integration-tests, security-tests]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
