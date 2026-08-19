@@ -63,8 +63,8 @@ if (projectSearch.length !== 1) {
 const xcodeprojPath = projectSearch[0];
 const derivedDataPath = resolve(outputRoot, "DerivedData");
 
-// Code signing disabled: CI runners have no Developer ID/certificates, and this build is never
-// distributed — only compiled and launched locally for the smoke test below.
+// Ad-hoc signing, not disabled: ValidateEmbeddedBinary checks the .appex's signature even with
+// CODE_SIGNING_ALLOWED=NO (confirmed by a real CI failure); "-" is Xcode's no-certificate identity.
 execFileSync(
   "xcodebuild",
   [
@@ -76,8 +76,10 @@ execFileSync(
     "Release",
     "-derivedDataPath",
     derivedDataPath,
-    "CODE_SIGNING_ALLOWED=NO",
+    "CODE_SIGNING_ALLOWED=YES",
     "CODE_SIGNING_REQUIRED=NO",
+    "CODE_SIGN_IDENTITY=-",
+    "CODE_SIGN_STYLE=Manual",
     "build",
   ],
   { stdio: "inherit" },
