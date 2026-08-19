@@ -24,14 +24,49 @@ concurrency:
   group: pipeline-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-# Pipeline: Lint (0, standalone) + Unit -> (Integration + Security in parallel) -> Installation
-# (Chrome + Firefox, OS/distro diversity + N/N-1/N-2 exact-version pins per browser) -> Validate -> Release
+# Pipeline: Lint (0) -> Unit -> (Integration + Security in parallel) -> Installation (Chrome +
+# Firefox, OS/distro diversity + N/N-1/N-2 exact-version pins per browser) -> Validate -> Release
 
 jobs:
+
+  # ── Level 0: Linting e estilo (sem matriz), agora pre-requisito sequencial de unit-tests —
+  # fail-fast: erro de lint barato bloqueia gastar runners com testes antes de passar.
+  lint:
+    name: "0 · Linting e Estilo"
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Clonar repositorio
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - name: Preparar ambiente Node.js
+        uses: ./.github/actions/setup-node-env
+
+      # Sem matrix.label de distro (job so roda em ubuntu-latest); chave usa apenas runner.os.
+      - name: Cache de node_modules
+        id: cache-node-modules
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: node_modules
+          key: node-modules-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            node-modules-${{ runner.os }}-
+
+      - name: Instalar dependencias
+        if: steps.cache-node-modules.outputs.cache-hit != 'true'
+        run: npm ci
+
+      - name: Verificar sintaxe
+        run: npm run lint
+
+      - name: Verificar comprimento dos comentarios
+        run: npm run lint:comments
 
   # ── Level 1: Unit tests (all platforms) ────────────────────────────────────
   unit-tests:
     name: "1 · Unitarios · ${{ matrix.label }}"
+    needs: lint
     runs-on: ${{ matrix.os }}
     container: ${{ matrix.container }}
     timeout-minutes: 10
