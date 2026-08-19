@@ -43,6 +43,7 @@ class TutorialPage extends HTMLElement {
         <select class="tutorial-language__select" id="tutorial-language">
           <option value="en-US" ${this.settings.language === "en-US" ? "selected" : ""}>${this.messages.optionLanguageEnglish}</option>
           <option value="pt-BR" ${this.settings.language === "pt-BR" ? "selected" : ""}>${this.messages.optionLanguagePortuguese}</option>
+          <option value="es-ES" ${this.settings.language === "es-ES" ? "selected" : ""}>${this.messages.optionLanguageSpanish}</option>
         </select>
       </div>
     ` : "";

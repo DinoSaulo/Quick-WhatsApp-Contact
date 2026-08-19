@@ -245,7 +245,50 @@ export function getCountryByIso2(iso2) {
 }
 
 export function getDefaultCountryCodeForLanguage(language = "en-US") {
-  return String(language || "").toLowerCase() === "pt-br" ? "BR" : "US";
+  const normalized = String(language || "").toLowerCase();
+  if (normalized === "pt-br") {
+    return "BR";
+  }
+  if (normalized === "es-es") {
+    return "ES";
+  }
+  return "US";
+}
+
+function createRegionDisplayNames(language) {
+  try {
+    return new Intl.DisplayNames([language], { type: "region" });
+  } catch {
+    return null;
+  }
+}
+
+// Localizes a country's display name to the extension's active language via the platform's own
+// CLDR region data, instead of hand-maintaining a translation table for 200+ countries.
+export function getLocalizedCountryName(country, language) {
+  if (!country?.iso2) {
+    return country?.name ?? "";
+  }
+  const displayNames = createRegionDisplayNames(language);
+  return displayNames?.of(country.iso2) || country.name;
+}
+
+// Returns COUNTRIES with `name` localized and re-sorted for that language; `defaultName` keeps
+// the original Portuguese name available so muscle-memory search queries keep working too.
+export function getLocalizedCountries(language) {
+  const displayNames = createRegionDisplayNames(language);
+  const localized = COUNTRIES.map((country) => ({
+    ...country,
+    name: displayNames?.of(country.iso2) || country.name,
+    defaultName: country.name
+  }));
+  // localeCompare throws RangeError on a malformed locale tag, unlike Intl.DisplayNames above —
+  // fall back to the runtime's default collation rather than let a corrupted setting crash render.
+  try {
+    return localized.sort((a, b) => a.name.localeCompare(b.name, language));
+  } catch {
+    return localized.sort((a, b) => a.name.localeCompare(b.name));
+  }
 }
 
 export function getTwemojiAssetName(emoji) {

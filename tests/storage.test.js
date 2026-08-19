@@ -45,6 +45,8 @@ describe("storage utils", () => {
   it("normalizeLanguage aplica en-US por padrão", () => {
     expect(normalizeLanguage("pt-BR")).toBe("pt-BR");
     expect(normalizeLanguage("PT-BR")).toBe("pt-BR");
+    expect(normalizeLanguage("es-ES")).toBe("es-ES");
+    expect(normalizeLanguage("ES-es")).toBe("es-ES");
     expect(normalizeLanguage("de-DE")).toBe("en-US");
     expect(normalizeLanguage("")).toBe("en-US");
   });
@@ -202,8 +204,15 @@ describe("storage utils", () => {
     });
   });
 
+  it("setLanguage saves Spanish using its canonical locale", async () => {
+    await setLanguage("ES-es");
+    expect(chrome.storage.sync.set).toHaveBeenCalledWith({
+      "quick-whatsapp-contact.language": "es-ES"
+    });
+  });
+
   it("setLanguage aplica fallback para en-US quando idioma for invalido", async () => {
-    await setLanguage("es-ES");
+    await setLanguage("de-DE");
     expect(chrome.storage.sync.set).toHaveBeenCalledWith({
       "quick-whatsapp-contact.language": "en-US"
     });

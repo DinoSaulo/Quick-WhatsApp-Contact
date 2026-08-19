@@ -17,6 +17,11 @@ describe("normalizeFarewellLanguage", () => {
     expect(normalizeFarewellLanguage("PT-BR")).toBe("pt-BR");
   });
 
+  it("recognizes es-ES case-insensitively", () => {
+    expect(normalizeFarewellLanguage("es-ES")).toBe("es-ES");
+    expect(normalizeFarewellLanguage("ES-es")).toBe("es-ES");
+  });
+
   it("falls back to en-US for missing, unrecognized, or hostile input", () => {
     expect(normalizeFarewellLanguage()).toBe("en-US");
     expect(normalizeFarewellLanguage("")).toBe("en-US");
@@ -41,6 +46,13 @@ describe("pickFarewellCopy", () => {
 
     expect(copy.language).toBe("en-US");
     expect(copy.title).toContain("Thanks");
+  });
+
+  it("returns Spanish copy for ?lang=es-ES", () => {
+    const copy = pickFarewellCopy("?lang=es-ES");
+
+    expect(copy.language).toBe("es-ES");
+    expect(copy.title).toContain("Gracias");
   });
 
   it("defaults to en-US when the query string has no lang param", () => {

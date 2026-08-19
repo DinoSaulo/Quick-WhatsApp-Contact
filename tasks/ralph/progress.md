@@ -31,3 +31,9 @@ O `ralph-loop.ps1` também acrescenta uma linha de auditoria própria (commit, r
 **Bloqueios e aprendizados:**
 - Descobri que o dial code "55" é substring de outros (Albânia "355", Camboja "855", Tanzânia "255"), então o teste de busca por DDI sem `+` verifica só que BR *está incluído* nos resultados visíveis, não que é o único — já o teste com `+55` é exclusivo (nenhum outro dial code tem "+55" como substring).
 - Regra de comentário (máx. 2 linhas) do `lint:comments` pegou meu primeiro comentário de 4 linhas explicando a equivalência CSS — tive que condensar. Lição para próximas iterações: escrever comentários de rationale já enxutos de cara.
+
+### [ralph-loop] valida��o final � verify=OK test:install exit=0
+
+
+### [ralph-loop] valida��o final � verify=OK test:install exit=0
+

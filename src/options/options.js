@@ -1,6 +1,8 @@
 import {
-  COUNTRIES,
   getCountryByCode,
+  getCountryByIso2,
+  getLocalizedCountries,
+  getLocalizedCountryName,
   renderCountryFlagHtml,
   renderEmojiHtml
 } from "../utils/countries.js";
@@ -16,6 +18,14 @@ import {
 import { ONBOARDING_PAGE_PATH } from "../utils/tutorial.js";
 
 const PAGE_ORIGINS = ["http://*/*", "https://*/*"];
+
+// Each language shows the flags of its two main speaking regions, packaged as Twemoji
+// <img> tags — a native <option> can't render <img>, hence the custom picker below.
+const LANGUAGE_OPTIONS = [
+  { value: "en-US", labelKey: "optionLanguageEnglish", flagIso2Codes: ["US", "GB"] },
+  { value: "pt-BR", labelKey: "optionLanguagePortuguese", flagIso2Codes: ["BR", "PT"] },
+  { value: "es-ES", labelKey: "optionLanguageSpanish", flagIso2Codes: ["ES", "MX"] }
+];
 
 class ExtensionSettingsPage extends HTMLElement {
   async connectedCallback() {
@@ -48,8 +58,8 @@ class ExtensionSettingsPage extends HTMLElement {
       </button>
     `;
 
-    const items = COUNTRIES.map((country) => {
-      const searchKey = `${country.name.toLowerCase()} ${country.code.toLowerCase()} ${country.dialCode} +${country.dialCode} ${country.flag}`.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const items = getLocalizedCountries(this.settings.language).map((country) => {
+      const searchKey = `${country.name.toLowerCase()} ${country.defaultName.toLowerCase()} ${country.code.toLowerCase()} ${country.dialCode} +${country.dialCode} ${country.flag}`.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
       return `
         <button class="country-picker__option" type="button" data-country-code="${country.code}" data-search="${searchKey}">
           <span class="country-picker__flag">${renderCountryFlagHtml(country)}</span>
@@ -65,7 +75,7 @@ class ExtensionSettingsPage extends HTMLElement {
 
     const triggerNameMarkup = isAutomatic || !selectedCountry
       ? this.messages.optionDefaultCountryNone
-      : selectedCountry.name;
+      : getLocalizedCountryName(selectedCountry, this.settings.language);
 
     const triggerDdiMarkup = isAutomatic || !selectedCountry
       ? ""
@@ -90,6 +100,39 @@ class ExtensionSettingsPage extends HTMLElement {
             ${items}
           </div>
           <div class="country-picker__no-results" id="country-no-results" hidden>${this.messages.searchCountryNoResults}</div>
+        </div>
+      </div>
+    `;
+  }
+
+  renderLanguageFlagsMarkup(option) {
+    return option.flagIso2Codes
+      .map((iso2) => renderCountryFlagHtml(getCountryByIso2(iso2)))
+      .join("");
+  }
+
+  buildLanguagePickerMarkup(selectedLanguage) {
+    const selectedOption =
+      LANGUAGE_OPTIONS.find((option) => option.value === selectedLanguage) ?? LANGUAGE_OPTIONS[0];
+
+    const items = LANGUAGE_OPTIONS.map((option) => `
+      <button class="country-picker__option" type="button" data-language-code="${option.value}">
+        <span class="country-picker__flag country-picker__flag--pair">${this.renderLanguageFlagsMarkup(option)}</span>
+        <span class="country-picker__name">${this.messages[option.labelKey]}</span>
+      </button>
+    `).join("");
+
+    return `
+      <div class="country-picker" id="language-picker">
+        <input id="language-hidden" name="language" type="hidden" value="${selectedOption.value}" />
+        <button class="country-picker__trigger" id="language-trigger" type="button" aria-expanded="false">
+          <span class="country-picker__flag country-picker__flag--pair">${this.renderLanguageFlagsMarkup(selectedOption)}</span>
+          <span class="country-picker__name">${this.messages[selectedOption.labelKey]}</span>
+        </button>
+        <div class="country-picker__menu" id="language-menu" hidden>
+          <div class="country-picker__options" id="language-options">
+            ${items}
+          </div>
         </div>
       </div>
     `;
@@ -125,16 +168,9 @@ class ExtensionSettingsPage extends HTMLElement {
             </div>
 
             <div class="option-row">
-              <label class="option-label" for="language">${this.messages.optionLanguage}</label>
+              <label class="option-label" for="language-trigger">${this.messages.optionLanguage}</label>
               <div class="option-control">
-                <select id="language">
-                  <option value="en-US" ${
-                    this.settings.language === "en-US" ? "selected" : ""
-                  }>${this.messages.optionLanguageEnglish}</option>
-                  <option value="pt-BR" ${
-                    this.settings.language === "pt-BR" ? "selected" : ""
-                  }>${this.messages.optionLanguagePortuguese}</option>
-                </select>
+                ${this.buildLanguagePickerMarkup(this.settings.language)}
               </div>
             </div>
 
@@ -167,7 +203,9 @@ class ExtensionSettingsPage extends HTMLElement {
     const hiddenInput = this.querySelector("#default-country-hidden");
     const searchInput = this.querySelector("#country-search");
     const noResults = this.querySelector("#country-no-results");
-    const optionButtons = this.querySelectorAll(".country-picker__option");
+    // Scoped to #country-options: the language picker reuses the same .country-picker__option
+    // class, and an unscoped query here would also wire up its buttons as country options.
+    const optionButtons = this.querySelectorAll("#country-options .country-picker__option");
 
     const filterCountries = (queryText) => {
       const query = String(queryText || "")
@@ -245,7 +283,7 @@ class ExtensionSettingsPage extends HTMLElement {
             : `<span class="country-picker__flag">${renderCountryFlagHtml(selectedCountry)}</span>`;
           const nameMarkup = isAutomatic || !selectedCountry
             ? this.messages.optionDefaultCountryNone
-            : selectedCountry.name;
+            : getLocalizedCountryName(selectedCountry, this.settings.language);
           const ddiMarkup = isAutomatic || !selectedCountry
             ? ""
             : `+${selectedCountry.dialCode}`;
@@ -276,13 +314,77 @@ class ExtensionSettingsPage extends HTMLElement {
     });
   }
 
+  bindLanguagePickerEvents() {
+    const picker = this.querySelector("#language-picker");
+    const trigger = this.querySelector("#language-trigger");
+    const menu = this.querySelector("#language-menu");
+    const optionButtons = this.querySelectorAll("#language-options .country-picker__option");
+
+    const closeMenu = () => {
+      if (!menu || !trigger) {
+        return;
+      }
+      menu.hidden = true;
+      trigger.setAttribute("aria-expanded", "false");
+    };
+
+    trigger?.addEventListener("click", () => {
+      if (!menu) {
+        return;
+      }
+      const willOpen = menu.hidden;
+      menu.hidden = !willOpen;
+      trigger.setAttribute("aria-expanded", String(willOpen));
+    });
+
+    optionButtons.forEach((button) => {
+      button.addEventListener("click", async () => {
+        const languageCode = button.getAttribute("data-language-code") ?? LANGUAGE_OPTIONS[0].value;
+        closeMenu();
+        await this.applyLanguageChange(languageCode);
+      });
+    });
+
+    document.addEventListener("click", (event) => {
+      if (!picker || !menu || menu.hidden) {
+        return;
+      }
+      const target = event.target;
+      if (target instanceof Node && !picker.contains(target)) {
+        closeMenu();
+      }
+    });
+  }
+
+  // Shared by the language picker's option click; re-renders so every control (including the
+  // picker itself) reflects the newly selected language's translated labels.
+  async applyLanguageChange(languageCode) {
+    await setLanguage(languageCode);
+    const autoHighlightInput = this.querySelector("#auto-highlight");
+    const darkModeInput = this.querySelector("#dark-mode");
+    const hiddenCountryInput = this.querySelector("#default-country-hidden");
+    const mergedSettings = {
+      ...this.settings,
+      autoHighlightEnabled: Boolean(autoHighlightInput?.checked),
+      darkModeEnabled: Boolean(darkModeInput?.checked),
+      language: languageCode,
+      defaultCountry: hiddenCountryInput?.value ?? ""
+    };
+    await saveSettings(mergedSettings);
+    this.settings = mergedSettings;
+    this.messages = getMessages(this.settings.language);
+    document.documentElement.setAttribute("lang", this.settings.language);
+    this.render();
+    this.bindEvents();
+    this.showSavedState();
+  }
+
   bindEvents() {
     this.bindCountryPickerEvents();
+    this.bindLanguagePickerEvents();
 
     const autoHighlightInput = this.querySelector("#auto-highlight");
     const darkModeInput = this.querySelector("#dark-mode");
-    const languageInput = this.querySelector("#language");
-    const hiddenCountryInput = this.querySelector("#default-country-hidden");
     const tutorialButton = this.querySelector("#tutorial-button");
 
     tutorialButton?.addEventListener("click", () => {
@@ -317,24 +419,6 @@ class ExtensionSettingsPage extends HTMLElement {
       const isDark = Boolean(darkModeInput.checked);
       await setDarkModeEnabled(isDark);
       this.applyTheme(isDark);
-      this.showSavedState();
-    });
-
-    languageInput?.addEventListener("change", async () => {
-      await setLanguage(languageInput.value);
-      const mergedSettings = {
-        ...this.settings,
-        autoHighlightEnabled: Boolean(autoHighlightInput?.checked),
-        darkModeEnabled: Boolean(darkModeInput?.checked),
-        language: languageInput.value,
-        defaultCountry: hiddenCountryInput?.value ?? ""
-      };
-      await saveSettings(mergedSettings);
-      this.settings = mergedSettings;
-      this.messages = getMessages(this.settings.language);
-      document.documentElement.setAttribute("lang", this.settings.language);
-      this.render();
-      this.bindEvents();
       this.showSavedState();
     });
   }

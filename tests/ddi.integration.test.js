@@ -47,6 +47,18 @@ describe("country DDI screen mask integration", () => {
     window.close = vi.fn();
   });
 
+  it("shows country names localized to the extension's active language, not always Portuguese", async () => {
+    mockStorage.getSettings.mockResolvedValue({
+      language: "en-US",
+      darkModeEnabled: false,
+      defaultCountry: "DE"
+    });
+
+    const screen = await renderDdiScreen();
+    expect(screen.querySelector("#country-trigger").textContent).toContain("Germany");
+    expect(screen.querySelector("#country-trigger").textContent).not.toContain("Alemanha");
+  });
+
   it("uses the selected country's placeholder on first render", async () => {
     const screen = await renderDdiScreen();
 
@@ -248,6 +260,18 @@ describe("country DDI screen mask integration", () => {
   // ddi.js only toggles `hidden` (popup.js also sets style.display/aria-hidden); this proves the
   // shared stylesheet forces display:none on [hidden], so both screens look identical anyway.
   it("relies on the shared stylesheet to hide filtered-out options the same way popup.js does", () => {
+    expect(sharedStyles).toMatch(
+      /\.country-picker__option\[hidden\]\s*\{[^}]*display:\s*none\s*!important;/s
+    );
+  });
+
+  // The base rule sets display:flex (which would defeat plain `hidden` alone), so the [hidden]
+  // override below is load-bearing, not redundant — ddi.js's bare `.hidden = true` depends on it.
+  it("invariant — styles.css both needs and provides the [hidden] override that ddi.js's simpler filterCountries relies on", () => {
+    const baseRuleMatch = sharedStyles.match(/\.country-picker__option\s*\{([^}]*)\}/s);
+    expect(baseRuleMatch, "base .country-picker__option rule not found").not.toBeNull();
+    expect(baseRuleMatch[1]).toMatch(/display:\s*flex;/);
+
     expect(sharedStyles).toMatch(
       /\.country-picker__option\[hidden\]\s*\{[^}]*display:\s*none\s*!important;/s
     );

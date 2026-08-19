@@ -34,7 +34,7 @@ O projeto é distribuído como uma extensão Manifest V3 para **Chrome/Chromium*
 - 🚀 **Abertura inteligente** — número com `+` abre o WhatsApp diretamente; número sem DDI abre uma tela para completar o país e o número.
 - 💾 **Persistência** — o último país usado e todas as preferências são salvos via `chrome.storage.sync`.
 - 👋 **Tutorial de boas-vindas** — na primeira instalação, abre um guia ilustrado de seis etapas que apresenta o realce automático, o ícone da extensão, o preenchimento do popup e o envio pelo WhatsApp.
-- 🌐 **Idioma ajustável no tutorial** — alterne entre Inglês e Português na primeira etapa; a escolha é aplicada imediatamente e salva para as demais telas.
+- 🌐 **Idioma ajustável no tutorial** — alterne entre Inglês, Português e Espanhol na primeira etapa; a escolha é aplicada imediatamente e salva para as demais telas.
 - 🔁 **Tutorial reutilizável** — reabra o guia a qualquer momento pela página de configurações.
 - ☕ **Apoio ao projeto** — o botão "Buy me a coffee" abre opções de contribuição por PIX, MB WAY/Revolut e PayPal, com QR codes locais e ações para copiar ou abrir quando disponíveis.
 - 🛡️ **Renderização protegida** — números vindos de seleções ou parâmetros de URL são normalizados antes de chegar à interface; dados do modal são escapados e links externos de doação aceitam somente HTTPS.

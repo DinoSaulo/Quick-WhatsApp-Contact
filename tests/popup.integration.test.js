@@ -254,6 +254,23 @@ describe("popup integration", () => {
     expect(popup.querySelector("#country-hidden").value).toBe("BR");
   });
 
+  it("shows country names localized to the extension's active language, not always Portuguese", async () => {
+    mockStorage.getSettings.mockResolvedValue({
+      language: "en-US",
+      darkModeEnabled: false,
+      autoHighlightEnabled: true,
+      defaultCountry: "DE"
+    });
+
+    const popup = await renderPopup();
+    expect(popup.querySelector("#country-trigger").textContent).toContain("Germany");
+    expect(popup.querySelector("#country-trigger").textContent).not.toContain("Alemanha");
+
+    popup.querySelector("#country-trigger").click();
+    const germanyOption = popup.querySelector('[data-country-code="DE"]');
+    expect(germanyOption.textContent).toContain("Germany");
+  });
+
   it("shows the placeholder for the initially selected country", async () => {
     mockStorage.getLastCountry.mockResolvedValue("PT");
 

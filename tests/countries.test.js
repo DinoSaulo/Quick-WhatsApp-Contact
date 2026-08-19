@@ -3,6 +3,8 @@ import {
   getCountryByCode,
   getCountryByIso2,
   getDefaultCountryCodeForLanguage,
+  getLocalizedCountries,
+  getLocalizedCountryName,
   getTwemojiAssetName,
   renderEmojiHtml,
   renderCountryFlagHtml
@@ -48,7 +50,8 @@ describe("countries ddi list", () => {
     expect(getDefaultCountryCodeForLanguage("pt-BR")).toBe("BR");
     expect(getDefaultCountryCodeForLanguage("PT-br")).toBe("BR");
     expect(getDefaultCountryCodeForLanguage("en-US")).toBe("US");
-    expect(getDefaultCountryCodeForLanguage("es-ES")).toBe("US");
+    expect(getDefaultCountryCodeForLanguage("es-ES")).toBe("ES");
+    expect(getDefaultCountryCodeForLanguage("ES-es")).toBe("ES");
   });
 
   it("renders a local Twemoji flag without remote resources", () => {
@@ -84,6 +87,34 @@ describe("countries ddi list", () => {
     expect(html).toContain("../../assets/twemoji/1f310.svg");
     expect(html).toContain('aria-hidden="true"');
     expect(html).not.toContain("http");
+  });
+
+  it("localizes a single country's name to the requested language", () => {
+    const brazil = getCountryByCode("BR");
+    expect(getLocalizedCountryName(brazil, "en-US")).toBe("Brazil");
+    expect(getLocalizedCountryName(brazil, "pt-BR")).toBe("Brasil");
+    expect(getLocalizedCountryName(brazil, "es-ES")).toBe("Brasil");
+  });
+
+  it("falls back to the default name for an unresolvable language tag", () => {
+    const brazil = getCountryByCode("BR");
+    expect(getLocalizedCountryName(brazil, "")).toBe("Brasil");
+    expect(getLocalizedCountryName(null, "en-US")).toBe("");
+  });
+
+  it("relocalizes and re-sorts the whole country list per language", () => {
+    const enCountries = getLocalizedCountries("en-US");
+    const germany = enCountries.find((country) => country.code === "DE");
+
+    expect(germany.name).toBe("Germany");
+    expect(germany.defaultName).toBe("Alemanha");
+    expect(germany.dialCode).toBe("49");
+    const sortedNames = enCountries.map((country) => country.name);
+    expect(sortedNames).toEqual([...sortedNames].sort((a, b) => a.localeCompare(b, "en-US")));
+  });
+
+  it("keeps every country entry when localizing, even if a locale can't be resolved", () => {
+    expect(getLocalizedCountries("")).toHaveLength(COUNTRIES.length);
   });
 
   it("uses an absolute extension URL when the Chrome runtime is available", () => {

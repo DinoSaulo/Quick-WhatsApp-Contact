@@ -267,4 +267,54 @@ describe("onboarding tutorial page", () => {
     expect(page.querySelector("#tutorial-next").textContent.trim()).toBe("Próximo");
     expect(document.documentElement.getAttribute("lang")).toBe("pt-BR");
   });
+
+  it("offers Spanish as a language option, without a locale suffix", async () => {
+    const page = await renderTutorialPage();
+    const spanishOption = page.querySelector('#tutorial-language option[value="es-ES"]');
+
+    expect(spanishOption).not.toBeNull();
+    expect(spanishOption.textContent.trim()).toBe("Spanish");
+  });
+
+  it("switches the tutorial to Spanish and persists it when the select changes", async () => {
+    const page = await renderTutorialPage();
+    const languageSelect = page.querySelector("#tutorial-language");
+
+    languageSelect.value = "es-ES";
+    languageSelect.dispatchEvent(new Event("change", { bubbles: true }));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(mockStorage.setLanguage).toHaveBeenCalledWith("es-ES");
+    expect(page.querySelector(".title").textContent).toBe(
+      "¡Te damos la bienvenida a Quick WhatsApp Contact!"
+    );
+    expect(document.documentElement.getAttribute("lang")).toBe("es-ES");
+    expect(page.querySelector("#tutorial-language").value).toBe("es-ES");
+  });
+
+  it("keeps the Spanish language chosen on the welcome step after navigating to later steps", async () => {
+    const page = await renderTutorialPage();
+    const languageSelect = page.querySelector("#tutorial-language");
+
+    languageSelect.value = "es-ES";
+    languageSelect.dispatchEvent(new Event("change", { bubbles: true }));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    page.querySelector("#tutorial-next").click();
+    page.querySelector("#tutorial-next").click();
+
+    expect(page.querySelector(".title").textContent).toBe("O ábrela desde la barra de herramientas");
+    expect(page.querySelector("#tutorial-back").textContent.trim()).toBe("Atrás");
+  });
+
+  it("shows the tutorial in Spanish when that is the saved language", async () => {
+    mockStorage.getSettings.mockResolvedValue({ language: "es-ES", darkModeEnabled: false });
+    const page = await renderTutorialPage();
+
+    expect(page.querySelector(".title").textContent).toBe(
+      "¡Te damos la bienvenida a Quick WhatsApp Contact!"
+    );
+    expect(page.querySelector("#tutorial-next").textContent.trim()).toBe("Siguiente");
+    expect(document.documentElement.getAttribute("lang")).toBe("es-ES");
+  });
 });
