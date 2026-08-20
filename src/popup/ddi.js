@@ -161,7 +161,7 @@ class CountryDdiScreen extends HTMLElement {
         .replace(/[\u0300-\u036f]/g, "");
       let visibleCount = 0;
       optionButtons.forEach((button) => {
-        const searchData = button.getAttribute("data-search") || "";
+        const searchData = button.dataset.search || "";
         const matches = !query || searchData.includes(query);
         button.hidden = !matches;
         if (matches) {
@@ -215,7 +215,7 @@ class CountryDdiScreen extends HTMLElement {
 
     optionButtons.forEach((button) => {
       button.addEventListener("click", () => {
-        const code = button.getAttribute("data-country-code") ?? DEFAULT_COUNTRY_CODE;
+        const code = button.dataset.countryCode ?? DEFAULT_COUNTRY_CODE;
         const selectedCountry = getCountryByCode(code);
         if (hiddenInput) {
           hiddenInput.value = selectedCountry.code;
