@@ -285,7 +285,7 @@ jobs:
   # ── Level 4: Installation test (all platforms). Linux entries run in a bare distro container;
   # `setup` bootstraps git/curl/nodejs/npm first. `chromeMajor` is asserted below so drift fails loudly.
   installation-test-chrome:
-    name: "4 · Instalacao · ${{ matrix.label }}"
+    name: "4 · Instalação · ${{ matrix.label }}"
     needs: [integration-tests, security-tests]
     runs-on: ${{ matrix.os }}
     container: ${{ matrix.container }}
@@ -642,7 +642,7 @@ jobs:
   # ── Level 4e: Installation test pinned to Firefox N / N-1 / N-2, the Firefox counterpart of
   # installation-test-pinned (downloads each major from Mozilla's archive). Ubuntu-only, same precise-version-coverage reasoning as the Chrome pinned job.
   installation-test-firefox-pinned:
-    name: "4e · Instalacao Firefox ${{ matrix.firefoxVersion }}"
+    name: "4e · Instalação Firefox ${{ matrix.firefoxVersion }}"
     needs: [security-tests, resolve-firefox-versions, installation-test-firefox]
     runs-on: ubuntu-latest
     timeout-minutes: 15
