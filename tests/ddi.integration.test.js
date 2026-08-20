@@ -96,6 +96,20 @@ describe("country DDI screen mask integration", () => {
     expect(input.value).toBe("912 345 678");
   });
 
+  // Every rendered option always carries data-country-code, so this only happens via DOM
+  // tampering — proves dataset.countryCode's `?? DEFAULT_COUNTRY_CODE` fallback actually runs.
+  it("falls back to the default country when a clicked option is missing its data-country-code attribute", async () => {
+    const screen = await renderDdiScreen();
+    const trigger = screen.querySelector("#country-trigger");
+
+    trigger.click();
+    const targetOption = screen.querySelector('[data-country-code="BR"]');
+    targetOption.removeAttribute("data-country-code");
+    targetOption.click();
+
+    expect(screen.querySelector("#country-hidden").value).toBe("US");
+  });
+
   it("reformats the current value and placeholder after changing country", async () => {
     const screen = await renderDdiScreen();
     const input = screen.querySelector("#local-number");
@@ -227,6 +241,22 @@ describe("country DDI screen mask integration", () => {
       .filter((option) => !option.hidden)
       .map((option) => option.getAttribute("data-country-code"));
     expect(visibleCodes).toEqual(["MX"]);
+  });
+
+  // Every rendered option always carries data-search — this only happens if the attribute is
+  // stripped after render, exercising the `|| ""` fallback on filterCountries's line 164.
+  it("hides an option whose data-search attribute was removed instead of throwing", async () => {
+    const screen = await renderDdiScreen();
+    const trigger = screen.querySelector("#country-trigger");
+    const searchInput = screen.querySelector("#country-search");
+    const targetOption = screen.querySelector('[data-country-code="BR"]');
+
+    trigger.click();
+    targetOption.removeAttribute("data-search");
+    searchInput.value = "brasil";
+    searchInput.dispatchEvent(new Event("input", { bubbles: true }));
+
+    expect(targetOption.hidden).toBe(true);
   });
 
   it("closes the search dropdown when Escape key is pressed", async () => {

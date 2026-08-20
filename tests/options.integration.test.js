@@ -239,6 +239,20 @@ describe("options page integration", () => {
     expect(document.documentElement.lang).toBe("pt-BR");
   });
 
+  // Every rendered option always carries data-language-code, so this only happens via DOM
+  // tampering — proves dataset.languageCode's `?? LANGUAGE_OPTIONS[0].value` fallback runs.
+  it("falls back to the first language option when a clicked option is missing its data-language-code attribute", async () => {
+    const page = await renderOptionsPage();
+
+    page.querySelector("#language-trigger").click();
+    const targetOption = page.querySelector('[data-language-code="pt-BR"]');
+    targetOption.removeAttribute("data-language-code");
+    targetOption.click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(mockStorage.setLanguage).toHaveBeenCalledWith("en-US");
+  });
+
   it("relocalizes the already-selected default country's name when the extension language changes", async () => {
     mockStorage.getSettings.mockResolvedValue({
       language: "en-US",
@@ -335,6 +349,22 @@ describe("options page integration", () => {
     const visibleAfterNoMatch = Array.from(options).filter((option) => !option.hidden);
     expect(visibleAfterNoMatch.length).toBe(0);
     expect(noResults.hidden).toBe(false);
+  });
+
+  // Every rendered option always carries data-search — this only happens via DOM tampering,
+  // exercising the `|| ""` fallback on filterCountries's line instead of skipping it.
+  it("hides an option whose data-search attribute was removed instead of throwing", async () => {
+    const page = await renderOptionsPage();
+    const trigger = page.querySelector("#country-trigger");
+    const searchInput = page.querySelector("#country-search");
+    const targetOption = page.querySelector('[data-country-code="BR"]');
+
+    trigger.click();
+    targetOption.removeAttribute("data-search");
+    searchInput.value = "brasil";
+    searchInput.dispatchEvent(new Event("input", { bubbles: true }));
+
+    expect(targetOption.hidden).toBe(true);
   });
 
   it("also matches the locale-appropriate spelling, not just the default Portuguese one", async () => {
@@ -434,6 +464,22 @@ describe("options page integration", () => {
     expect(trigger.querySelector(".country-picker__flag-img")?.src).toBe(
       "chrome-extension://options-id/assets/twemoji/1f310.svg"
     );
+  });
+
+  // Every rendered option always carries data-country-code (even Automatic, as ""), so this only
+  // happens via DOM tampering — proves dataset.countryCode's `?? ""` fallback actually runs.
+  it("falls back to Automatic when a clicked option is missing its data-country-code attribute", async () => {
+    const page = await renderOptionsPage();
+    const trigger = page.querySelector("#country-trigger");
+
+    trigger.click();
+    const targetOption = page.querySelector('[data-country-code="BR"]');
+    targetOption.removeAttribute("data-country-code");
+    targetOption.click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(mockStorage.setDefaultCountry).toHaveBeenCalledWith("");
+    expect(page.querySelector("#default-country-hidden").value).toBe("");
   });
 
   // Regression from a real SAST finding (docs/THREAT_MODEL.md): options.js used to interpolate

@@ -105,6 +105,20 @@ describe("popup integration", () => {
     );
   });
 
+  // Every rendered option always carries data-country-code, so this only happens via DOM
+  // tampering — proves dataset.countryCode's `?? DEFAULT_COUNTRY_CODE` fallback actually runs.
+  it("falls back to the default country when a clicked option is missing its data-country-code attribute", async () => {
+    const popup = await renderPopup();
+    const trigger = popup.querySelector("#country-trigger");
+
+    trigger.click();
+    const targetOption = popup.querySelector('[data-country-code="BR"]');
+    targetOption.removeAttribute("data-country-code");
+    targetOption.click();
+
+    expect(popup.querySelector("#country-hidden").value).toBe("US");
+  });
+
   it("renders all popup country flags without HTTP image sources", async () => {
     const popup = await renderPopup();
     const flagSources = Array.from(
@@ -463,6 +477,22 @@ describe("popup integration", () => {
     const visibleAfterNoMatch = Array.from(options).filter((option) => !option.hidden);
     expect(visibleAfterNoMatch.length).toBe(0);
     expect(noResults.hidden).toBe(false);
+  });
+
+  // Every rendered option always carries data-search — this only happens if the attribute is
+  // stripped after render, exercising the `|| ""` fallback on filterCountries's line.
+  it("hides an option whose data-search attribute was removed instead of throwing", async () => {
+    const popup = await renderPopup();
+    const trigger = popup.querySelector("#country-trigger");
+    const searchInput = popup.querySelector("#country-search");
+    const targetOption = popup.querySelector('[data-country-code="BR"]');
+
+    trigger.click();
+    targetOption.removeAttribute("data-search");
+    searchInput.value = "brasil";
+    searchInput.dispatchEvent(new Event("input", { bubbles: true }));
+
+    expect(targetOption.hidden).toBe(true);
   });
 
   it("filters country dropdown options by dial code with or without the plus prefix", async () => {
