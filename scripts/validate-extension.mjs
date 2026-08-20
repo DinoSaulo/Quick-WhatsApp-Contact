@@ -9,6 +9,21 @@ const FORBIDDEN_PATTERNS = [
   { pattern: /<script[^>]+src=["']https?:\/\//i, label: "remote script" },
   { pattern: /\bimport\s*\(\s*["']https?:\/\//, label: "remote dynamic import" },
 ];
+const ALL_PAGES_PATTERN_SUFFIX = "://*/*";
+const REQUIRED_OPTIONAL_HOST_PERMISSIONS = new Set(
+  ["http", "https"].map((protocol) => `${protocol}${ALL_PAGES_PATTERN_SUFFIX}`),
+);
+
+export function hasExpectedOptionalHostPermissions(permissions) {
+  if (!Array.isArray(permissions)) return false;
+
+  const uniquePermissions = new Set(permissions);
+  return (
+    permissions.length === REQUIRED_OPTIONAL_HOST_PERMISSIONS.size &&
+    uniquePermissions.size === REQUIRED_OPTIONAL_HOST_PERMISSIONS.size &&
+    permissions.every((permission) => REQUIRED_OPTIONAL_HOST_PERMISSIONS.has(permission))
+  );
+}
 
 export function collectRuntimeFiles(directory, readDirectory = readdirSync) {
   return readDirectory(directory, { withFileTypes: true }).flatMap((entry) => {
@@ -34,8 +49,7 @@ export function validateExtension({
   assert(!manifest.permissions?.includes("tabs"), "The broad tabs permission is not allowed");
   assert(!manifest.content_scripts, "Page helpers must use optional host access");
   assert(
-    JSON.stringify(manifest.optional_host_permissions) ===
-      JSON.stringify(["http://*/*", "https://*/*"]),
+    hasExpectedOptionalHostPermissions(manifest.optional_host_permissions),
     "Optional host permissions must be limited to HTTP and HTTPS pages",
   );
   assert(

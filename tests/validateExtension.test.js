@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   collectRuntimeFiles,
+  hasExpectedOptionalHostPermissions,
   reportExtensionValidation,
   validateExtension,
 } from "../scripts/validate-extension.mjs";
@@ -26,6 +27,20 @@ function validManifest() {
 }
 
 describe("validateExtension", () => {
+  it("validates the exact optional host permission set regardless of order", () => {
+    expect(hasExpectedOptionalHostPermissions(["http://*/*", "https://*/*"])).toBe(true);
+    expect(hasExpectedOptionalHostPermissions(["https://*/*", "http://*/*"])).toBe(true);
+  });
+
+  it("rejects incomplete, duplicated, extra, or malformed host permissions", () => {
+    expect(hasExpectedOptionalHostPermissions(["https://*/*"])).toBe(false);
+    expect(hasExpectedOptionalHostPermissions(["http://*/*", "http://*/*"])).toBe(false);
+    expect(
+      hasExpectedOptionalHostPermissions(["http://*/*", "https://*/*", "<all_urls>"]),
+    ).toBe(false);
+    expect(hasExpectedOptionalHostPermissions(undefined)).toBe(false);
+  });
+
   let root;
 
   beforeEach(() => {
