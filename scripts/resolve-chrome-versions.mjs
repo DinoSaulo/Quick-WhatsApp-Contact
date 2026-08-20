@@ -1,31 +1,49 @@
-// Resolves the 3 most recent Chrome for Testing majors (N, N-1, N-2) so ci.yml's installation-test-pinned
-// matrix can pin to each deliberately. Selection logic lives in chrome-version-selection.mjs (unit-testable).
+// Resolves the 3 most recent Chrome for Testing majors for the pinned CI matrix.
+// Selection logic lives in chrome-version-selection.mjs so it can evolve independently.
+import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { selectLastThreeMajors } from "../tests/installation/chrome-version-selection.mjs";
 
-const KNOWN_GOOD_VERSIONS_URL =
+export const CHROME_KNOWN_GOOD_VERSIONS_URL =
   "https://googlechromelabs.github.io/chrome-for-testing/known-good-versions-with-downloads.json";
 
-const response = await fetch(KNOWN_GOOD_VERSIONS_URL);
-if (!response.ok) {
-  throw new Error(`Falha ao consultar ${KNOWN_GOOD_VERSIONS_URL}: HTTP ${response.status}`);
+export async function resolveChromeVersions({ extraVersion, request = fetch } = {}) {
+  const response = await request(CHROME_KNOWN_GOOD_VERSIONS_URL);
+  if (!response.ok) {
+    throw new Error(
+      `Falha ao consultar ${CHROME_KNOWN_GOOD_VERSIONS_URL}: HTTP ${response.status}`,
+    );
+  }
+
+  const versionsData = await response.json();
+  const versions = selectLastThreeMajors(versionsData);
+  if (versions.length !== 3) {
+    throw new Error(
+      `Esperava 3 versoes major do Chrome, encontrei ${versions.length}: ${JSON.stringify(versions)}`,
+    );
+  }
+
+  const normalizedExtraVersion = extraVersion?.trim();
+  if (normalizedExtraVersion && !versions.includes(normalizedExtraVersion)) {
+    versions.push(normalizedExtraVersion);
+  }
+  return versions;
 }
 
-const versionsData = await response.json();
-const versions = selectLastThreeMajors(versionsData);
-
-if (versions.length !== 3) {
-  throw new Error(
-    `Esperava 3 versoes major do Chrome, encontrei ${versions.length}: ${JSON.stringify(versions)}`,
-  );
+export function formatChromeVersionsOutput(versions) {
+  return `versions=${JSON.stringify(versions)}`;
 }
 
-// Optional extra exact version (e.g. "151.0.7922.71") from ci.yml's workflow_dispatch input —
-// replaces what used to be a hardcoded, easy-to-forget matrix `include` entry for ad-hoc bisection.
-const extraVersion = process.argv[2]?.trim();
-if (extraVersion && !versions.includes(extraVersion)) {
-  versions.push(extraVersion);
+export async function runChromeVersionResolver({
+  extraVersion = process.argv[2],
+  request = fetch,
+  logger = console,
+} = {}) {
+  const versions = await resolveChromeVersions({ extraVersion, request });
+  logger.log(formatChromeVersionsOutput(versions));
+  return versions;
 }
 
-// Consumed by the workflow step as `>> "$GITHUB_OUTPUT"`, then read back by
-// installation-test-pinned's matrix via fromJson(needs.resolve-chrome-versions.outputs.versions).
-console.log(`versions=${JSON.stringify(versions)}`);
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  await runChromeVersionResolver();
+}
