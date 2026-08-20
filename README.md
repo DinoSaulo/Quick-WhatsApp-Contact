@@ -9,6 +9,7 @@
 `Chrome Extension` · `Firefox WebExtension` · `Safari Web Extension` · `Manifest V3` · `Vanilla JS` · `Vitest`
 
 [![Pipeline](https://github.com/DinoSaulo/Quick-WhatsApp-Contact/actions/workflows/ci.yml/badge.svg)](https://github.com/DinoSaulo/Quick-WhatsApp-Contact/actions/workflows/ci.yml)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=quick-whatsapp-contact&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=quick-whatsapp-contact)
 <a href="https://chromewebstore.google.com/detail/quick-whatsapp-contact/eplpemmogghafabofbbopdilpjnlolpk" target="_blank" rel="noopener noreferrer"><img src="https://img.shields.io/badge/Chrome_Web_Store-Install-4285F4?logo=googlechrome&amp;logoColor=white" alt="Install from the Chrome Web Store"></a>
 
 ---
@@ -228,18 +229,19 @@ npx vitest run tests/phone.test.js
 
 ### 🔄 Pipeline de CI/CD
 
-O repositório usa GitHub Actions com 6 níveis sequenciais. Cada nível precisa passar em todas as plataformas antes do próximo começar.
+O repositório usa GitHub Actions com 7 níveis sequenciais (0 a 6). Cada nível precisa passar em todas as plataformas antes do próximo começar.
 
 | Nível | Job | Plataformas |
 |:---:|---|---|
-| 1️⃣ | Testes unitários + lint | Ubuntu · Fedora · macOS · Windows |
+| 0️⃣ | Lint + estilo, em paralelo com a análise estática do SonarQube Cloud | Ubuntu |
+| 1️⃣ | Testes unitários | Ubuntu · Fedora · macOS · Windows |
 | 2️⃣ | Testes de integração | Ubuntu · Fedora · macOS · Windows |
 | 3️⃣ | Segurança (SAST + testes de segurança) | Ubuntu |
 | 4️⃣ | Ciclo de vida no Chrome e Firefox; conversão/compilação para Safari e smoke test WebKit | Ubuntu · Fedora · Debian · Rocky Linux · Arch Linux · macOS · Windows |
 | 5️⃣ | Validação do pacote Manifest V3 | Ubuntu |
 | 6️⃣ | Publicação da release | Ubuntu *(somente branch `main`)* |
 
-Chrome e Firefox são testados em diferentes sistemas e distribuições, além de matrizes com as três versões principais mais recentes (N, N-1 e N-2). Os testes usam helpers Puppeteer, tentativas controladas para falhas transitórias e artefatos de diagnóstico. O pacote Firefox também passa pelo validador `web-ext`. No job macOS do Safari, falhas na conversão ou compilação com Xcode bloqueiam a pipeline; o smoke test separado do WebKit é informativo (`best-effort`) porque o Playwright não carrega Safari Web Extensions.
+O nível 0 roda o lint e o scan do SonarQube Cloud em paralelo; os testes unitários (nível 1) só começam depois que ambos — incluindo o Quality Gate do Sonar — passarem. Chrome e Firefox são testados em diferentes sistemas e distribuições, além de matrizes com as três versões principais mais recentes (N, N-1 e N-2). Os testes usam helpers Puppeteer, tentativas controladas para falhas transitórias e artefatos de diagnóstico. O pacote Firefox também passa pelo validador `web-ext`. No job macOS do Safari, falhas na conversão ou compilação com Xcode bloqueiam a pipeline; o smoke test separado do WebKit é informativo (`best-effort`) porque o Playwright não carrega Safari Web Extensions.
 
 ---
 
@@ -250,6 +252,7 @@ Chrome e Firefox são testados em diferentes sistemas e distribuições, além d
 - **Web Components** nativos (`HTMLElement` + `customElements.define`)
 - **Vitest** + **jsdom** para testes unitários e de integração
 - **web-ext** para validação do pacote Firefox antes da publicação
+- **SonarQube Cloud** para análise estática (bugs, vulnerabilidades e code smells) como gate da CI
 - **Xcode** + `safari-web-extension-converter` para converter e compilar o build no macOS
 - **Playwright WebKit** para o smoke test complementar do motor usado na validação do Safari
 
