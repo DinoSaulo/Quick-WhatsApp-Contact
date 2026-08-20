@@ -17,6 +17,13 @@ if (!version) {
   process.exit(1);
 }
 
+// Chrome for Testing versions are always MAJOR.MINOR.BUILD.PATCH. Validating before `version`
+// reaches resolve()/execFileSync() below stops a crafted argument from escaping the target dir.
+if (!/^\d+\.\d+\.\d+\.\d+$/.test(version)) {
+  console.error(`Invalid Chrome version: ${version}`);
+  process.exit(1);
+}
+
 // Idempotent: ci.yml caches .chrome-for-testing/<version> keyed by exact version (actions/cache),
 // so a cache hit means this executable already exists — skip the network round-trip entirely.
 const cachedExecutablePath = resolve(".chrome-for-testing", version, "chrome-linux64", "chrome");

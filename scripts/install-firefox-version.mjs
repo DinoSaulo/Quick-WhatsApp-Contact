@@ -15,6 +15,13 @@ if (!version) {
   process.exit(1);
 }
 
+// Firefox releases are dot-separated numeric segments. Validating before `version` reaches
+// resolve()/execFileSync() below stops a crafted argument from escaping the target dir.
+if (!/^\d+(\.\d+){1,2}$/.test(version)) {
+  console.error(`Invalid Firefox version: ${version}`);
+  process.exit(1);
+}
+
 // Idempotent: ci.yml caches .firefox-releases/<version> keyed by exact version (actions/cache),
 // so a cache hit means this executable already exists — skip the network round-trip entirely.
 const cachedExecutablePath = resolve(".firefox-releases", version, "firefox", "firefox");
