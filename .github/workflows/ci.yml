@@ -427,10 +427,14 @@ jobs:
       - name: Preparar ambiente Node.js
         uses: ./.github/actions/setup-node-env
 
+      # EXTRA_CHROME_VERSION via env (nao ${{ inputs.* }} direto no run:) - input de
+      # workflow_dispatch e controlado por quem dispara, interpolar sem env: seria script injection.
       - name: Resolver as 3 versões major mais recentes do Chrome
         id: resolve
+        env:
+          EXTRA_CHROME_VERSION: ${{ inputs.extra_chrome_version }}
         run: >-
-          node scripts/resolve-chrome-versions.mjs "${{ inputs.extra_chrome_version }}"
+          node scripts/resolve-chrome-versions.mjs "$EXTRA_CHROME_VERSION"
           >> "$GITHUB_OUTPUT"
 
   # ── Level 4b: Installation test pinned to Chrome N / N-1 / N-2, downloaded straight from Chrome
@@ -659,10 +663,13 @@ jobs:
       - name: Preparar ambiente Node.js
         uses: ./.github/actions/setup-node-env
 
+      # ${{ inputs.extra_firefox_version }} direto no run: (script injection via workflow_dispatch).
       - name: Resolver as 3 versões major mais recentes do Firefox
         id: resolve
+        env:
+          EXTRA_FIREFOX_VERSION: ${{ inputs.extra_firefox_version }}
         run: >-
-          node scripts/resolve-firefox-versions.mjs "${{ inputs.extra_firefox_version }}"
+          node scripts/resolve-firefox-versions.mjs "$EXTRA_FIREFOX_VERSION"
           >> "$GITHUB_OUTPUT"
 
   # ── Level 4e: Installation test pinned to Firefox N / N-1 / N-2, the Firefox counterpart of
