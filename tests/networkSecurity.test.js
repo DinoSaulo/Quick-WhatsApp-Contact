@@ -34,9 +34,8 @@ describe("network egress allow-list", () => {
 
   it("only ever builds outbound URLs on the https scheme", () => {
     const offenders = [];
-    // Allowed "http://" text that isn't a network request: XML/SVG namespace declarations, and
-    // "http://*/*" match patterns (PAGE_ORIGINS) — a host-permission string, not a fetched URL.
-    const allowedHttpPatterns = [/http:\/\/www\.w3\.org\//, /^http:\/\/\*\/\*$/];
+    // XML/SVG namespace declarations are identifiers, not network destinations.
+    const allowedHttpPatterns = [/http:\/\/www\.w3\.org\//];
 
     for (const file of sourceFiles) {
       const source = readFileSync(file, "utf8");

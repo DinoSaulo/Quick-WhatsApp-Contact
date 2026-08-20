@@ -7,6 +7,7 @@ import {
   renderEmojiHtml
 } from "../utils/countries.js";
 import { getMessages } from "../utils/i18n.js";
+import { PAGE_ORIGINS } from "../utils/pageOrigins.js";
 import {
   getSettings,
   saveSettings,
@@ -16,8 +17,6 @@ import {
   setLanguage
 } from "../utils/storage.js";
 import { ONBOARDING_PAGE_PATH } from "../utils/tutorial.js";
-
-const PAGE_ORIGINS = ["http://*/*", "https://*/*"];
 
 // Each language shows the flags of its two main speaking regions, packaged as Twemoji
 // <img> tags — a native <option> can't render <img>, hence the custom picker below.

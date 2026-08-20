@@ -6,6 +6,7 @@ import {
   isLikelyPhoneText,
   normalizeSelectedNumber
 } from "./utils/phone.js";
+import { PAGE_ORIGINS } from "./utils/pageOrigins.js";
 import {
   getAutoHighlightEnabled,
   getLanguage,
@@ -19,7 +20,6 @@ const PROCESS_SELECTION_MESSAGE = "quick-whatsapp-contact.process-selection";
 const LANGUAGE_STORAGE_KEY = "quick-whatsapp-contact.language";
 const AUTO_HIGHLIGHT_ENABLED_KEY = "quick-whatsapp-contact.auto-highlight-enabled";
 const PAGE_HELPERS_SCRIPT_ID = "quick-whatsapp-contact.page-helpers";
-const PAGE_ORIGINS = ["http://*/*", "https://*/*"];
 // Hosted outside the packed extension (GitHub Pages, same as PRIVACY.md/docs/privacy.html):
 // chrome-extension:// pages are unreachable by the time this URL actually opens, after removal.
 const FAREWELL_PAGE_URL = "https://dinosaulo.github.io/Quick-WhatsApp-Contact/farewell.html";
