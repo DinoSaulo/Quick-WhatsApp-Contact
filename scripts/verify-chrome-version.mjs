@@ -7,9 +7,11 @@ import { findBrowserExecutable } from "../tests/installation/browser-environment
 
 const POWERSHELL_EXECUTABLE =
   "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe";
-const WINDOWS_VERSION_SCRIPT =
-  "& { param([string] $ExecutablePath) " +
-  "(Get-Item -LiteralPath $ExecutablePath).VersionInfo.ProductVersion }";
+// powershell.exe -Command re-parses argv as PowerShell text, splitting a path passed as a
+// separate trailing arg on whitespace — embedding it pre-quoted here is what survives that.
+const escapePowerShellSingleQuoted = (value) => value.replace(/'/g, "''");
+const buildWindowsVersionScript = (executablePath) =>
+  `(Get-Item -LiteralPath '${escapePowerShellSingleQuoted(executablePath)}').VersionInfo.ProductVersion`;
 const TRUSTED_WINDOWS_ENV = Object.freeze({
   ...process.env,
   PATH:
@@ -29,7 +31,7 @@ export function readChromeVersion(
   if (platform === "win32") {
     return execute(
       POWERSHELL_EXECUTABLE,
-      ["-NoProfile", "-NonInteractive", "-Command", WINDOWS_VERSION_SCRIPT, executablePath],
+      ["-NoProfile", "-NonInteractive", "-Command", buildWindowsVersionScript(executablePath)],
       { encoding: "utf8", env: TRUSTED_WINDOWS_ENV },
     ).trim();
   }

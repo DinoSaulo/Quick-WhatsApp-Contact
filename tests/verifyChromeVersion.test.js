@@ -19,7 +19,7 @@ describe("readChromeVersion", () => {
     );
   });
 
-  it("uses a fixed PowerShell path and passes the browser path as a separate argument", () => {
+  it("uses a fixed PowerShell path and embeds the browser path inside the -Command string", () => {
     const execute = vi.fn(() => "151.0.1.0\r\n");
     const chromePath = "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
 
@@ -28,12 +28,36 @@ describe("readChromeVersion", () => {
     expect(powershellPath).toBe(
       "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
     );
-    expect(args.at(-1)).toBe(chromePath);
-    expect(args[3]).not.toContain(chromePath);
+    // powershell.exe -Command re-parses argv as PowerShell text, so a path passed as its own
+    // trailing arg gets split on whitespace instead of bound as one value — see readChromeVersion.
+    expect(args).toHaveLength(4);
+    expect(args[3]).toContain(chromePath);
     expect(options.env.PATH).toBe(
       "C:\\Windows\\System32;C:\\Windows;C:\\Windows\\System32\\Wbem;" +
         "C:\\Windows\\System32\\WindowsPowerShell\\v1.0",
     );
+  });
+
+  // Regression test for a real CI failure: "C:\Program Files\..." split into "C:\Program" plus a
+  // second token once PowerShell re-tokenized a trailing (unembedded) argument on the space.
+  it("keeps a path containing spaces intact in the embedded -Command string", () => {
+    const execute = vi.fn(() => "151.0.1.0\r\n");
+    const chromePath = "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
+
+    readChromeVersion(chromePath, { platform: "win32", execute });
+
+    const [, args] = execute.mock.calls[0];
+    expect(args[3]).toContain("'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'");
+  });
+
+  it("escapes an embedded single quote so it cannot terminate the PowerShell string early", () => {
+    const execute = vi.fn(() => "151.0.1.0\r\n");
+    const chromePath = "C:\\Users\\o'brien\\chrome.exe";
+
+    readChromeVersion(chromePath, { platform: "win32", execute });
+
+    const [, args] = execute.mock.calls[0];
+    expect(args[3]).toContain("o''brien");
   });
 
   it("rejects relative executable paths", () => {
