@@ -277,8 +277,10 @@ try {
   // setViewport() on a tab opened out-of-band must wait until it's finished loading — called
   // earlier, Firefox's BiDi throws ("browser is null"); CSS layout still recomputes fine regardless.
   await setViewportTolerantly(popup, { width: 360, height: 600, deviceScaleFactor: 1 });
-  await popup.waitForSelector("whatsapp-message-popup #country-trigger", { timeout: 10_000 });
-  await popup.waitForSelector("#country-trigger .country-picker__flag-img", { timeout: 10_000 });
+  // 20s, not the 10s default: headless Firefox in a container without a privileged sandbox falls
+  // back to software compositing (RenderCompositorSWGL), which paints noticeably slower.
+  await popup.waitForSelector("whatsapp-message-popup #country-trigger", { timeout: 20_000 });
+  await popup.waitForSelector("#country-trigger .country-picker__flag-img", { timeout: 20_000 });
 
   const installedState = await popup.evaluate(() => {
     const flag = document.querySelector("#country-trigger .country-picker__flag-img");
@@ -340,8 +342,9 @@ try {
   );
   // See the comment on the equivalent popup.setViewport() call above — must run after load.
   await setViewportTolerantly(optionsPage, { width: 1200, height: 800, deviceScaleFactor: 1 });
+  // Same slow-container reasoning as the popup waits above.
   await optionsPage.waitForSelector("extension-settings-page #country-trigger", {
-    timeout: 10_000,
+    timeout: 20_000,
   });
 
   const optionsState = await optionsPage.evaluate(() => {
