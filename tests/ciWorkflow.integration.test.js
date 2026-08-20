@@ -39,10 +39,10 @@ describe("GitHub Actions cross-platform runtime integration", () => {
     const lint = jobSource("lint", "unit-tests");
     const unit = jobSource("unit-tests", "integration-tests");
 
-    // Extracted out of unit-tests into its own job that now gates it — fail-fast on cheap lint
-    // errors before spending runners on unit tests across 4 platforms.
+    // Extracted out of unit-tests into its own job that now gates it, alongside sonarqube
+    // (same Level 0) — fail-fast on cheap checks before spending runners on unit tests.
     expect(unit).not.toContain("run: npm run lint");
-    expect(unit).toContain("needs: lint");
+    expect(unit).toContain("needs: [lint, sonarqube]");
     expect(lint).not.toContain("needs:");
     expect(lint).toMatch(/run: npm run lint(?!:)/);
     expect(lint).toContain("run: npm run lint:comments");
@@ -150,7 +150,11 @@ describe("GitHub Actions cross-platform runtime integration", () => {
     expect(resolveJob).toContain("outputs:");
     expect(resolveJob).toContain("versions: ${{ steps.resolve.outputs.versions }}");
     expect(resolveJob).toContain("node scripts/resolve-chrome-versions.mjs");
-    expect(resolveJob).toContain('"${{ inputs.extra_chrome_version }}"');
+    // Input flows through env:, never interpolated directly into run: (workflow_dispatch
+    // script-injection vector) — see install-chrome-version.mjs's own CLI-arg validation.
+    expect(resolveJob).toContain("EXTRA_CHROME_VERSION: ${{ inputs.extra_chrome_version }}");
+    expect(resolveJob).toContain('"$EXTRA_CHROME_VERSION"');
+    expect(resolveJob).not.toContain('"${{ inputs.extra_chrome_version }}"');
     expect(resolveJob).toContain('>> "$GITHUB_OUTPUT"');
 
     expect(pinnedJob).toContain("needs: [security-tests, resolve-chrome-versions, installation-test-chrome]");
@@ -185,7 +189,9 @@ describe("GitHub Actions cross-platform runtime integration", () => {
     expect(resolveJob).toContain("outputs:");
     expect(resolveJob).toContain("versions: ${{ steps.resolve.outputs.versions }}");
     expect(resolveJob).toContain("node scripts/resolve-firefox-versions.mjs");
-    expect(resolveJob).toContain('"${{ inputs.extra_firefox_version }}"');
+    expect(resolveJob).toContain("EXTRA_FIREFOX_VERSION: ${{ inputs.extra_firefox_version }}");
+    expect(resolveJob).toContain('"$EXTRA_FIREFOX_VERSION"');
+    expect(resolveJob).not.toContain('"${{ inputs.extra_firefox_version }}"');
     expect(resolveJob).toContain('>> "$GITHUB_OUTPUT"');
 
     expect(pinnedJob).toContain("needs: [security-tests, resolve-firefox-versions, installation-test-firefox]");

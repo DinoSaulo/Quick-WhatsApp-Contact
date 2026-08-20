@@ -663,7 +663,8 @@ jobs:
       - name: Preparar ambiente Node.js
         uses: ./.github/actions/setup-node-env
 
-      # ${{ inputs.extra_firefox_version }} direto no run: (script injection via workflow_dispatch).
+      # EXTRA_FIREFOX_VERSION via env (mesma razão do job resolve-chrome-versions acima: input
+      # de workflow_dispatch interpolado direto no run: seria script injection).
       - name: Resolver as 3 versões major mais recentes do Firefox
         id: resolve
         env:
