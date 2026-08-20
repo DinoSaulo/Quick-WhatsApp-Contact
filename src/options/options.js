@@ -215,7 +215,7 @@ class ExtensionSettingsPage extends HTMLElement {
         .replace(/[\u0300-\u036f]/g, "");
       let visibleCount = 0;
       optionButtons.forEach((button) => {
-        const searchData = button.getAttribute("data-search") || "";
+        const searchData = button.dataset.search || "";
         const matches = !query || searchData.includes(query);
         button.hidden = !matches;
         button.style.display = matches ? "" : "none";
@@ -271,7 +271,7 @@ class ExtensionSettingsPage extends HTMLElement {
 
     optionButtons.forEach((button) => {
       button.addEventListener("click", async () => {
-        const code = button.getAttribute("data-country-code") ?? "";
+        const code = button.dataset.countryCode ?? "";
         if (hiddenInput) {
           hiddenInput.value = code;
         }
@@ -339,7 +339,7 @@ class ExtensionSettingsPage extends HTMLElement {
 
     optionButtons.forEach((button) => {
       button.addEventListener("click", async () => {
-        const languageCode = button.getAttribute("data-language-code") ?? LANGUAGE_OPTIONS[0].value;
+        const languageCode = button.dataset.languageCode ?? LANGUAGE_OPTIONS[0].value;
         closeMenu();
         await this.applyLanguageChange(languageCode);
       });

@@ -154,20 +154,20 @@ class DonationModal extends HTMLElement {
 
     this.querySelectorAll(".donation-tabs__tab").forEach((tabButton) => {
       tabButton.addEventListener("click", () => {
-        const methodId = tabButton.getAttribute("data-method-id");
+        const methodId = tabButton.dataset.methodId;
         this.activeMethodId = methodId;
         this.querySelectorAll(".donation-tabs__tab").forEach((otherTab) => {
           otherTab.setAttribute("aria-selected", String(otherTab === tabButton));
         });
         this.querySelectorAll("[data-method-panel]").forEach((panel) => {
-          panel.hidden = panel.getAttribute("data-method-panel") !== methodId;
+          panel.hidden = panel.dataset.methodPanel !== methodId;
         });
       });
     });
 
     this.querySelectorAll("[data-copy-method]").forEach((copyButton) => {
       copyButton.addEventListener("click", async () => {
-        const methodId = copyButton.getAttribute("data-copy-method");
+        const methodId = copyButton.dataset.copyMethod;
         const method = DONATION_METHODS.find((candidate) => candidate.id === methodId);
         // Do not interpolate methodId into a CSS selector: getAttribute() decodes escaped HTML,
         // so a future data source with selector metacharacters could throw or select the wrong element.
