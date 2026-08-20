@@ -9,7 +9,13 @@ export default defineConfig({
       reporter: ["text", "lcov"],
       reportsDirectory: "coverage",
       include: ["src/**", "scripts/**"],
-      exclude: ["scripts/ralph-loop.ps1"]
+      // CLI scripts with real side effects (network, process.exit) — exercised for real by the
+      // installation CI jobs, not importable for unit tests without triggering those effects.
+      exclude: [
+        "scripts/ralph-loop.ps1",
+        "scripts/install-chrome-version.mjs",
+        "scripts/install-firefox-version.mjs"
+      ]
     }
   }
 });
