@@ -85,7 +85,7 @@ describe("GitHub Actions cross-platform runtime integration", () => {
   it("bootstraps Node and npm in every Fedora matrix job", () => {
     const unit = jobSource("unit-tests", "integration-tests");
     const integration = jobSource("integration-tests", "security-tests");
-    const installation = jobSource("installation-test", "resolve-chrome-versions");
+    const installation = jobSource("installation-test-chrome", "resolve-chrome-versions");
     const installationFirefox = jobSource("installation-test-firefox", "resolve-firefox-versions");
 
     for (const source of [unit, integration, installation, installationFirefox]) {
@@ -98,13 +98,14 @@ describe("GitHub Actions cross-platform runtime integration", () => {
   it("installs and verifies Fedora Chromium only where the browser is required", () => {
     const unit = jobSource("unit-tests", "integration-tests");
     const integration = jobSource("integration-tests", "security-tests");
-    const installation = jobSource("installation-test", "resolve-chrome-versions");
+    const installation = jobSource("installation-test-chrome", "resolve-chrome-versions");
 
     expect(unit).not.toContain(" chromium");
     expect(integration).not.toContain(" chromium");
     expect(installation).toContain("nodejs npm chromium");
     expect(installation).toContain("run: chromium-browser --version");
-    // Explicit now that security-tests no longer transitively guarantees integration-tests passed.
+    // installation-test-chrome still lists integration-tests directly, even though
+    // security-tests (also a dependency here) now guarantees it transitively too.
     expect(installation).toContain("needs: [integration-tests, security-tests]");
   });
 
@@ -123,7 +124,7 @@ describe("GitHub Actions cross-platform runtime integration", () => {
   });
 
   it("connects the workflow step to the real browser lifecycle runner", () => {
-    const installation = jobSource("installation-test", "resolve-chrome-versions");
+    const installation = jobSource("installation-test-chrome", "resolve-chrome-versions");
 
     expect(installation).toContain("run: npm run test:install");
     expect(packageJson.scripts["test:install"]).toBe(
@@ -152,14 +153,14 @@ describe("GitHub Actions cross-platform runtime integration", () => {
     expect(resolveJob).toContain('"${{ inputs.extra_chrome_version }}"');
     expect(resolveJob).toContain('>> "$GITHUB_OUTPUT"');
 
-    expect(pinnedJob).toContain("needs: [security-tests, resolve-chrome-versions]");
+    expect(pinnedJob).toContain("needs: [security-tests, resolve-chrome-versions, installation-test-chrome]");
     expect(pinnedJob).toContain("fromJson(needs.resolve-chrome-versions.outputs.versions)");
     // The old hardcoded "151.0.7922.71" bisection entry is gone — one-off versions now flow
     // through extra_chrome_version (workflow_dispatch input) into the resolve script itself.
     expect(pinnedJob).not.toContain("include:");
     expect(pinnedJob).not.toContain("TEMPORARY");
-    // Unlike installation-test's plain "run: npm run test:install", this job wraps it in a retry
-    // loop (a rare native Chrome crash, see ci.yml) — must still invoke the real script and fail loudly once exhausted.
+    // Unlike installation-test-chrome's plain "run: npm run test:install", this job wraps it in a
+    // retry loop (a rare native Chrome crash, see ci.yml) — must still invoke the real script and fail loudly once exhausted.
     expect(pinnedJob).toContain("run: |");
     expect(pinnedJob).toContain("npm run test:install");
     expect(pinnedJob).toMatch(/for attempt in .+; do/);
@@ -170,7 +171,7 @@ describe("GitHub Actions cross-platform runtime integration", () => {
     expect(pinnedJob).toContain("path: .chrome-for-testing/${{ matrix.chromeVersion }}");
     expect(pinnedJob).toContain("key: chrome-for-testing-${{ matrix.chromeVersion }}");
     // This job is deliberately Ubuntu-only (precise version coverage, not OS diversity — see the
-    // comment above it in ci.yml), unlike installation-test's cross-platform matrix.
+    // comment above it in ci.yml), unlike installation-test-chrome's cross-platform matrix.
     expect(pinnedJob).not.toContain("windows-latest");
     expect(pinnedJob).not.toContain("macos-latest");
   });
@@ -187,7 +188,7 @@ describe("GitHub Actions cross-platform runtime integration", () => {
     expect(resolveJob).toContain('"${{ inputs.extra_firefox_version }}"');
     expect(resolveJob).toContain('>> "$GITHUB_OUTPUT"');
 
-    expect(pinnedJob).toContain("needs: [security-tests, resolve-firefox-versions]");
+    expect(pinnedJob).toContain("needs: [security-tests, resolve-firefox-versions, installation-test-firefox]");
     expect(pinnedJob).toContain("fromJson(needs.resolve-firefox-versions.outputs.versions)");
     expect(pinnedJob).toContain("run: npm run test:install:firefox");
     expect(pinnedJob).toContain("scripts/install-firefox-version.mjs");
@@ -209,17 +210,17 @@ describe("GitHub Actions cross-platform runtime integration", () => {
     const validate = jobSource("validate-extension", "release");
 
     expect(workflow).toContain(
-      "needs: [installation-test, installation-test-pinned, installation-test-firefox, installation-test-firefox-pinned, installation-test-safari]",
+      "needs: [installation-test-chrome, installation-test-pinned, installation-test-firefox, installation-test-firefox-pinned, installation-test-safari]",
     );
     expect(validate).toContain("run: npm run validate:extension");
   });
 
   it("runs the security job on Linux only, between integration and installation", () => {
-    const security = jobSource("security-tests", "installation-test");
+    const security = jobSource("security-tests", "installation-test-chrome");
 
-    // Decoupled from integration-tests on purpose — both now only wait on [unit-tests, lint],
-    // so they run in parallel; installation-test's own needs re-adds the wait on both.
-    expect(security).toContain("needs: [unit-tests, lint]");
+    // Sequential now: security-tests waits directly on integration-tests, which already
+    // transitively depends on unit-tests and lint.
+    expect(security).toContain("needs: integration-tests");
     expect(security).toContain("runs-on: ubuntu-latest");
     // A dedicated Linux-only job: no build matrix (unlike unit/integration/installation,
     // which run across Ubuntu/Fedora/macOS/Windows), same shape as validate-extension/release.
@@ -237,7 +238,7 @@ describe("GitHub Actions cross-platform runtime integration", () => {
   // Production dependencies are, and must stay, empty (validate-extension.mjs) — passes trivially
   // today, but guards the moment a real runtime dependency is added (docs/THREAT_MODEL.md §6).
   it("audits production dependencies for known vulnerabilities in the security job", () => {
-    const security = jobSource("security-tests", "installation-test");
+    const security = jobSource("security-tests", "installation-test-chrome");
 
     expect(security).toContain("run: npm audit --omit=dev");
   });
@@ -248,7 +249,7 @@ describe("GitHub Actions cross-platform runtime integration", () => {
       "unit-tests",
       "integration-tests",
       "security-tests",
-      "installation-test",
+      "installation-test-chrome",
       "resolve-chrome-versions",
       "installation-test-pinned",
       "installation-test-firefox",
