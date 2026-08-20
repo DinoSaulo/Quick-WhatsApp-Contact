@@ -1,16 +1,12 @@
 /* @vitest-environment node */
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
-import { runInContext } from "node:vm";
 import { JSDOM } from "jsdom";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
-const scriptSource = readFileSync(
-  resolve(import.meta.dirname, "../src/content/selectionButton.js"),
-  "utf8"
-);
+const SCRIPT_PATH = "../src/content/selectionButton.js";
 const LANGUAGE_KEY = "quick-whatsapp-contact.language";
 
+// Real `import()` (not vm.runInContext on raw source) so V8 coverage can attribute hits back to
+// this file; vi.resetModules() forces a fresh self-init run per test's own JSDOM/chrome.
 async function createPage({ text = "+351 912 345 678", rect, language = "en-US" } = {}) {
   const dom = new JSDOM("<!doctype html><html><body><p>Select a phone</p></body></html>", {
     runScripts: "outside-only",
@@ -36,11 +32,21 @@ async function createPage({ text = "+351 912 345 678", rect, language = "en-US" 
     getRangeAt: () => ({ getBoundingClientRect: () => selectionRect })
   }));
 
-  runInContext(scriptSource, dom.getInternalVMContext());
+  // The script reads these as bare identifiers (not window.X), so each one needs its own stub.
+  vi.stubGlobal("window", dom.window);
+  vi.stubGlobal("document", dom.window.document);
+  vi.stubGlobal("chrome", dom.window.chrome);
+
+  vi.resetModules();
+  await import(SCRIPT_PATH);
   await new Promise((resolvePromise) => dom.window.setTimeout(resolvePromise, 0));
 
   return { dom, sendMessage, storageListeners };
 }
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 async function dispatchSelection(page) {
   page.dom.window.document.dispatchEvent(new page.dom.window.MouseEvent("mouseup", {

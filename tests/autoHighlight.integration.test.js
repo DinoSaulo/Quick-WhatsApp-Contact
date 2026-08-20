@@ -1,17 +1,13 @@
 /* @vitest-environment node */
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
-import { runInContext } from "node:vm";
 import { JSDOM } from "jsdom";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
-const scriptSource = readFileSync(
-  resolve(import.meta.dirname, "../src/content/autoHighlight.js"),
-  "utf8"
-);
+const SCRIPT_PATH = "../src/content/autoHighlight.js";
 const AUTO_HIGHLIGHT_KEY = "quick-whatsapp-contact.auto-highlight-enabled";
 const LANGUAGE_KEY = "quick-whatsapp-contact.language";
 
+// Real `import()` (not vm.runInContext on raw source) so V8 coverage can attribute hits back to
+// this file; vi.resetModules() forces a fresh self-init run per test's own JSDOM/chrome.
 async function createPage({ html = "", enabled = true, language = "en-US" } = {}) {
   const dom = new JSDOM(`<!doctype html><html><head></head><body>${html}</body></html>`, {
     runScripts: "outside-only",
@@ -38,11 +34,26 @@ async function createPage({ html = "", enabled = true, language = "en-US" } = {}
     }
   };
 
-  runInContext(scriptSource, dom.getInternalVMContext());
+  // The script reads these as bare identifiers (not window.X), so each one needs its own stub —
+  // see the instanceof/MutationObserver/clearTimeout usage in autoHighlight.js.
+  vi.stubGlobal("window", dom.window);
+  vi.stubGlobal("document", dom.window.document);
+  vi.stubGlobal("chrome", dom.window.chrome);
+  vi.stubGlobal("MutationObserver", dom.window.MutationObserver);
+  vi.stubGlobal("Element", dom.window.Element);
+  vi.stubGlobal("HTMLAnchorElement", dom.window.HTMLAnchorElement);
+  vi.stubGlobal("clearTimeout", dom.window.clearTimeout);
+
+  vi.resetModules();
+  await import(SCRIPT_PATH);
   await new Promise((resolvePromise) => dom.window.setTimeout(resolvePromise, 0));
 
   return { dom, storageListeners, sendMessage };
 }
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 describe("automatic tel link helper integration", () => {
   it("adds one accessible, package-local action per telephone link", async () => {
