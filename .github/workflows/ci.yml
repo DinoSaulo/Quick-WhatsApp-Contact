@@ -77,6 +77,28 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Preparar ambiente Node.js
+        uses: ./.github/actions/setup-node-env
+
+      # Sem matrix.label de distro (job so roda em ubuntu-latest); chave usa apenas runner.os.
+      - name: Cache de node_modules
+        id: cache-node-modules
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: node_modules
+          key: node-modules-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            node-modules-${{ runner.os }}-
+
+      - name: Instalar dependências
+        if: steps.cache-node-modules.outputs.cache-hit != 'true'
+        run: npm ci
+
+      # Gera coverage/lcov.info antes do scan — sonar.javascript.lcov.reportPaths (sonar-project.properties)
+      # e o que faz o gate new_coverage medir cobertura de verdade em vez de sempre 0%.
+      - name: Executar testes com cobertura
+        run: npm run test:coverage
+
       - name: Executar análise do SonarQube Cloud
         uses: SonarSource/sonarqube-scan-action@22918119ff8e1ca75a623e15c8296b6ea4fbe28f # v8.2.1
         env:
