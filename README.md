@@ -8,10 +8,20 @@
 
 `Chrome Extension` · `Firefox WebExtension` · `Safari Web Extension` · `Manifest V3` · `Vanilla JS` · `Vitest`
 
+<a href="https://chromewebstore.google.com/detail/quick-whatsapp-contact/eplpemmogghafabofbbopdilpjnlolpk" target="_blank" rel="noopener noreferrer"><img src="https://img.shields.io/badge/Chrome_Web_Store-Install-4285F4?logo=googlechrome&amp;logoColor=white" alt="Install from the Chrome Web Store"></a>
+
 [![Pipeline](https://github.com/DinoSaulo/Quick-WhatsApp-Contact/actions/workflows/ci.yml/badge.svg)](https://github.com/DinoSaulo/Quick-WhatsApp-Contact/actions/workflows/ci.yml)
 [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=DinoSaulo_Quick-WhatsApp-Contact&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=DinoSaulo_Quick-WhatsApp-Contact)
 [![Coverage](https://img.shields.io/sonar/coverage/DinoSaulo_Quick-WhatsApp-Contact?server=https%3A%2F%2Fsonarcloud.io)](https://sonarcloud.io/component_measures?id=DinoSaulo_Quick-WhatsApp-Contact&metric=coverage)
-<a href="https://chromewebstore.google.com/detail/quick-whatsapp-contact/eplpemmogghafabofbbopdilpjnlolpk" target="_blank" rel="noopener noreferrer"><img src="https://img.shields.io/badge/Chrome_Web_Store-Install-4285F4?logo=googlechrome&amp;logoColor=white" alt="Install from the Chrome Web Store"></a>
+[![Security Rating](https://sonarcloud.io/api/project_badges/measure?project=DinoSaulo_Quick-WhatsApp-Contact&metric=security_rating)](https://sonarcloud.io/summary/overall?id=DinoSaulo_Quick-WhatsApp-Contact)
+[![Reliability Rating](https://sonarcloud.io/api/project_badges/measure?project=DinoSaulo_Quick-WhatsApp-Contact&metric=reliability_rating)](https://sonarcloud.io/summary/overall?id=DinoSaulo_Quick-WhatsApp-Contact)
+[![Maintainability Rating](https://sonarcloud.io/api/project_badges/measure?project=DinoSaulo_Quick-WhatsApp-Contact&metric=sqale_rating)](https://sonarcloud.io/summary/overall?id=DinoSaulo_Quick-WhatsApp-Contact)
+[![Vulnerabilities](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fsonarcloud.io%2Fapi%2Fmeasures%2Fcomponent%3Fcomponent%3DDinoSaulo_Quick-WhatsApp-Contact%26metricKeys%3Dvulnerabilities&query=%24.component.measures%5B0%5D.value&label=Vulnerabilities)](https://sonarcloud.io/summary/overall?id=DinoSaulo_Quick-WhatsApp-Contact)
+[![Bugs](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fsonarcloud.io%2Fapi%2Fmeasures%2Fcomponent%3Fcomponent%3DDinoSaulo_Quick-WhatsApp-Contact%26metricKeys%3Dbugs&query=%24.component.measures%5B0%5D.value&label=Bugs)](https://sonarcloud.io/summary/overall?id=DinoSaulo_Quick-WhatsApp-Contact)
+[![Code Smells](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fsonarcloud.io%2Fapi%2Fmeasures%2Fcomponent%3Fcomponent%3DDinoSaulo_Quick-WhatsApp-Contact%26metricKeys%3Dcode_smells&query=%24.component.measures%5B0%5D.value&label=Code%20Smells)](https://sonarcloud.io/summary/overall?id=DinoSaulo_Quick-WhatsApp-Contact)
+[![Hotspots Reviewed](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fsonarcloud.io%2Fapi%2Fmeasures%2Fcomponent%3Fcomponent%3DDinoSaulo_Quick-WhatsApp-Contact%26metricKeys%3Dsecurity_hotspots_reviewed&query=%24.component.measures%5B0%5D.value&suffix=%25&label=Hotspots%20Reviewed)](https://sonarcloud.io/summary/overall?id=DinoSaulo_Quick-WhatsApp-Contact)
+[![Duplications](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fsonarcloud.io%2Fapi%2Fmeasures%2Fcomponent%3Fcomponent%3DDinoSaulo_Quick-WhatsApp-Contact%26metricKeys%3Dduplicated_lines_density&query=%24.component.measures%5B0%5D.value&suffix=%25&label=Duplications)](https://sonarcloud.io/summary/overall?id=DinoSaulo_Quick-WhatsApp-Contact)
+[![Lines of Code](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fsonarcloud.io%2Fapi%2Fmeasures%2Fcomponent%3Fcomponent%3DDinoSaulo_Quick-WhatsApp-Contact%26metricKeys%3Dncloc&query=%24.component.measures%5B0%5D.value&label=Lines%20of%20Code)](https://sonarcloud.io/summary/overall?id=DinoSaulo_Quick-WhatsApp-Contact)
 
 ---
 
