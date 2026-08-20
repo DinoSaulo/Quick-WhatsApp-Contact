@@ -11,6 +11,18 @@ const projectRoot = resolve(import.meta.dirname, "..");
 const extensionPath = resolve(projectRoot, "dist", "extension");
 const manifestPath = resolve(extensionPath, "manifest.json");
 
+// SonarQube S4036: never resolve these tools through PATH. Locations are SIP-protected; the
+// restricted PATH below is defense-in-depth for subprocesses Xcode's tools start internally.
+const SYSTEM_EXECUTABLES = Object.freeze({
+  find: "/usr/bin/find",
+  xcodebuild: "/usr/bin/xcodebuild",
+  xcrun: "/usr/bin/xcrun",
+});
+const TRUSTED_ENV = Object.freeze({
+  ...process.env,
+  PATH: "/usr/bin:/bin:/usr/sbin:/sbin",
+});
+
 if (!existsSync(manifestPath)) {
   throw new Error(
     `Build da extensão não encontrado em ${manifestPath}. Baixe o artefato extension-build (ou rode "npm run build") antes.`,
@@ -37,7 +49,7 @@ const converterLogFile = resolve(diagnosticsRoot, "safari-web-extension-converte
 // --macos-only skips generating an iOS target (and its simulator/signing requirements), which this
 // CI smoke test never needs. --no-open/--force keep the tool non-interactive and idempotent.
 const converterResult = spawnSync(
-  "xcrun",
+  SYSTEM_EXECUTABLES.xcrun,
   [
     "safari-web-extension-converter",
     extensionPath,
@@ -52,7 +64,7 @@ const converterResult = spawnSync(
     "--force",
     "--swift",
   ],
-  { encoding: "utf8" },
+  { encoding: "utf8", env: TRUSTED_ENV },
 );
 const converterOutput = `${converterResult.stdout ?? ""}${converterResult.stderr ?? ""}`;
 writeFileSync(converterLogFile, converterOutput, "utf8");
@@ -68,7 +80,11 @@ if (converterResult.status !== 0) {
 }
 
 const projectSearch = parseFindOutput(
-  execFileSync("find", [outputRoot, "-maxdepth", "3", "-name", "*.xcodeproj"], { encoding: "utf8" }),
+  execFileSync(
+    SYSTEM_EXECUTABLES.find,
+    [outputRoot, "-maxdepth", "3", "-name", "*.xcodeproj"],
+    { encoding: "utf8", env: TRUSTED_ENV },
+  ),
 );
 
 if (projectSearch.length !== 1) {
@@ -103,7 +119,10 @@ const xcodebuildArgs = [
   "build",
 ];
 
-const xcodebuildResult = spawnSync("xcodebuild", xcodebuildArgs, { encoding: "utf8" });
+const xcodebuildResult = spawnSync(SYSTEM_EXECUTABLES.xcodebuild, xcodebuildArgs, {
+  encoding: "utf8",
+  env: TRUSTED_ENV,
+});
 const xcodebuildOutput = `${xcodebuildResult.stdout ?? ""}${xcodebuildResult.stderr ?? ""}`;
 writeFileSync(xcodebuildLogFile, xcodebuildOutput, "utf8");
 // stderr, not stdout: ci.yml captures this script's stdout via $(...) as SAFARI_APP_PATH, so the
@@ -115,9 +134,9 @@ console.error(xcodebuildOutput);
 try {
   const activityLogs = parseFindOutput(
     execFileSync(
-      "find",
+      SYSTEM_EXECUTABLES.find,
       [resolve(derivedDataPath, "Logs", "Build"), "-name", "*.xcactivitylog"],
-      { encoding: "utf8" },
+      { encoding: "utf8", env: TRUSTED_ENV },
     ),
   );
   for (const logPath of activityLogs) {

@@ -9,6 +9,13 @@ import { resolveWithinDir } from "../tests/installation/resolve-within-dir.mjs";
 // (older ones used .tar.bz2, but every version we resolve is recent enough to be .tar.xz).
 const PLATFORM_DIR = "linux-x86_64";
 const RELEASES_DIR = ".firefox-releases";
+// SonarQube S4036: use the protected Ubuntu system binary directly instead of resolving a
+// caller-controlled `tar` through PATH. The restricted PATH also protects its subprocesses.
+const TAR_EXECUTABLE = "/usr/bin/tar";
+const TRUSTED_ENV = Object.freeze({
+  ...process.env,
+  PATH: "/usr/bin:/bin:/usr/sbin:/sbin",
+});
 
 const version = process.argv[2];
 
@@ -46,7 +53,7 @@ writeFileSync(archivePath, Buffer.from(await archiveResponse.arrayBuffer()));
 
 // GNU tar (ubuntu-latest's default) auto-detects xz compression from the archive itself, no
 // separate `xz` binary or `-J`/`--xz` flag needed. Extracts to a top-level firefox/ directory.
-execFileSync("tar", ["-xf", archivePath, "-C", destDir]);
+execFileSync(TAR_EXECUTABLE, ["-xf", archivePath, "-C", destDir], { env: TRUSTED_ENV });
 
 const executablePath = resolveWithinDir(destDir, "firefox", "firefox");
 chmodSync(executablePath, 0o755);

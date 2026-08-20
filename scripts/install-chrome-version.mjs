@@ -11,6 +11,13 @@ const KNOWN_GOOD_VERSIONS_URL =
 // matrix's job is precise version coverage, not OS diversity, so a single platform is enough.
 const PLATFORM = "linux64";
 const CHROME_DIR = ".chrome-for-testing";
+// SonarQube S4036: use the protected Ubuntu system binary directly instead of resolving a
+// caller-controlled `unzip` through PATH. The restricted PATH also protects its subprocesses.
+const UNZIP_EXECUTABLE = "/usr/bin/unzip";
+const TRUSTED_ENV = Object.freeze({
+  ...process.env,
+  PATH: "/usr/bin:/bin:/usr/sbin:/sbin",
+});
 
 const version = process.argv[2];
 
@@ -64,7 +71,7 @@ writeFileSync(zipPath, Buffer.from(await zipResponse.arrayBuffer()));
 
 // GitHub-hosted ubuntu-latest runners ship `unzip` in the base image, so this avoids adding a zip
 // extraction dependency just for a script that only runs in this one CI job.
-execFileSync("unzip", ["-q", zipPath, "-d", destDir]);
+execFileSync(UNZIP_EXECUTABLE, ["-q", zipPath, "-d", destDir], { env: TRUSTED_ENV });
 
 const executablePath = resolveWithinDir(destDir, "chrome-linux64", "chrome");
 chmodSync(executablePath, 0o755);

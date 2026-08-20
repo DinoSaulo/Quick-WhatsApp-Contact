@@ -1,5 +1,27 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { buildSafariBundleId, parseFindOutput } from "./safari-extension-build.mjs";
+
+const converterSource = readFileSync(
+  new URL("../scripts/convert-safari-extension.mjs", import.meta.url),
+  "utf8",
+);
+
+describe("Safari build command security", () => {
+  it("uses fixed system executable paths instead of resolving commands through PATH", () => {
+    expect(converterSource).toContain('find: "/usr/bin/find"');
+    expect(converterSource).toContain('xcodebuild: "/usr/bin/xcodebuild"');
+    expect(converterSource).toContain('xcrun: "/usr/bin/xcrun"');
+    expect(converterSource).not.toMatch(
+      /(?:execFileSync|spawnSync)\(\s*["'](?:find|xcodebuild|xcrun)["']/,
+    );
+  });
+
+  it("gives Xcode subprocesses a PATH containing only protected system directories", () => {
+    expect(converterSource).toContain('PATH: "/usr/bin:/bin:/usr/sbin:/sbin"');
+    expect(converterSource.match(/env:\s*TRUSTED_ENV/g)).toHaveLength(4);
+  });
+});
 
 describe("buildSafariBundleId", () => {
   it("appends the app name as the bundle ID's last component", () => {
