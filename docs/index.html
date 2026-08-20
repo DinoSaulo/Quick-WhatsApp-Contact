@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Quick WhatsApp Contact helps you start WhatsApp conversations from phone numbers found on web pages."
+    />
+    <title>Quick WhatsApp Contact</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #f7f4eb;
+        --surface: #fffdf7;
+        --text: #1f2a1f;
+        --muted: #5f6f5f;
+        --accent: #1f8f55;
+        --accent-hover: #177345;
+        --border: #d8ccb1;
+        --shadow: rgb(31 42 31 / 12%);
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #11151a;
+          --surface: #192027;
+          --text: #f0f4f7;
+          --muted: #b3c0cb;
+          --accent: #2ecc71;
+          --accent-hover: #55d98d;
+          --border: #3a4756;
+          --shadow: rgb(0 0 0 / 30%);
+        }
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        padding: 24px;
+        background: var(--bg);
+        color: var(--text);
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        line-height: 1.6;
+      }
+      main {
+        width: min(100%, 680px);
+        padding: 48px 32px;
+        border: 1px solid var(--border);
+        border-radius: 20px;
+        background: var(--surface);
+        box-shadow: 0 18px 50px var(--shadow);
+        text-align: center;
+      }
+      .mark {
+        font-size: 64px;
+        line-height: 1;
+      }
+      h1 {
+        margin: 20px 0 12px;
+        font-size: clamp(30px, 7vw, 44px);
+        line-height: 1.15;
+      }
+      .summary {
+        max-width: 560px;
+        margin: 0 auto;
+        color: var(--muted);
+        font-size: 18px;
+      }
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 12px;
+        margin-top: 32px;
+      }
+      .button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 44px;
+        padding: 10px 18px;
+        border: 1px solid var(--accent);
+        border-radius: 10px;
+        color: var(--accent);
+        font-weight: 650;
+        text-decoration: none;
+      }
+      .button.primary {
+        background: var(--accent);
+        color: #fff;
+      }
+      .button:hover,
+      .button:focus-visible {
+        border-color: var(--accent-hover);
+        color: var(--accent-hover);
+      }
+      .button.primary:hover,
+      .button.primary:focus-visible {
+        background: var(--accent-hover);
+        color: #fff;
+      }
+      footer {
+        margin-top: 36px;
+        color: var(--muted);
+        font-size: 14px;
+      }
+      footer a {
+        color: var(--accent);
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="mark" aria-hidden="true">💬</div>
+      <h1>Quick WhatsApp Contact</h1>
+      <p class="summary">
+        Start WhatsApp conversations quickly from phone numbers found on any web page—without
+        saving the contact first.
+      </p>
+
+      <nav class="actions" aria-label="Project links">
+        <a
+          class="button primary"
+          href="https://chromewebstore.google.com/detail/quick-whatsapp-contact/eplpemmogghafabofbbopdilpjnlolpk"
+          rel="noopener noreferrer"
+        >
+          Install from Chrome Web Store
+        </a>
+        <a
+          class="button"
+          href="https://github.com/DinoSaulo/Quick-WhatsApp-Contact"
+          rel="noopener noreferrer"
+        >
+          View source on GitHub
+        </a>
+      </nav>
+
+      <footer>
+        <a href="./privacy.html">Privacy Policy</a>
+      </footer>
+    </main>
+  </body>
+</html>

@@ -7,6 +7,10 @@ const readme = readFileSync(resolve(projectRoot, "README.md"), "utf8");
 const packageJson = JSON.parse(readFileSync(resolve(projectRoot, "package.json"), "utf8"));
 
 describe("README and project configuration consistency", () => {
+  it("keeps a root document in the GitHub Pages source directory", () => {
+    expect(existsSync(resolve(projectRoot, "docs", "index.html"))).toBe(true);
+  });
+
   it("documents only npm scripts that exist in package.json", () => {
     const documentedScripts = [...readme.matchAll(/npm run ([a-z0-9:_-]+)/gi)].map(
       ([, script]) => script
