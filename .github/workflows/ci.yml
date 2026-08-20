@@ -590,9 +590,9 @@ jobs:
           - os: ubuntu-latest
             label: "Firefox - Ubuntu"
           - os: ubuntu-latest
-            label: "Firefox 153 - Fedora"
+            label: "Firefox 154 - Fedora"
             container: fedora:latest
-            firefoxMajor: "153"
+            firefoxMajor: "154"
             setup: dnf install -y --setopt=install_weak_deps=False git curl nodejs npm firefox
           - os: ubuntu-latest
             label: "Firefox 140 (ESR) - Debian"
