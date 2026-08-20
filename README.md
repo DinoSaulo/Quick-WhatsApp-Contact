@@ -10,6 +10,7 @@
 
 [![Pipeline](https://github.com/DinoSaulo/Quick-WhatsApp-Contact/actions/workflows/ci.yml/badge.svg)](https://github.com/DinoSaulo/Quick-WhatsApp-Contact/actions/workflows/ci.yml)
 [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=DinoSaulo_Quick-WhatsApp-Contact&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=DinoSaulo_Quick-WhatsApp-Contact)
+[![Coverage](https://img.shields.io/sonar/coverage/DinoSaulo_Quick-WhatsApp-Contact?server=https%3A%2F%2Fsonarcloud.io)](https://sonarcloud.io/component_measures?id=DinoSaulo_Quick-WhatsApp-Contact&metric=coverage)
 <a href="https://chromewebstore.google.com/detail/quick-whatsapp-contact/eplpemmogghafabofbbopdilpjnlolpk" target="_blank" rel="noopener noreferrer"><img src="https://img.shields.io/badge/Chrome_Web_Store-Install-4285F4?logo=googlechrome&amp;logoColor=white" alt="Install from the Chrome Web Store"></a>
 
 ---
