@@ -49,4 +49,24 @@ describe("phoneFormats object", () => {
   ])("deriva a regra do DDI %s (%s) a partir do phoneMask ja curado em countries.js", (dialCode, _name, expected) => {
     expect(PHONE_FORMAT_RULES_BY_DDI[dialCode]).toEqual(expected);
   });
+
+  it.each([
+    ["1", ["XXX-XXXX"]],
+    ["7", ["XXX-XX-XX"]],
+    ["20", ["XXXXXXXX", "XXXXXXXXX"]],
+    ["32", ["XXXXXXXX", "XXXXXXXXX"]],
+    ["36", ["XXXXXXXX", "XXXXXXXXX"]],
+    ["39", ["XXXXXXXXXX", "XXXXXXXXXXX"]],
+    ["44", ["XXXXXXXXXX", "XXXXXXXXXXX"]],
+    ["46", ["XXXXXXXX", "XXXXXXXXX"]],
+    ["49", ["XXXXXXXXXXX", "XXXXXXXXXXXX"]],
+    ["54", ["XXXXXXXXXX", "XXXXXXXXXXX"]],
+    ["55", ["(XX) 9XXXX-XXXX", "(XX) XXXX-XXXX"]],
+    ["61", ["XXXXXXXXX"]],
+    ["62", ["XXXXXXXXXX", "XXXXXXXXXXX"]],
+    ["64", ["XXXXXXXX", "XXXXXXXXXX"]],
+    ["82", ["XXXXXXXXX", "XXXXXXXXXX"]]
+  ])("preserva os formatos excepcionais do DDI %s", (dialCode, expected) => {
+    expect(PHONE_FORMAT_RULES_BY_DDI[dialCode]).toEqual(expected);
+  });
 });
