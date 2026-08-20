@@ -116,7 +116,7 @@ describe("GitHub Actions cross-platform runtime integration", () => {
     expect(installationFirefox).toContain("nodejs npm firefox");
     expect(installationFirefox).toContain("firefox-esr");
     // The rapid-release train (Fedora/Arch) and ESR train (Debian/Rocky) sit many majors apart on purpose.
-    expect(installationFirefox).toContain('firefoxMajor: "153"');
+    expect(installationFirefox).toContain('firefoxMajor: "154"');
     expect(installationFirefox).toContain('firefoxMajor: "140"');
     // Ubuntu/macOS/Windows rely on the runner's preinstalled Firefox and carry no firefoxMajor,
     // so the strict-assertion step must stay conditional instead of running unconditionally.
