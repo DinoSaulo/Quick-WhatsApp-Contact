@@ -24,8 +24,8 @@ concurrency:
   group: pipeline-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-# Pipeline: Lint (0) -> Unit -> (Integration + Security in parallel) -> Installation (Chrome +
-# Firefox, OS/distro diversity + N/N-1/N-2 exact-version pins per browser) -> Validate -> Release
+# Pipeline: (Lint + SonarQube, level 0) -> Unit -> (Integration + Security, parallel) ->
+# Installation (Chrome + Firefox, OS/distro diversity + N/N-1/N-2 pins per browser) -> Validate -> Release
 
 jobs:
 
@@ -63,10 +63,36 @@ jobs:
       - name: Verificar comprimento dos comentários
         run: npm run lint:comments
 
+  # ── Level 0: Analise estatica via SonarQube Cloud (paralelo ao lint, mesmo nivel) — tambem
+  # pre-requisito sequencial de unit-tests, junto com lint.
+  sonarqube:
+    name: "0 · SonarQube"
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      # fetch-depth: 0 (historico completo) e exigido pelo scanner do Sonar para blame/new-code.
+      - name: Clonar repositório
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          fetch-depth: 0
+
+      - name: Executar análise do SonarQube Cloud
+        uses: SonarSource/sonarqube-scan-action@22918119ff8e1ca75a623e15c8296b6ea4fbe28f # v8.2.1
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+      # Espera o Quality Gate ser calculado no servidor e falha o job (bloqueando unit-tests) se
+      # o resultado nao for "passed".
+      - name: Verificar Quality Gate do SonarQube
+        uses: SonarSource/sonarqube-quality-gate-action@7a5fffe8e523c40e0c740b6bc2712ab503e52efa # v1.2.1
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
   # ── Level 1: Unit tests (all platforms) ────────────────────────────────────
   unit-tests:
     name: "1 · Unitários · ${{ matrix.label }}"
-    needs: lint
+    needs: [lint, sonarqube]
     runs-on: ${{ matrix.os }}
     container: ${{ matrix.container }}
     timeout-minutes: 10
