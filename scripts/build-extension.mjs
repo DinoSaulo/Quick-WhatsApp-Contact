@@ -1,62 +1,86 @@
 import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { COUNTRIES, getTwemojiAssetName } from "../src/utils/countries.js";
 
 const projectRoot = resolve(import.meta.dirname, "..");
-const outputRoot = resolve(projectRoot, "dist", "extension");
-const manifest = JSON.parse(readFileSync(resolve(projectRoot, "manifest.json"), "utf8"));
-const firefoxBuild = process.argv.includes("--firefox");
+const DEFAULT_FILE_SYSTEM = Object.freeze({
+  cpSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync
+});
 
-if (firefoxBuild) {
-  // Firefox ignores background.service_worker and reports it as an AMO warning. The source
-  // manifest keeps both keys for Chrome/Firefox development; the Firefox artifact only needs background.scripts, which is the supported Firefox form.
-  delete manifest.background.service_worker;
-  delete manifest.background.type;
-}
+export function buildExtension({
+  root = projectRoot,
+  argv = process.argv,
+  fileSystem = DEFAULT_FILE_SYSTEM,
+  now = () => new Date()
+} = {}) {
+  const outputRoot = resolve(root, "dist", "extension");
+  const manifest = JSON.parse(fileSystem.readFileSync(resolve(root, "manifest.json"), "utf8"));
+  const firefoxBuild = argv.includes("--firefox");
 
-rmSync(resolve(projectRoot, "dist"), { recursive: true, force: true });
-mkdirSync(outputRoot, { recursive: true });
-
-for (const entry of ["src", "icons"]) {
-  cpSync(resolve(projectRoot, entry), resolve(outputRoot, entry), { recursive: true });
-}
-writeFileSync(resolve(outputRoot, "manifest.json"), `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
-
-const developmentAssetsOutput = resolve(projectRoot, "assets", "twemoji");
-const packagedAssetsOutput = resolve(outputRoot, "assets", "twemoji");
-rmSync(developmentAssetsOutput, { recursive: true, force: true });
-mkdirSync(developmentAssetsOutput, { recursive: true });
-mkdirSync(packagedAssetsOutput, { recursive: true });
-const emojiAssets = new Set([
-  getTwemojiAssetName("🌐"),
-  getTwemojiAssetName("🏳"),
-  ...COUNTRIES.map((country) => getTwemojiAssetName(country.flag))
-]);
-for (const assetName of emojiAssets) {
-  const sourceAsset = resolve(projectRoot, "node_modules", "@twemoji", "svg", assetName);
-  cpSync(sourceAsset, resolve(developmentAssetsOutput, assetName));
-  cpSync(sourceAsset, resolve(packagedAssetsOutput, assetName));
-}
-const attribution =
-  "Twemoji graphics by Twitter, Inc. and contributors. Licensed under CC-BY 4.0.\nhttps://github.com/jdecked/twemoji\n";
-writeFileSync(resolve(developmentAssetsOutput, "ATTRIBUTION.txt"), attribution, "utf8");
-writeFileSync(resolve(packagedAssetsOutput, "ATTRIBUTION.txt"), attribution, "utf8");
-
-// Pastas de assets estáticos versionadas normalmente (diferente do Twemoji, que é
-// gerado a partir de node_modules): só precisam ser copiadas pro pacote final.
-for (const staticAssetsDir of ["donation-qrcodes", "onboarding"]) {
-  const sourceDir = resolve(projectRoot, "assets", staticAssetsDir);
-  if (existsSync(sourceDir)) {
-    cpSync(sourceDir, resolve(outputRoot, "assets", staticAssetsDir), { recursive: true });
+  if (firefoxBuild) {
+    // Firefox ignores background.service_worker and reports it as an AMO warning. The source
+    // manifest keeps both keys for Chrome/Firefox dev; Firefox only needs background.scripts.
+    delete manifest.background.service_worker;
+    delete manifest.background.type;
   }
+
+  fileSystem.rmSync(resolve(root, "dist"), { recursive: true, force: true });
+  fileSystem.mkdirSync(outputRoot, { recursive: true });
+
+  for (const entry of ["src", "icons"]) {
+    fileSystem.cpSync(resolve(root, entry), resolve(outputRoot, entry), { recursive: true });
+  }
+  fileSystem.writeFileSync(
+    resolve(outputRoot, "manifest.json"),
+    `${JSON.stringify(manifest, null, 2)}\n`,
+    "utf8"
+  );
+
+  const developmentAssetsOutput = resolve(root, "assets", "twemoji");
+  const packagedAssetsOutput = resolve(outputRoot, "assets", "twemoji");
+  fileSystem.rmSync(developmentAssetsOutput, { recursive: true, force: true });
+  fileSystem.mkdirSync(developmentAssetsOutput, { recursive: true });
+  fileSystem.mkdirSync(packagedAssetsOutput, { recursive: true });
+  const emojiAssets = new Set([
+    getTwemojiAssetName("🌐"),
+    getTwemojiAssetName("🏳"),
+    ...COUNTRIES.map((country) => getTwemojiAssetName(country.flag))
+  ]);
+  for (const assetName of emojiAssets) {
+    const sourceAsset = resolve(root, "node_modules", "@twemoji", "svg", assetName);
+    fileSystem.cpSync(sourceAsset, resolve(developmentAssetsOutput, assetName));
+    fileSystem.cpSync(sourceAsset, resolve(packagedAssetsOutput, assetName));
+  }
+  const attribution =
+    "Twemoji graphics by Twitter, Inc. and contributors. Licensed under CC-BY 4.0.\nhttps://github.com/jdecked/twemoji\n";
+  fileSystem.writeFileSync(resolve(developmentAssetsOutput, "ATTRIBUTION.txt"), attribution, "utf8");
+  fileSystem.writeFileSync(resolve(packagedAssetsOutput, "ATTRIBUTION.txt"), attribution, "utf8");
+
+  // Pastas de assets estáticos versionadas normalmente (diferente do Twemoji, que é
+  // gerado a partir de node_modules): só precisam ser copiadas pro pacote final.
+  for (const staticAssetsDir of ["donation-qrcodes", "onboarding"]) {
+    const sourceDir = resolve(root, "assets", staticAssetsDir);
+    if (fileSystem.existsSync(sourceDir)) {
+      fileSystem.cpSync(sourceDir, resolve(outputRoot, "assets", staticAssetsDir), { recursive: true });
+    }
+  }
+
+  fileSystem.writeFileSync(
+    resolve(root, "dist", "BUILD_INFO.txt"),
+    `Quick WhatsApp Contact ${manifest.version}\nTarget: ${firefoxBuild ? "firefox" : "chrome"}\nBuilt at ${now().toISOString()}\n`,
+    "utf8"
+  );
+
+  return { outputRoot, manifestVersion: manifest.version, emojiAssetsCount: emojiAssets.size };
 }
 
-writeFileSync(
-  resolve(projectRoot, "dist", "BUILD_INFO.txt"),
-  `Quick WhatsApp Contact ${manifest.version}\nTarget: ${firefoxBuild ? "firefox" : "chrome"}\nBuilt at ${new Date().toISOString()}\n`,
-  "utf8"
-);
-
-console.log(
-  `Extension ${manifest.version} built at ${outputRoot} with ${emojiAssets.size} local Twemoji assets`
-);
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  const { outputRoot, manifestVersion, emojiAssetsCount } = buildExtension();
+  console.log(`Extension ${manifestVersion} built at ${outputRoot} with ${emojiAssetsCount} local Twemoji assets`);
+}

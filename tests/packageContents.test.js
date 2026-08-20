@@ -33,7 +33,8 @@ describe("published package boundaries", () => {
     expect(buildSource).not.toContain('"store-assets"');
     expect(buildSource).not.toContain('"tests"');
     expect(buildSource).not.toContain('"docs"');
-    expect(buildSource).toContain('writeFileSync(resolve(outputRoot, "manifest.json")');
+    expect(buildSource).toContain("fileSystem.writeFileSync(");
+    expect(buildSource).toContain('resolve(outputRoot, "manifest.json")');
     expect(buildSource).toContain('"src"');
     expect(buildSource).toContain('"icons"');
   });
