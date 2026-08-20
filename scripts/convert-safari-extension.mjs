@@ -5,6 +5,7 @@
 import { execFileSync, spawnSync } from "node:child_process";
 import { copyFileSync, existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { basename, resolve } from "node:path";
+import { buildSafariBundleId, parseFindOutput } from "../tests/safari-extension-build.mjs";
 
 const projectRoot = resolve(import.meta.dirname, "..");
 const extensionPath = resolve(projectRoot, "dist", "extension");
@@ -20,7 +21,7 @@ const APP_NAME = "Quick WhatsApp Contact";
 // Real CI failure's root cause: host app ID = <prefix>.<sanitized APP_NAME>, extension ID =
 // "<BUNDLE_ID>.Extension" verbatim — a fixed last component made them cousins, not parent/child.
 const BUNDLE_ID_BASE = "dev.dinosaulo.quickwhatsappcontact";
-const BUNDLE_ID = `${BUNDLE_ID_BASE}.${APP_NAME.replace(/\s+/g, "-")}`;
+const BUNDLE_ID = buildSafariBundleId(BUNDLE_ID_BASE, APP_NAME);
 
 const outputRoot = resolve(projectRoot, ".safari-build");
 rmSync(outputRoot, { recursive: true, force: true });
@@ -66,13 +67,9 @@ if (converterResult.status !== 0) {
   );
 }
 
-const projectSearch = execFileSync(
-  "find",
-  [outputRoot, "-maxdepth", "3", "-name", "*.xcodeproj"],
-  { encoding: "utf8" },
-)
-  .split("\n")
-  .filter(Boolean);
+const projectSearch = parseFindOutput(
+  execFileSync("find", [outputRoot, "-maxdepth", "3", "-name", "*.xcodeproj"], { encoding: "utf8" }),
+);
 
 if (projectSearch.length !== 1) {
   throw new Error(
@@ -116,13 +113,13 @@ console.error(xcodebuildOutput);
 // Xcode's own binary build log has richer per-phase detail than even -verbose's stdout/stderr for
 // some failures. Best-effort, raw copy only (no parsing of its gzipped format) — never fatal.
 try {
-  const activityLogs = execFileSync(
-    "find",
-    [resolve(derivedDataPath, "Logs", "Build"), "-name", "*.xcactivitylog"],
-    { encoding: "utf8" },
-  )
-    .split("\n")
-    .filter(Boolean);
+  const activityLogs = parseFindOutput(
+    execFileSync(
+      "find",
+      [resolve(derivedDataPath, "Logs", "Build"), "-name", "*.xcactivitylog"],
+      { encoding: "utf8" },
+    ),
+  );
   for (const logPath of activityLogs) {
     copyFileSync(logPath, resolve(diagnosticsRoot, basename(logPath)));
   }
