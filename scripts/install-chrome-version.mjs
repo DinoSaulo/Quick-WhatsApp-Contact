@@ -3,6 +3,7 @@
 import { execFileSync } from "node:child_process";
 import { chmodSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { isValidChromeVersion } from "../tests/installation/chrome-version-validation.mjs";
 
 const KNOWN_GOOD_VERSIONS_URL =
   "https://googlechromelabs.github.io/chrome-for-testing/known-good-versions-with-downloads.json";
