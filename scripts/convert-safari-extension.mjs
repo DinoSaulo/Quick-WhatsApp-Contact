@@ -5,11 +5,10 @@
 import { execFileSync, spawnSync } from "node:child_process";
 import { copyFileSync, existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { basename, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { buildSafariBundleId, parseFindOutput } from "../tests/safari-extension-build.mjs";
 
 const projectRoot = resolve(import.meta.dirname, "..");
-const extensionPath = resolve(projectRoot, "dist", "extension");
-const manifestPath = resolve(extensionPath, "manifest.json");
 
 // SonarQube S4036: never resolve these tools through PATH. Locations are SIP-protected; the
 // restricted PATH below is defense-in-depth for subprocesses Xcode's tools start internally.
@@ -22,141 +21,164 @@ const TRUSTED_ENV = Object.freeze({
   ...process.env,
   PATH: "/usr/bin:/bin:/usr/sbin:/sbin",
 });
-
-if (!existsSync(manifestPath)) {
-  throw new Error(
-    `Build da extensão não encontrado em ${manifestPath}. Baixe o artefato extension-build (ou rode "npm run build") antes.`,
-  );
-}
-
-const APP_NAME = "Quick WhatsApp Contact";
-// Real CI failure's root cause: host app ID = <prefix>.<sanitized APP_NAME>, extension ID =
-// "<BUNDLE_ID>.Extension" verbatim — a fixed last component made them cousins, not parent/child.
-const BUNDLE_ID_BASE = "dev.dinosaulo.quickwhatsappcontact";
-const BUNDLE_ID = buildSafariBundleId(BUNDLE_ID_BASE, APP_NAME);
-
-const outputRoot = resolve(projectRoot, ".safari-build");
-rmSync(outputRoot, { recursive: true, force: true });
-mkdirSync(outputRoot, { recursive: true });
-
-const diagnosticsRoot = resolve(projectRoot, "ci-diagnostics");
-mkdirSync(diagnosticsRoot, { recursive: true });
-const converterLogFile = resolve(diagnosticsRoot, "safari-web-extension-converter.log");
-
-// Captured (not inherited): the converter prints an "App Name: ..." summary to stdout, which a
-// real CI run showed corrupts ci.yml's $(...) capture of this script's own final stdout line.
-
-// --macos-only skips generating an iOS target (and its simulator/signing requirements), which this
-// CI smoke test never needs. --no-open/--force keep the tool non-interactive and idempotent.
-const converterResult = spawnSync(
-  SYSTEM_EXECUTABLES.xcrun,
-  [
-    "safari-web-extension-converter",
-    extensionPath,
-    "--project-location",
-    outputRoot,
-    "--app-name",
-    APP_NAME,
-    "--bundle-identifier",
-    BUNDLE_ID,
-    "--macos-only",
-    "--no-open",
-    "--force",
-    "--swift",
-  ],
-  { encoding: "utf8", env: TRUSTED_ENV },
-);
-const converterOutput = `${converterResult.stdout ?? ""}${converterResult.stderr ?? ""}`;
-writeFileSync(converterLogFile, converterOutput, "utf8");
-// stderr, not stdout — same reasoning as xcodebuildOutput below: this script's stdout must stay
-// reserved for the final console.log(appPath) line that ci.yml captures via $(...).
-console.error(converterOutput);
-
-if (converterResult.status !== 0) {
-  throw new Error(
-    `xcrun safari-web-extension-converter falhou (exit ${converterResult.status ?? "null"}, ` +
-      `signal ${converterResult.signal ?? "none"}). Log completo em ${converterLogFile}.`,
-  );
-}
-
-const projectSearch = parseFindOutput(
-  execFileSync(
-    SYSTEM_EXECUTABLES.find,
-    [outputRoot, "-maxdepth", "3", "-name", "*.xcodeproj"],
-    { encoding: "utf8", env: TRUSTED_ENV },
-  ),
-);
-
-if (projectSearch.length !== 1) {
-  throw new Error(
-    `Esperava exatamente 1 .xcodeproj gerado sob ${outputRoot}, encontrei ${projectSearch.length}: ${projectSearch.join(", ")}`,
-  );
-}
-
-const xcodeprojPath = projectSearch[0];
-const derivedDataPath = resolve(outputRoot, "DerivedData");
-const xcodebuildLogFile = resolve(diagnosticsRoot, "safari-xcodebuild.log");
-
-// Ad-hoc signing, not disabled: ValidateEmbeddedBinary checks the .appex's signature even with
-// CODE_SIGNING_ALLOWED=NO (confirmed by a real CI failure); "-" is Xcode's no-certificate identity.
-
-// -verbose + captured (not inherited) output: xcodebuild otherwise only prints phase names like
-// "ValidateEmbeddedBinary ... (2 failures)" on a plain failure, with no further detail anywhere else.
-const xcodebuildArgs = [
-  "-project",
-  xcodeprojPath,
-  "-scheme",
-  APP_NAME,
-  "-configuration",
-  "Release",
-  "-derivedDataPath",
-  derivedDataPath,
-  "CODE_SIGNING_ALLOWED=YES",
-  "CODE_SIGNING_REQUIRED=NO",
-  "CODE_SIGN_IDENTITY=-",
-  "CODE_SIGN_STYLE=Manual",
-  "-verbose",
-  "build",
-];
-
-const xcodebuildResult = spawnSync(SYSTEM_EXECUTABLES.xcodebuild, xcodebuildArgs, {
-  encoding: "utf8",
-  env: TRUSTED_ENV,
+const DEFAULT_COMMANDS = Object.freeze({ execFileSync, spawnSync });
+const DEFAULT_FILE_SYSTEM = Object.freeze({
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  rmSync,
+  writeFileSync,
 });
-const xcodebuildOutput = `${xcodebuildResult.stdout ?? ""}${xcodebuildResult.stderr ?? ""}`;
-writeFileSync(xcodebuildLogFile, xcodebuildOutput, "utf8");
-// stderr, not stdout: ci.yml captures this script's stdout via $(...) as SAFARI_APP_PATH, so the
-// transcript must never land there — it would corrupt that variable with the whole log's text.
-console.error(xcodebuildOutput);
+const APP_NAME = "Quick WhatsApp Contact";
+const BUNDLE_ID_BASE = "dev.dinosaulo.quickwhatsappcontact";
 
-// Xcode's own binary build log has richer per-phase detail than even -verbose's stdout/stderr for
-// some failures. Best-effort, raw copy only (no parsing of its gzipped format) — never fatal.
-try {
-  const activityLogs = parseFindOutput(
-    execFileSync(
+export function convertSafariExtension({
+  root = projectRoot,
+  commands = DEFAULT_COMMANDS,
+  fileSystem = DEFAULT_FILE_SYSTEM,
+  environment = TRUSTED_ENV,
+  logger = console,
+} = {}) {
+  const extensionPath = resolve(root, "dist", "extension");
+  const manifestPath = resolve(extensionPath, "manifest.json");
+
+  if (!fileSystem.existsSync(manifestPath)) {
+    throw new Error(
+      `Build da extensão não encontrado em ${manifestPath}. Baixe o artefato extension-build (ou rode "npm run build") antes.`,
+    );
+  }
+
+  // Real CI failure's root cause: host app ID = <prefix>.<sanitized APP_NAME>, extension ID =
+  // "<BUNDLE_ID>.Extension" verbatim — a fixed last component made them cousins, not parent/child.
+  const BUNDLE_ID = buildSafariBundleId(BUNDLE_ID_BASE, APP_NAME);
+
+  const outputRoot = resolve(root, ".safari-build");
+  fileSystem.rmSync(outputRoot, { recursive: true, force: true });
+  fileSystem.mkdirSync(outputRoot, { recursive: true });
+
+  const diagnosticsRoot = resolve(root, "ci-diagnostics");
+  fileSystem.mkdirSync(diagnosticsRoot, { recursive: true });
+  const converterLogFile = resolve(diagnosticsRoot, "safari-web-extension-converter.log");
+
+  // Captured (not inherited): the converter prints an "App Name: ..." summary to stdout, which a
+  // real CI run showed corrupts ci.yml's $(...) capture of this script's own final stdout line.
+
+  // --macos-only skips generating an iOS target (and its simulator/signing requirements), which this
+  // CI smoke test never needs. --no-open/--force keep the tool non-interactive and idempotent.
+  const converterResult = commands.spawnSync(
+    SYSTEM_EXECUTABLES.xcrun,
+    [
+      "safari-web-extension-converter",
+      extensionPath,
+      "--project-location",
+      outputRoot,
+      "--app-name",
+      APP_NAME,
+      "--bundle-identifier",
+      BUNDLE_ID,
+      "--macos-only",
+      "--no-open",
+      "--force",
+      "--swift",
+    ],
+    { encoding: "utf8", env: environment },
+  );
+  const converterOutput = `${converterResult.stdout ?? ""}${converterResult.stderr ?? ""}`;
+  fileSystem.writeFileSync(converterLogFile, converterOutput, "utf8");
+  // stderr, not stdout — same reasoning as xcodebuildOutput below: this script's stdout must stay
+  // reserved for the final console.log(appPath) line that ci.yml captures via $(...).
+  logger.error(converterOutput);
+
+  if (converterResult.status !== 0) {
+    throw new Error(
+      `xcrun safari-web-extension-converter falhou (exit ${converterResult.status ?? "null"}, ` +
+        `signal ${converterResult.signal ?? "none"}). Log completo em ${converterLogFile}.`,
+    );
+  }
+
+  const projectSearch = parseFindOutput(
+    commands.execFileSync(
       SYSTEM_EXECUTABLES.find,
-      [resolve(derivedDataPath, "Logs", "Build"), "-name", "*.xcactivitylog"],
-      { encoding: "utf8", env: TRUSTED_ENV },
+      [outputRoot, "-maxdepth", "3", "-name", "*.xcodeproj"],
+      { encoding: "utf8", env: environment },
     ),
   );
-  for (const logPath of activityLogs) {
-    copyFileSync(logPath, resolve(diagnosticsRoot, basename(logPath)));
+
+  if (projectSearch.length !== 1) {
+    throw new Error(
+      `Esperava exatamente 1 .xcodeproj gerado sob ${outputRoot}, encontrei ${projectSearch.length}: ${projectSearch.join(", ")}`,
+    );
   }
-} catch (activityLogError) {
-  console.warn(`⚠️  Não foi possível copiar diagnósticos .xcactivitylog: ${activityLogError.message}`);
+
+  const xcodeprojPath = projectSearch[0];
+  const derivedDataPath = resolve(outputRoot, "DerivedData");
+  const xcodebuildLogFile = resolve(diagnosticsRoot, "safari-xcodebuild.log");
+
+  // Ad-hoc signing, not disabled: ValidateEmbeddedBinary checks the .appex's signature even with
+  // CODE_SIGNING_ALLOWED=NO (confirmed by a real CI failure); "-" is Xcode's no-certificate identity.
+
+  // -verbose + captured (not inherited) output: xcodebuild otherwise only prints phase names like
+  // "ValidateEmbeddedBinary ... (2 failures)" on a plain failure, with no further detail anywhere else.
+  const xcodebuildArgs = [
+    "-project",
+    xcodeprojPath,
+    "-scheme",
+    APP_NAME,
+    "-configuration",
+    "Release",
+    "-derivedDataPath",
+    derivedDataPath,
+    "CODE_SIGNING_ALLOWED=YES",
+    "CODE_SIGNING_REQUIRED=NO",
+    "CODE_SIGN_IDENTITY=-",
+    "CODE_SIGN_STYLE=Manual",
+    "-verbose",
+    "build",
+  ];
+
+  const xcodebuildResult = commands.spawnSync(SYSTEM_EXECUTABLES.xcodebuild, xcodebuildArgs, {
+    encoding: "utf8",
+    env: environment,
+  });
+  const xcodebuildOutput = `${xcodebuildResult.stdout ?? ""}${xcodebuildResult.stderr ?? ""}`;
+  fileSystem.writeFileSync(xcodebuildLogFile, xcodebuildOutput, "utf8");
+  // stderr, not stdout: ci.yml captures this script's stdout via $(...) as SAFARI_APP_PATH, so the
+  // transcript must never land there — it would corrupt that variable with the whole log's text.
+  logger.error(xcodebuildOutput);
+
+  // Xcode's own binary build log has richer per-phase detail than even -verbose's stdout/stderr for
+  // some failures. Best-effort, raw copy only (no parsing of its gzipped format) — never fatal.
+  try {
+    const activityLogs = parseFindOutput(
+      commands.execFileSync(
+        SYSTEM_EXECUTABLES.find,
+        [resolve(derivedDataPath, "Logs", "Build"), "-name", "*.xcactivitylog"],
+        { encoding: "utf8", env: environment },
+      ),
+    );
+    for (const logPath of activityLogs) {
+      fileSystem.copyFileSync(logPath, resolve(diagnosticsRoot, basename(logPath)));
+    }
+  } catch (activityLogError) {
+    logger.warn(`⚠️  Não foi possível copiar diagnósticos .xcactivitylog: ${activityLogError.message}`);
+  }
+
+  if (xcodebuildResult.status !== 0) {
+    throw new Error(
+      `xcodebuild falhou (exit ${xcodebuildResult.status ?? "null"}, signal ${xcodebuildResult.signal ?? "none"}). ` +
+        `Log completo em ${xcodebuildLogFile}.`,
+    );
+  }
+
+  const appPath = resolve(derivedDataPath, "Build", "Products", "Release", `${APP_NAME}.app`);
+
+  if (!fileSystem.existsSync(appPath)) {
+    throw new Error(`xcodebuild reportou sucesso, mas ${appPath} não existe.`);
+  }
+
+  return appPath;
 }
 
-if (xcodebuildResult.status !== 0) {
-  throw new Error(
-    `xcodebuild falhou (exit ${xcodebuildResult.status ?? "null"}, signal ${xcodebuildResult.signal ?? "none"}). ` +
-      `Log completo em ${xcodebuildLogFile}.`,
-  );
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  console.log(convertSafariExtension());
 }
-
-const appPath = resolve(derivedDataPath, "Build", "Products", "Release", `${APP_NAME}.app`);
-
-if (!existsSync(appPath)) {
-  throw new Error(`xcodebuild reportou sucesso, mas ${appPath} não existe.`);
-}
-
-console.log(appPath);

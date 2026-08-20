@@ -1,8 +1,51 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { reportSourceCheck, runSourceCheck } from "../scripts/check-source.mjs";
 import { checkSyntax, collectJavaScript } from "./js-syntax-checker.mjs";
+
+describe("runSourceCheck", () => {
+  it("returns every collected file when all syntax checks pass", () => {
+    const result = runSourceCheck({
+      root: "/project",
+      collect: (directory) => [`${directory}/valid.js`],
+      check: () => ({ ok: true, message: null }),
+    });
+
+    expect(result.files).toHaveLength(4);
+    expect(result.failures).toEqual([]);
+  });
+
+  it("collects each syntax-check failure without stopping at the first one", () => {
+    const result = runSourceCheck({
+      root: "/project",
+      collect: (directory) => [`${directory}/invalid.js`],
+      check: (file) => ({ ok: false, message: `Invalid: ${file}` }),
+    });
+
+    expect(result.failures).toHaveLength(4);
+    expect(result.failures.every((message) => message.startsWith("Invalid:"))).toBe(true);
+  });
+
+  it("reports success without changing the process exit code", () => {
+    const logger = { error: vi.fn(), log: vi.fn() };
+    const runtime = {};
+
+    expect(reportSourceCheck({ failures: [], files: ["a.js"] }, { logger, runtime })).toBe(true);
+    expect(logger.log).toHaveBeenCalledWith("Syntax check passed for 1 JavaScript files.");
+    expect(runtime.exitCode).toBeUndefined();
+  });
+
+  it("reports failures and sets a failing process exit code", () => {
+    const logger = { error: vi.fn(), log: vi.fn() };
+    const runtime = {};
+
+    expect(reportSourceCheck({ failures: ["one", "two"], files: [] }, { logger, runtime })).toBe(false);
+    expect(logger.error).toHaveBeenCalledWith("one\ntwo");
+    expect(runtime.exitCode).toBe(1);
+  });
+});
 
 describe("collectJavaScript", () => {
   let dir;
@@ -70,8 +113,11 @@ describe("checkSyntax", () => {
   it("fails with a startup message when the file does not exist", () => {
     const file = join(dir, "missing.js");
 
-    const result = checkSyntax(file);
+    const result = checkSyntax(file, {
+      spawn: () => ({ error: new Error("spawn failed") }),
+    });
     expect(result.ok).toBe(false);
     expect(result.message).toContain(file);
+    expect(result.message).toContain("spawn failed");
   });
 });

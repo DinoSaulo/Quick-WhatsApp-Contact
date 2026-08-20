@@ -12,8 +12,8 @@ export function collectJavaScript(directory) {
   });
 }
 
-export function checkSyntax(file) {
-  const result = spawnSync(process.execPath, ["--check", file], { encoding: "utf8" });
+export function checkSyntax(file, { spawn = spawnSync, executable = process.execPath } = {}) {
+  const result = spawn(executable, ["--check", file], { encoding: "utf8" });
   if (result.error) {
     return { ok: false, message: `${file}\nUnable to start the syntax checker: ${result.error.message}` };
   }

@@ -1,11 +1,52 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  reportCommentLengthCheck,
+  runCommentLengthCheck,
+} from "../scripts/check-comment-length.mjs";
 import { collectFiles, findOverlongCommentBlocks } from "./comment-length-checker.mjs";
 
 const js = (lines) => findOverlongCommentBlocks(lines, { isYaml: false, maxLines: 2 });
 const yaml = (lines) => findOverlongCommentBlocks(lines, { isYaml: true, maxLines: 2 });
+
+describe("runCommentLengthCheck", () => {
+  it("accepts collected JavaScript, YAML and config files within the limit", () => {
+    const result = runCommentLengthCheck({
+      root: "/project",
+      collect: (directory, extensions) => [`${directory}/file${extensions[0]}`],
+      read: () => "// one\n// two\nconst value = true;",
+    });
+
+    expect(result.files).toHaveLength(6);
+    expect(result.failures).toEqual([]);
+  });
+
+  it("reports overlong JavaScript and YAML comment blocks with their locations", () => {
+    const result = runCommentLengthCheck({
+      root: "/project",
+      collect: (directory, extensions) => [`${directory}/file${extensions[0]}`],
+      read: (file) => file.endsWith(".yml") ? "# one\n# two\n# three" : "// one\n// two\n// three",
+    });
+
+    expect(result.failures).toHaveLength(6);
+    expect(result.failures[0]).toContain("comment block is 3 lines");
+  });
+
+  it("reports successful and failing CLI outcomes", () => {
+    const logger = { error: vi.fn(), log: vi.fn() };
+    const runtime = {};
+
+    expect(reportCommentLengthCheck({ failures: [], files: ["a.js"] }, { logger, runtime })).toBe(true);
+    expect(
+      reportCommentLengthCheck({ failures: ["too long"], files: [] }, { logger, runtime }),
+    ).toBe(false);
+    expect(logger.log).toHaveBeenCalledWith("Comment-length check passed for 1 files.");
+    expect(logger.error).toHaveBeenCalledWith("too long");
+    expect(runtime.exitCode).toBe(1);
+  });
+});
 
 describe("findOverlongCommentBlocks", () => {
   it("allows a line-comment run at or under the limit", () => {
