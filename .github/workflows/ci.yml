@@ -60,12 +60,12 @@ jobs:
       - name: Verificar sintaxe
         run: npm run lint
 
-      - name: Verificar comprimento dos comentarios
+      - name: Verificar comprimento dos comentários
         run: npm run lint:comments
 
   # ── Level 1: Unit tests (all platforms) ────────────────────────────────────
   unit-tests:
-    name: "1 · Unitarios · ${{ matrix.label }}"
+    name: "1 · Unitários · ${{ matrix.label }}"
     needs: lint
     runs-on: ${{ matrix.os }}
     container: ${{ matrix.container }}
@@ -114,7 +114,7 @@ jobs:
         shell: bash
         run: mkdir -p reports
 
-      - name: Executar testes unitarios
+      - name: Executar testes unitários
         run: >-
           npm run test:unit --
           --reporter=default
@@ -131,7 +131,7 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
-      - name: Gerar build da extensao (Chrome)
+      - name: Gerar build da extensão (Chrome)
         if: matrix.label == 'Ubuntu'
         run: npm run build
 
@@ -159,7 +159,7 @@ jobs:
 
   # ── Level 2: Integration tests (all platforms) ─────────────────────────────
   integration-tests:
-    name: "2 · Integracao · ${{ matrix.label }}"
+    name: "2 · Integração · ${{ matrix.label }}"
     needs: unit-tests
     runs-on: ${{ matrix.os }}
     container: ${{ matrix.container }}
@@ -207,7 +207,7 @@ jobs:
         shell: bash
         run: mkdir -p reports
 
-      - name: Executar testes de integracao
+      - name: Executar testes de integração
         run: >-
           npm run test:integration --
           --reporter=default
@@ -370,7 +370,7 @@ jobs:
           name: extension-build
           path: dist/extension/
 
-      - name: Testar instalacao e desinstalacao no Chrome
+      - name: Testar instalação e desinstalação no Chrome
         run: npm run test:install
 
       # extension-install.mjs writes to ci-diagnostics/ and only deletes it on a genuine pass, so a
@@ -501,7 +501,7 @@ jobs:
 
       # Every diagnosable cause here has been root-caused and fixed; what remains is a native
       # SIGSEGV in this exact pinned binary, confirmed NOT OOM/missing-library/runner (see steps above). Retry loop stays: cheap, and crash-dump diagnostics still fire on every attempt.
-      - name: Testar instalacao e desinstalacao no Chrome
+      - name: Testar instalação e desinstalação no Chrome
         run: |
           for attempt in 1 2 3; do
             if npm run test:install; then
@@ -602,7 +602,7 @@ jobs:
           name: extension-build
           path: dist/extension/
 
-      - name: Testar instalacao e desinstalacao no Firefox
+      - name: Testar instalação e desinstalação no Firefox
         run: npm run test:install:firefox
 
       # firefox-extension-install.mjs writes to ci-diagnostics/ only on its diagnostics-formatting
@@ -695,7 +695,7 @@ jobs:
       - name: Verificar versão do Firefox baixado
         run: node scripts/verify-firefox-version.mjs "$(echo '${{ matrix.firefoxVersion }}' | cut -d. -f1)"
 
-      - name: Testar instalacao e desinstalacao no Firefox
+      - name: Testar instalação e desinstalação no Firefox
         run: npm run test:install:firefox
 
       # Same reasoning as installation-test-firefox's equivalent step above.
@@ -711,7 +711,7 @@ jobs:
   # Level 4f: Safari (macOS-only), two disconnected smoke tests: xcrun+xcodebuild still convert
   # and compile the real extension; the later WebKit step is Playwright's generic engine only.
   installation-test-safari:
-    name: "4f · Instalacao Safari"
+    name: "4f · Instalação Safari"
     needs: security-tests
     runs-on: macos-latest
     timeout-minutes: 20
