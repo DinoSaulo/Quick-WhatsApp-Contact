@@ -3,6 +3,7 @@
 import { execFileSync } from "node:child_process";
 import { chmodSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { isValidFirefoxVersion } from "../tests/installation/firefox-version-validation.mjs";
 
 // Confirmed live against archive.mozilla.org: current releases ship as firefox-<version>.tar.xz
 // (older ones used .tar.bz2, but every version we resolve is recent enough to be .tar.xz).
@@ -15,9 +16,9 @@ if (!version) {
   process.exit(1);
 }
 
-// Firefox releases are dot-separated numeric segments. Validating before `version` reaches
-// resolve()/execFileSync() below stops a crafted argument from escaping the target dir.
-if (!/^\d+(\.\d+){1,2}$/.test(version)) {
+// Validating before `version` reaches resolve()/execFileSync() below stops a crafted argument
+// from escaping the target dir.
+if (!isValidFirefoxVersion(version)) {
   console.error(`Invalid Firefox version: ${version}`);
   process.exit(1);
 }

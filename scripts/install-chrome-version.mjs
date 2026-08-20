@@ -18,9 +18,9 @@ if (!version) {
   process.exit(1);
 }
 
-// Chrome for Testing versions are always MAJOR.MINOR.BUILD.PATCH. Validating before `version`
-// reaches resolve()/execFileSync() below stops a crafted argument from escaping the target dir.
-if (!/^\d+\.\d+\.\d+\.\d+$/.test(version)) {
+// Validating before `version` reaches resolve()/execFileSync() below stops a crafted argument
+// from escaping the target dir.
+if (!isValidChromeVersion(version)) {
   console.error(`Invalid Chrome version: ${version}`);
   process.exit(1);
 }
