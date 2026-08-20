@@ -29,6 +29,7 @@
   },
   "devDependencies": {
     "@twemoji/svg": "15.0.0",
+    "@vitest/coverage-v8": "^4.1.10",
     "eslint": "10.8.1",
     "eslint-plugin-no-unsanitized": "4.1.5",
     "eslint-plugin-security": "4.0.1",

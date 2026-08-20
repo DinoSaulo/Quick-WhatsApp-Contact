@@ -31,7 +31,7 @@ describe("GitHub Actions cross-platform runtime integration", () => {
     expect(workflow).toContain('NODE_VERSION: "22.23.2"');
     expect(setupNodeEnvAction).toContain("node-version: ${{ env.NODE_VERSION }}");
     expect(setupNodeEnvAction).toContain("name: Verificar versao do Node.js");
-    expect(workflow.match(/uses: \.\/\.github\/actions\/setup-node-env/g)).toHaveLength(13);
+    expect(workflow.match(/uses: \.\/\.github\/actions\/setup-node-env/g)).toHaveLength(14);
     expect(workflow).not.toContain("actions/setup-node@v6");
   });
 
