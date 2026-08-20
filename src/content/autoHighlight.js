@@ -229,7 +229,7 @@
     });
 
     actionRoot.appendChild(button);
-    linkElement.insertAdjacentElement("afterend", actionRoot);
+    linkElement.after(actionRoot);
   }
 
   function refreshButtonLabels() {
