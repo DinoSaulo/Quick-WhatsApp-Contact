@@ -126,7 +126,7 @@ class TutorialPage extends HTMLElement {
 
     this.querySelectorAll("[data-step-index]").forEach((dot) => {
       dot.addEventListener("click", () => {
-        this.goToStep(Number(dot.getAttribute("data-step-index")));
+        this.goToStep(Number(dot.dataset.stepIndex));
       });
     });
   }
