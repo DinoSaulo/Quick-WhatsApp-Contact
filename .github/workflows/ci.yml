@@ -855,8 +855,8 @@ jobs:
 
       - name: Criar arquivos ZIP
         run: |
-          # TODO(human): zipar dist/extension-chrome/ e dist/extension-firefox/ em
-          # dist/quick-whatsapp-contact-v${{ steps.version.outputs.value }}-chrome.zip e -firefox.zip
+          (cd dist/extension-chrome && zip -qr "../../dist/quick-whatsapp-contact-v${{ steps.version.outputs.value }}-chrome.zip" .)
+          (cd dist/extension-firefox && zip -qr "../../dist/quick-whatsapp-contact-v${{ steps.version.outputs.value }}-firefox.zip" .)
 
       - name: Publicar release no GitHub
         uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3
