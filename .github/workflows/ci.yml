@@ -37,7 +37,7 @@ jobs:
     timeout-minutes: 10
 
     steps:
-      - name: Clonar repositorio
+      - name: Clonar repositório
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
       - name: Preparar ambiente Node.js
@@ -53,7 +53,7 @@ jobs:
           restore-keys: |
             node-modules-${{ runner.os }}-
 
-      - name: Instalar dependencias
+      - name: Instalar dependências
         if: steps.cache-node-modules.outputs.cache-hit != 'true'
         run: npm ci
 
@@ -85,11 +85,11 @@ jobs:
             label: Windows
 
     steps:
-      - name: Instalar dependencias do sistema (Fedora)
+      - name: Instalar dependências do sistema (Fedora)
         if: matrix.label == 'Fedora'
         run: dnf install -y --setopt=install_weak_deps=False git curl nodejs npm
 
-      - name: Clonar repositorio
+      - name: Clonar repositório
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
       - name: Preparar ambiente Node.js
@@ -106,11 +106,11 @@ jobs:
           restore-keys: |
             node-modules-${{ runner.os }}-${{ matrix.label }}-
 
-      - name: Instalar dependencias
+      - name: Instalar dependências
         if: steps.cache-node-modules.outputs.cache-hit != 'true'
         run: npm ci
 
-      - name: Preparar diretorio de relatorios
+      - name: Preparar diretório de relatórios
         shell: bash
         run: mkdir -p reports
 
@@ -122,7 +122,7 @@ jobs:
           --reporter=junit
           --outputFile.junit=reports/unit.xml
 
-      - name: Anexar relatorio JUnit
+      - name: Anexar relatório JUnit
         if: always()
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
@@ -131,15 +131,29 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
-      - name: Gerar build da extensao
+      - name: Gerar build da extensao (Chrome)
         if: matrix.label == 'Ubuntu'
         run: npm run build
 
-      - name: Salvar build como artefato
+      - name: Salvar build como artefato (Chrome)
         if: matrix.label == 'Ubuntu'
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: extension-build
+          path: dist/extension/
+          retention-days: 1
+
+      # build-extension.mjs limpa dist/ a cada chamada, entao o upload do Chrome acima
+      # precisa terminar antes desta segunda build sobrescrever dist/extension/.
+      - name: Gerar build da extensão (Firefox)
+        if: matrix.label == 'Ubuntu'
+        run: npm run build:firefox
+
+      - name: Salvar build como artefato (Firefox)
+        if: matrix.label == 'Ubuntu'
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: extension-build-firefox
           path: dist/extension/
           retention-days: 1
 
@@ -165,11 +179,11 @@ jobs:
             label: Windows
 
     steps:
-      - name: Instalar dependencias do sistema (Fedora)
+      - name: Instalar dependências do sistema (Fedora)
         if: matrix.label == 'Fedora'
         run: dnf install -y --setopt=install_weak_deps=False git curl nodejs npm
 
-      - name: Clonar repositorio
+      - name: Clonar repositório
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
       - name: Preparar ambiente Node.js
@@ -185,11 +199,11 @@ jobs:
           restore-keys: |
             node-modules-${{ runner.os }}-${{ matrix.label }}-
 
-      - name: Instalar dependencias
+      - name: Instalar dependências
         if: steps.cache-node-modules.outputs.cache-hit != 'true'
         run: npm ci
 
-      - name: Preparar diretorio de relatorios
+      - name: Preparar diretório de relatórios
         shell: bash
         run: mkdir -p reports
 
@@ -201,7 +215,7 @@ jobs:
           --reporter=junit
           --outputFile.junit=reports/integration.xml
 
-      - name: Anexar relatorio JUnit
+      - name: Anexar relatório JUnit
         if: always()
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
@@ -212,13 +226,13 @@ jobs:
 
   # ── Level 3: Security tests (Linux only) ────────────────────────────────────
   security-tests:
-    name: "3 · Seguranca"
-    needs: [unit-tests, lint]
+    name: "3 · segurança"
+    needs: integration-tests
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
     steps:
-      - name: Clonar repositorio
+      - name: Clonar repositório
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
       - name: Preparar ambiente Node.js
@@ -235,23 +249,23 @@ jobs:
           restore-keys: |
             node-modules-${{ runner.os }}-
 
-      - name: Instalar dependencias
+      - name: Instalar dependências
         if: steps.cache-node-modules.outputs.cache-hit != 'true'
         run: npm ci
 
-      - name: Auditar dependencias de producao
+      - name: Auditar dependências de produção
         run: npm audit --omit=dev
 
-      - name: Analise estatica de seguranca (SAST)
+      - name: Analise estatica de segurança (SAST)
         run: npm run lint:sast
 
-      - name: Preparar diretorio de relatorios
+      - name: Preparar diretório de relatórios
         shell: bash
         run: mkdir -p reports
 
       # Builds, then runs the security suite plus the AMO validator (web-ext lint) in one
       # execution — tests/webExtLint.test.js is a vitest file, so it needs no separate step.
-      - name: Executar testes de seguranca (incl. validador da AMO)
+      - name: Executar testes de segurança (incl. validador da AMO)
         run: >-
           npm run test:security --
           --reporter=default
@@ -259,7 +273,7 @@ jobs:
           --reporter=junit
           --outputFile.junit=reports/security.xml
 
-      - name: Anexar relatorio JUnit
+      - name: Anexar relatório JUnit
         if: always()
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
@@ -270,7 +284,7 @@ jobs:
 
   # ── Level 4: Installation test (all platforms). Linux entries run in a bare distro container;
   # `setup` bootstraps git/curl/nodejs/npm first. `chromeMajor` is asserted below so drift fails loudly.
-  installation-test:
+  installation-test-chrome:
     name: "4 · Instalacao · ${{ matrix.label }}"
     needs: [integration-tests, security-tests]
     runs-on: ${{ matrix.os }}
@@ -319,7 +333,7 @@ jobs:
         if: matrix.setup != ''
         run: ${{ matrix.setup }}
 
-      - name: Clonar repositorio
+      - name: Clonar repositório
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
       - name: Preparar ambiente Node.js
@@ -331,7 +345,7 @@ jobs:
 
       # Runs on every platform, not just Linux containers (where plain `chromium --version` works).
       # verify-chrome-version.mjs reuses findBrowserExecutable() so this checks the exact binary puppeteer-core would launch.
-      - name: Verificar versao do Chromium
+      - name: Verificar versão do Chromium
         if: matrix.chromeMajor != ''
         run: node scripts/verify-chrome-version.mjs "${{ matrix.chromeMajor }}"
 
@@ -346,7 +360,7 @@ jobs:
           restore-keys: |
             node-modules-${{ runner.os }}-${{ matrix.label }}-
 
-      - name: Instalar dependencias
+      - name: Instalar dependências
         if: steps.cache-node-modules.outputs.cache-hit != 'true'
         run: npm ci
 
@@ -361,7 +375,7 @@ jobs:
 
       # extension-install.mjs writes to ci-diagnostics/ and only deletes it on a genuine pass, so a
       # failed run's evidence is still here to upload. if-no-files-found: ignore is the expected common case, not an error.
-      - name: Anexar diagnosticos do Chrome (em caso de falha)
+      - name: Anexar diagnósticos do Chrome (em caso de falha)
         if: failure()
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
@@ -373,7 +387,7 @@ jobs:
   # ── Level 4a: Resolve the 3 most recent Chrome majors (N, N-1, N-2), computed fresh via fromJson
   # instead of hand-bumped numbers. needs: [integration-tests, security-tests] now (uniform Level 4 convention) — this job no longer runs in parallel with security-tests, even though installation-test-pinned's own needs already guaranteed waiting for it.
   resolve-chrome-versions:
-    name: "4a · Resolver versoes do Chrome"
+    name: "4a · Resolver versões do Chrome"
     needs: [integration-tests, security-tests]
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -381,13 +395,13 @@ jobs:
       versions: ${{ steps.resolve.outputs.versions }}
 
     steps:
-      - name: Clonar repositorio
+      - name: Clonar repositório
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
       - name: Preparar ambiente Node.js
         uses: ./.github/actions/setup-node-env
 
-      - name: Resolver as 3 versoes major mais recentes do Chrome
+      - name: Resolver as 3 versões major mais recentes do Chrome
         id: resolve
         run: >-
           node scripts/resolve-chrome-versions.mjs "${{ inputs.extra_chrome_version }}"
@@ -396,8 +410,8 @@ jobs:
   # ── Level 4b: Installation test pinned to Chrome N / N-1 / N-2, downloaded straight from Chrome
   # for Testing. Ubuntu-only: this job's purpose is precise version coverage, not OS diversity (installation-test's Fedora/Debian/Rocky/Arch entries cover that).
   installation-test-pinned:
-    name: "4b · Instalacao Chrome ${{ matrix.chromeVersion }}"
-    needs: [security-tests, resolve-chrome-versions]
+    name: "4b · Instalação Chrome ${{ matrix.chromeVersion }}"
+    needs: [security-tests, resolve-chrome-versions, installation-test-chrome]
     runs-on: ubuntu-latest
     timeout-minutes: 15
     strategy:
@@ -408,7 +422,7 @@ jobs:
         chromeVersion: ${{ fromJson(needs.resolve-chrome-versions.outputs.versions) }}
 
     steps:
-      - name: Clonar repositorio
+      - name: Clonar repositório
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
       - name: Preparar ambiente Node.js
@@ -424,7 +438,7 @@ jobs:
           restore-keys: |
             node-modules-${{ runner.os }}-
 
-      - name: Instalar dependencias
+      - name: Instalar dependências
         if: steps.cache-node-modules.outputs.cache-hit != 'true'
         run: npm ci
 
@@ -436,7 +450,7 @@ jobs:
 
       # Confirmed root cause of a real SIGSEGV: Chrome for Testing (downloaded below) has no
       # dependency-resolution of its own and is missing shared libraries (Puppeteer's own docs describe this exact scenario). Installing google-chrome-stable here is purely for its .deb dependency chain — the actual test still runs against CHROME_PATH below.
-      - name: Instalar Chrome estavel (resolve dependencias de sistema via apt)
+      - name: Instalar Chrome estável (resolve dependências de sistema via apt)
         run: |
           sudo apt-get update
           sudo apt-get install -y google-chrome-stable
@@ -454,7 +468,7 @@ jobs:
           EXEC_PATH=$(node scripts/install-chrome-version.mjs "${{ matrix.chromeVersion }}")
           echo "CHROME_PATH=$EXEC_PATH" >> "$GITHUB_ENV"
 
-      - name: Verificar versao do Chrome baixado
+      - name: Verificar versão do Chrome baixado
         run: node scripts/verify-chrome-version.mjs "$(echo '${{ matrix.chromeVersion }}' | cut -d. -f1)"
 
       # A real CI run SIGSEGV'd all 3 retries identically at nearly the same elapsed time — this
@@ -466,7 +480,7 @@ jobs:
 
       # Bisecting further: crashes happened ~15-20s post-launch, right around background.js's
       # onboarding-tab open. --load-extension loads it with no Puppeteer/CDP at all — a crash here points at the extension itself; survival narrows it to Puppeteer's CDP-driven flow.
-      - name: Verificar se a extensao carrega sem o Puppeteer
+      - name: Verificar se a extensão carrega sem o Puppeteer
         run: |
           "$CHROME_PATH" --headless=new --no-sandbox --disable-gpu --disable-dev-shm-usage \
             --disable-extensions-except="$(pwd)/dist/extension" \
@@ -475,13 +489,13 @@ jobs:
           CHROME_PID=$!
           sleep 20
           if kill -0 "$CHROME_PID" 2>/dev/null; then
-            echo "Chrome sobreviveu 20s com a extensao carregada, sem o Puppeteer."
+            echo "Chrome sobreviveu 20s com a extensão carregada, sem o Puppeteer."
             kill "$CHROME_PID"
             wait "$CHROME_PID" 2>/dev/null || true
           else
             wait "$CHROME_PID"
             EXIT_CODE=$?
-            echo "Chrome morreu (exit code $EXIT_CODE) apos carregar a extensao, sem o Puppeteer." >&2
+            echo "Chrome morreu (exit code $EXIT_CODE) apos carregar a extensão, sem o Puppeteer." >&2
             exit 1
           fi
 
@@ -500,7 +514,7 @@ jobs:
 
       # if: always(), not if: failure() (unlike non-retrying siblings below) — the retry loop above
       # means an EARLIER failed attempt's diagnostics would otherwise go missing once a LATER attempt succeeds and the step reports success.
-      - name: Anexar diagnosticos do Chrome (em caso de falha em qualquer tentativa)
+      - name: Anexar diagnósticos do Chrome (em caso de falha em qualquer tentativa)
         if: always()
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
@@ -512,7 +526,7 @@ jobs:
   # ── Level 4c: Installation test (Firefox, OS/distro diversity), counterpart of installation-test.
   # Only the 4 container entries assert firefoxMajor; Ubuntu/macOS/Windows use whatever the runner preinstalls. Debian/Rocky trail on the ESR train by design.
   installation-test-firefox:
-    name: "4c · Instalacao Firefox · ${{ matrix.label }}"
+    name: "4c · Instalação Firefox · ${{ matrix.label }}"
     needs: [integration-tests, security-tests]
     runs-on: ${{ matrix.os }}
     container: ${{ matrix.container }}
@@ -557,13 +571,13 @@ jobs:
         if: matrix.setup != ''
         run: ${{ matrix.setup }}
 
-      - name: Clonar repositorio
+      - name: Clonar repositório
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
       - name: Preparar ambiente Node.js
         uses: ./.github/actions/setup-node-env
 
-      - name: Verificar versao do Firefox
+      - name: Verificar versão do Firefox
         if: matrix.firefoxMajor != ''
         run: node scripts/verify-firefox-version.mjs "${{ matrix.firefoxMajor }}"
 
@@ -578,7 +592,7 @@ jobs:
           restore-keys: |
             node-modules-${{ runner.os }}-${{ matrix.label }}-
 
-      - name: Instalar dependencias
+      - name: Instalar dependências
         if: steps.cache-node-modules.outputs.cache-hit != 'true'
         run: npm ci
 
@@ -593,7 +607,7 @@ jobs:
 
       # firefox-extension-install.mjs writes to ci-diagnostics/ only on its diagnostics-formatting
       # (failure) path, so this is safe as if: failure() even without an explicit delete-on-success.
-      - name: Anexar diagnosticos do Firefox (em caso de falha)
+      - name: Anexar diagnósticos do Firefox (em caso de falha)
         if: failure()
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
@@ -605,7 +619,7 @@ jobs:
   # ── Level 4d: Resolve the 3 most recent Firefox majors (N, N-1, N-2), the Firefox counterpart of
   # resolve-chrome-versions above (Mozilla's release-history API); same needs: [integration-tests, security-tests] reasoning as that job's comment.
   resolve-firefox-versions:
-    name: "4d · Resolver versoes do Firefox"
+    name: "4d · Resolver versões do Firefox"
     needs: [integration-tests, security-tests]
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -613,13 +627,13 @@ jobs:
       versions: ${{ steps.resolve.outputs.versions }}
 
     steps:
-      - name: Clonar repositorio
+      - name: Clonar repositório
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
       - name: Preparar ambiente Node.js
         uses: ./.github/actions/setup-node-env
 
-      - name: Resolver as 3 versoes major mais recentes do Firefox
+      - name: Resolver as 3 versões major mais recentes do Firefox
         id: resolve
         run: >-
           node scripts/resolve-firefox-versions.mjs "${{ inputs.extra_firefox_version }}"
@@ -629,7 +643,7 @@ jobs:
   # installation-test-pinned (downloads each major from Mozilla's archive). Ubuntu-only, same precise-version-coverage reasoning as the Chrome pinned job.
   installation-test-firefox-pinned:
     name: "4e · Instalacao Firefox ${{ matrix.firefoxVersion }}"
-    needs: [security-tests, resolve-firefox-versions]
+    needs: [security-tests, resolve-firefox-versions, installation-test-firefox]
     runs-on: ubuntu-latest
     timeout-minutes: 15
     strategy:
@@ -640,7 +654,7 @@ jobs:
         firefoxVersion: ${{ fromJson(needs.resolve-firefox-versions.outputs.versions) }}
 
     steps:
-      - name: Clonar repositorio
+      - name: Clonar repositório
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
       - name: Preparar ambiente Node.js
@@ -656,7 +670,7 @@ jobs:
           restore-keys: |
             node-modules-${{ runner.os }}-
 
-      - name: Instalar dependencias
+      - name: Instalar dependências
         if: steps.cache-node-modules.outputs.cache-hit != 'true'
         run: npm ci
 
@@ -678,14 +692,14 @@ jobs:
           EXEC_PATH=$(node scripts/install-firefox-version.mjs "${{ matrix.firefoxVersion }}")
           echo "FIREFOX_PATH=$EXEC_PATH" >> "$GITHUB_ENV"
 
-      - name: Verificar versao do Firefox baixado
+      - name: Verificar versão do Firefox baixado
         run: node scripts/verify-firefox-version.mjs "$(echo '${{ matrix.firefoxVersion }}' | cut -d. -f1)"
 
       - name: Testar instalacao e desinstalacao no Firefox
         run: npm run test:install:firefox
 
       # Same reasoning as installation-test-firefox's equivalent step above.
-      - name: Anexar diagnosticos do Firefox (em caso de falha)
+      - name: Anexar diagnósticos do Firefox (em caso de falha)
         if: failure()
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
@@ -705,7 +719,7 @@ jobs:
       PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/.playwright-browsers
 
     steps:
-      - name: Clonar repositorio
+      - name: Clonar repositório
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
       - name: Preparar ambiente Node.js
@@ -721,7 +735,7 @@ jobs:
           restore-keys: |
             node-modules-${{ runner.os }}-
 
-      - name: Instalar dependencias
+      - name: Instalar dependências
         if: steps.cache-node-modules.outputs.cache-hit != 'true'
         run: npm ci
 
@@ -765,7 +779,7 @@ jobs:
 
       # failure() alone misses the WebKit step's continue-on-error case (its conclusion reads
       # "success" even on a real failure); the explicit outcome check below covers that gap.
-      - name: Anexar diagnosticos do Safari (em caso de falha)
+      - name: Anexar diagnósticos do Safari (em caso de falha)
         if: failure() || steps.safari-install-test.outcome == 'failure'
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
@@ -776,13 +790,13 @@ jobs:
 
   # ── Level 5: Validate extension package ────────────────────────────────────
   validate-extension:
-    name: "5 · Validar Extensao"
-    needs: [installation-test, installation-test-pinned, installation-test-firefox, installation-test-firefox-pinned, installation-test-safari]
+    name: "5 · Validar Extensão"
+    needs: [installation-test-chrome, installation-test-pinned, installation-test-firefox, installation-test-firefox-pinned, installation-test-safari]
     runs-on: ubuntu-latest
     timeout-minutes: 5
 
     steps:
-      - name: Clonar repositorio
+      - name: Clonar repositório
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
       - name: Preparar ambiente Node.js
@@ -798,7 +812,7 @@ jobs:
           restore-keys: |
             node-modules-${{ runner.os }}-
 
-      - name: Instalar dependencias
+      - name: Instalar dependências
         if: steps.cache-node-modules.outputs.cache-hit != 'true'
         run: npm ci
 
@@ -816,32 +830,41 @@ jobs:
       contents: write
 
     steps:
-      - name: Clonar repositorio
+      - name: Clonar repositório
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
       - name: Preparar ambiente Node.js
         uses: ./.github/actions/setup-node-env
 
-      - name: Baixar build da etapa de testes
+      - name: Baixar build da etapa de testes (Chrome)
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
         with:
           name: extension-build
-          path: dist/extension/
+          path: dist/extension-chrome/
 
-      - name: Ler versao do manifesto
+      - name: Baixar build da etapa de testes (Firefox)
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          name: extension-build-firefox
+          path: dist/extension-firefox/
+
+      - name: Ler versão do manifesto
         id: version
         run: |
           echo "value=$(node -p "JSON.parse(require('fs').readFileSync('manifest.json','utf8')).version")" >> "$GITHUB_OUTPUT"
 
-      - name: Criar arquivo ZIP
+      - name: Criar arquivos ZIP
         run: |
-          (cd dist/extension && zip -qr "../../dist/quick-whatsapp-contact-v${{ steps.version.outputs.value }}.zip" .)
+          # TODO(human): zipar dist/extension-chrome/ e dist/extension-firefox/ em
+          # dist/quick-whatsapp-contact-v${{ steps.version.outputs.value }}-chrome.zip e -firefox.zip
 
       - name: Publicar release no GitHub
         uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3
         with:
           tag_name: v${{ steps.version.outputs.value }}
           name: Quick WhatsApp Contact v${{ steps.version.outputs.value }}
-          files: dist/quick-whatsapp-contact-v${{ steps.version.outputs.value }}.zip
+          files: |
+            dist/quick-whatsapp-contact-v${{ steps.version.outputs.value }}-chrome.zip
+            dist/quick-whatsapp-contact-v${{ steps.version.outputs.value }}-firefox.zip
           generate_release_notes: true
           make_latest: true
