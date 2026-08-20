@@ -1,41 +1,99 @@
-// Confirms the browser a CI matrix entry actually installed matches its declared major version.
-// Mirrors verify-chrome-version.mjs, reusing firefox-extension-install.mjs's own findFirefoxExecutable().
+// Confirms that the browser installed for a CI matrix entry matches its declared major version.
+// It shares browser discovery with the lifecycle smoke test so their selected binaries cannot drift.
 import { execFileSync } from "node:child_process";
+import { posix, resolve, win32 } from "node:path";
+import { fileURLToPath } from "node:url";
 import { findFirefoxExecutable } from "../tests/installation/firefox-environment.mjs";
 
-const expectedMajor = process.argv[2];
+const POWERSHELL_EXECUTABLE =
+  "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe";
+const escapePowerShellSingleQuoted = (value) => value.replace(/'/g, "''");
+const buildWindowsVersionScript = (executablePath) =>
+  `(Get-Item -LiteralPath '${escapePowerShellSingleQuoted(executablePath)}').VersionInfo.ProductVersion`;
+const TRUSTED_WINDOWS_ENV = Object.freeze({
+  ...process.env,
+  PATH:
+    "C:\\Windows\\System32;C:\\Windows;C:\\Windows\\System32\\Wbem;" +
+    "C:\\Windows\\System32\\WindowsPowerShell\\v1.0",
+});
+const isAbsoluteExecutable = (path, platform) =>
+  platform === "win32" ? win32.isAbsolute(path) : posix.isAbsolute(path);
 
-if (!expectedMajor) {
-  console.error("Usage: node scripts/verify-firefox-version.mjs <expectedMajorVersion>");
-  process.exit(1);
+export function readFirefoxVersion(
+  executablePath,
+  { platform = process.platform, execute = execFileSync } = {},
+) {
+  if (!isAbsoluteExecutable(executablePath, platform)) {
+    throw new Error(`Firefox executable path must be absolute: ${executablePath}`);
+  }
+  if (platform === "win32") {
+    return execute(
+      POWERSHELL_EXECUTABLE,
+      ["-NoProfile", "-NonInteractive", "-Command", buildWindowsVersionScript(executablePath)],
+      { encoding: "utf8", env: TRUSTED_WINDOWS_ENV },
+    ).trim();
+  }
+  return execute(executablePath, ["--version"], { encoding: "utf8" }).trim();
 }
 
-const executablePath = findFirefoxExecutable();
+export function verifyFirefoxVersion({
+  expectedMajor,
+  platform = process.platform,
+  findExecutable = findFirefoxExecutable,
+  execute = execFileSync,
+} = {}) {
+  if (!/^\d+$/.test(expectedMajor || "")) {
+    return {
+      ok: false,
+      error: "Usage: node scripts/verify-firefox-version.mjs <expectedMajorVersion>",
+    };
+  }
 
-if (!executablePath) {
-  console.error("::error::Nenhum executavel Firefox encontrado neste runner.");
-  process.exit(1);
+  const executablePath = findExecutable();
+  if (!executablePath) {
+    return {
+      ok: false,
+      error: "::error::Nenhum executavel Firefox encontrado neste runner.",
+    };
+  }
+  if (!isAbsoluteExecutable(executablePath, platform)) {
+    return {
+      ok: false,
+      error: `::error::O caminho do Firefox deve ser absoluto: ${executablePath}`,
+    };
+  }
+
+  const rawVersion = readFirefoxVersion(executablePath, { platform, execute });
+  const actualMajor = rawVersion.match(/\d+/)?.[0] ?? "";
+  const summary =
+    `Firefox instalado: "${rawVersion}" ` +
+    `(major ${actualMajor || "desconhecido"}, esperado ${expectedMajor})`;
+  if (actualMajor !== expectedMajor) {
+    return {
+      ok: false,
+      actualMajor,
+      rawVersion,
+      summary,
+      error:
+        `::error::A versao major do Firefox mudou (esperado ${expectedMajor}, ` +
+        `encontrado ${actualMajor || "nenhum"}). Atualize firefoxMajor e o rotulo do job em ` +
+        ".github/workflows/ci.yml.",
+    };
+  }
+
+  return { ok: true, actualMajor, rawVersion, summary };
 }
 
-// Same rationale as verify-chrome-version.mjs: file version metadata sidesteps any
-// single-instance/already-running-process quirk in `firefox.exe --version`.
-const rawVersion =
-  process.platform === "win32"
-    ? execFileSync(
-        "powershell.exe",
-        ["-NoProfile", "-Command", `(Get-Item -LiteralPath '${executablePath}').VersionInfo.ProductVersion`],
-        { encoding: "utf8" },
-      ).trim()
-    : execFileSync(executablePath, ["--version"], { encoding: "utf8" }).trim();
-const actualMajor = rawVersion.match(/\d+/)?.[0] ?? "";
+export function reportFirefoxVersion(result, { logger = console, runtime = process } = {}) {
+  if (result.summary) logger.log(result.summary);
+  if (!result.ok) {
+    logger.error(result.error);
+    runtime.exitCode = 1;
+    return false;
+  }
+  return true;
+}
 
-console.log(
-  `Firefox instalado: "${rawVersion}" (major ${actualMajor || "desconhecido"}, esperado ${expectedMajor})`,
-);
-
-if (actualMajor !== expectedMajor) {
-  console.error(
-    `::error::A versao major do Firefox mudou (esperado ${expectedMajor}, encontrado ${actualMajor || "nenhum"}). Atualize firefoxMajor e o rotulo do job em .github/workflows/ci.yml.`,
-  );
-  process.exit(1);
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  reportFirefoxVersion(verifyFirefoxVersion({ expectedMajor: process.argv[2] }));
 }
