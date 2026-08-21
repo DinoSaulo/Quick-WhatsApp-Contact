@@ -9,8 +9,8 @@
 `Chrome Extension` · `Firefox WebExtension` · `Safari Web Extension` · `Manifest V3` · `Vanilla JS` · `Vitest`
 
 <a href="https://chromewebstore.google.com/detail/quick-whatsapp-contact/eplpemmogghafabofbbopdilpjnlolpk" target="_blank" rel="noopener noreferrer"><img src="https://img.shields.io/badge/Chrome_Web_Store-Install-4285F4?logo=googlechrome&amp;logoColor=white" alt="Install from the Chrome Web Store"></a>
-<img src="https://img.shields.io/badge/Mozilla_Add--on-Aguardando_revisão-FFA500?logo=firefoxbrowser&amp;logoColor=white" alt="Mozilla Add-on: aguardando revisão">
-<a href="https://github.com/DinoSaulo/Quick-WhatsApp-Contact/releases" target="_blank" rel="noopener noreferrer"><img src="https://img.shields.io/badge/App_Store_for_Mac-Não_disponível-lightgrey?logo=apple&amp;logoColor=white" alt="App Store for Mac: não disponível, baixar no GitHub Releases"></a>
+<a href="https://addons.mozilla.org/en-US/firefox/addon/quick-whatsapp-contact/" target="_blank" rel="noopener noreferrer"><img src="https://img.shields.io/badge/Firefox_Add--on-Install-FF7139?logo=firefoxbrowser&amp;logoColor=white" alt="Install from Firefox Add-ons"></a>
+<a href="https://github.com/DinoSaulo/Quick-WhatsApp-Contact/releases" target="_blank" rel="noopener noreferrer" title="Tem que pagar $99 por ano e não estou afim"><img src="https://img.shields.io/badge/App_Store_for_Mac-Não_disponível-lightgrey?logo=apple&amp;logoColor=white" alt="App Store for Mac: não disponível, baixar no GitHub Releases"></a>
 
 [![Pipeline](https://github.com/DinoSaulo/Quick-WhatsApp-Contact/actions/workflows/ci.yml/badge.svg)](https://github.com/DinoSaulo/Quick-WhatsApp-Contact/actions/workflows/ci.yml)
 [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=DinoSaulo_Quick-WhatsApp-Contact&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=DinoSaulo_Quick-WhatsApp-Contact)
