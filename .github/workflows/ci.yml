@@ -862,11 +862,14 @@ jobs:
       # maquina com Xcode (macOS), que so existe aqui no nivel 4f.
       - name: Salvar projeto Xcode como artefato (Safari)
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        # upload-artifact ignora paths com prefixo "." por padrão desde set/2024; sem esta flag
+        # o artefato nunca e criado, mesmo sem erro visivel no job.
         with:
           name: extension-build-safari
           path: |
             .safari-build
             !.safari-build/DerivedData
+          include-hidden-files: true
           retention-days: 1
 
       # Chave nova e isolada (nao reutiliza chrome-for-testing-*/firefox-releases-*); npx playwright
