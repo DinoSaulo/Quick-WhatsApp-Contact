@@ -11,6 +11,7 @@
 <a href="https://chromewebstore.google.com/detail/quick-whatsapp-contact/eplpemmogghafabofbbopdilpjnlolpk" target="_blank" rel="noopener noreferrer"><img src="https://img.shields.io/badge/Chrome_Web_Store-Install-4285F4?logo=googlechrome&amp;logoColor=white" alt="Install from the Chrome Web Store"></a>
 <a href="https://addons.mozilla.org/en-US/firefox/addon/quick-whatsapp-contact/" target="_blank" rel="noopener noreferrer"><img src="https://img.shields.io/badge/Firefox_Add--on-Install-FF7139?logo=firefoxbrowser&amp;logoColor=white" alt="Install from Firefox Add-ons"></a>
 <a href="https://github.com/DinoSaulo/Quick-WhatsApp-Contact/releases" target="_blank" rel="noopener noreferrer" title="Tem que pagar $99 por ano e não estou afim"><img src="https://img.shields.io/badge/App_Store_for_Mac-Não_disponível-lightgrey?logo=apple&amp;logoColor=white" alt="App Store for Mac: não disponível, baixar no GitHub Releases"></a>
+<a href="https://addons.opera.com/en/extensions" target="_blank" rel="noopener noreferrer" title="Já já estará disponivel!"><img src="https://img.shields.io/badge/Opera_Add--ons-Aguardando_review-FF1B2D?logo=opera&amp;logoColor=white" alt="Opera Add-ons: aguardando review"></a>
 
 [![Pipeline](https://github.com/DinoSaulo/Quick-WhatsApp-Contact/actions/workflows/ci.yml/badge.svg)](https://github.com/DinoSaulo/Quick-WhatsApp-Contact/actions/workflows/ci.yml)
 [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=DinoSaulo_Quick-WhatsApp-Contact&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=DinoSaulo_Quick-WhatsApp-Contact)
@@ -31,7 +32,7 @@
 
 **Quick WhatsApp Contact** detecta números de telefone em páginas web e abre o WhatsApp com um clique. A extensão trata automaticamente DDI, aplica a máscara do país selecionado e permite enviar uma mensagem personalizada — tudo sem sair da aba atual.
 
-A interface está disponível em **Inglês (EN-US)** e **Português (PT-BR)**.
+A interface está disponível em **Inglês**, **Português** e **Espanhol **.
 
 O projeto é distribuído como uma extensão Manifest V3 para **Chrome/Chromium** e como WebExtension para **Firefox**. No macOS, o mesmo build também é convertido e compilado como **Safari Web Extension** para validar sua compatibilidade. Os fluxos completos de instalação, atualização e remoção são verificados automaticamente no Chrome e no Firefox; no Safari, a CI valida a conversão e a compilação com Xcode e executa separadamente um smoke test do motor WebKit.
 
@@ -53,6 +54,7 @@ O projeto é distribuído como uma extensão Manifest V3 para **Chrome/Chromium*
 - 🔁 **Tutorial reutilizável** — reabra o guia a qualquer momento pela página de configurações.
 - ☕ **Apoio ao projeto** — o botão "Buy me a coffee" abre opções de contribuição por PIX, MB WAY/Revolut e PayPal, com QR codes locais e ações para copiar ou abrir quando disponíveis.
 - 🛡️ **Renderização protegida** — números vindos de seleções ou parâmetros de URL são normalizados antes de chegar à interface; dados do modal são escapados e links externos de doação aceitam somente HTTPS.
+- 🗑️ **Apagar meus dados** — um botão em Configurações limpa imediatamente `chrome.storage.sync` e `chrome.storage.session`, restaura os padrões e revoga o acesso opcional a sites, sem exigir desinstalação — exercício do direito de exclusão previsto na LGPD (art. 18, V) e no GDPR (art. 17).
 
 ---
 
@@ -64,9 +66,10 @@ Acesse a página de configurações pelo ícone de engrenagem no popup.
 |---|---|
 | 🔗 Realce automático | Liga/desliga os botões injetados ao lado de links `tel:` nas páginas |
 | 🌙 Dark mode | Alterna entre tema claro e escuro |
-| 🌐 Idioma | Inglês (EN-US) ou Português (PT-BR) |
+| 🌐 Idioma | Inglês, Português ou Espanhol |
 | 🏳️ País padrão | País pré-selecionado ao abrir o popup (substitui a detecção automática) |
 | 👋 Tutorial | Reabre o guia ilustrado de uso da extensão |
+| 🗑️ Apagar meus dados | Apaga todas as preferências armazenadas e revoga o acesso opcional a sites, sem desinstalar a extensão |
 
 O botão flutuante **Buy me a coffee** também fica disponível nas configurações e no tutorial. Ao acioná-lo pelo popup, a página de configurações abre diretamente com o modal de contribuição.
 
@@ -282,6 +285,13 @@ Os screenshots, tiles promocionais e instruções para publicação ficam em [`s
 ## 🔒 Privacidade e publicação
 
 Os recursos que leem seleção e links `tel:` em páginas são opcionais, ficam desativados por padrão e solicitam permissão no momento da ativação. A extensão não possui backend ou telemetria. Consulte [PRIVACY.md](./PRIVACY.md), [modelo de ameaças e auditoria de segurança](./docs/THREAT_MODEL.md), [diagnóstico da Chrome Web Store](./docs/STORE_READINESS.md), [materiais da ficha da loja](./docs/STORE_LISTING.md) e [checklist de lançamento](./docs/RELEASE_CHECKLIST.md).
+
+### LGPD e GDPR
+
+- **Base legal (GDPR/UK GDPR):** o tratamento necessário para executar as funcionalidades escolhidas pelo usuário se apoia em execução de contrato/medidas pré-contratuais (art. 6(1)(b)); a manutenção de preferências e recursos opcionais se apoia em legítimo interesse (art. 6(1)(f)), ponderado contra os direitos do usuário.
+- **Direito de exclusão (LGPD art. 18, V / GDPR art. 17):** o botão **"Apagar todos os dados armazenados"** nas Configurações limpa `chrome.storage.sync` e `chrome.storage.session` por completo, restaura os padrões e revoga o acesso opcional a sites — sem exigir desinstalação.
+- **Transparência sobre sincronização:** apenas preferências (idioma, tema, país) vão para `chrome.storage.sync`; números pendentes de uma seleção usam `chrome.storage.session` e nunca são sincronizados. O transporte do Chrome Sync entre dispositivos é administrado pela infraestrutura do Google, fora do controle da extensão.
+- Detalhes completos das bases legais, retenção e direitos do titular estão em [PRIVACY.md](./PRIVACY.md); a mitigação de risco de retenção indevida está documentada no [modelo de ameaças](./docs/THREAT_MODEL.md).
 
 ### Segurança
 
