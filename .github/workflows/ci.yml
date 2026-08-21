@@ -418,9 +418,10 @@ jobs:
           name: extension-build
           path: dist/extension/
 
-      # Mesmo padrão de retry do nível 4b (installation-test-pinned): 3 tentativas antes de
-      # falhar o job de fato, com diagnósticos de qualquer tentativa preservados abaixo.
+      # Mesmo padrão de retry do nível 4b, diagnósticos preservados abaixo. shell: bash
+      # explícito: job roda em windows-latest, cujo run: padrão é pwsh (não bash).
       - name: Testar instalação e desinstalação no Chrome
+        shell: bash
         run: |
           for attempt in 1 2 3; do
             if npm run test:install; then
@@ -664,9 +665,10 @@ jobs:
           name: extension-build
           path: dist/extension/
 
-      # Mesmo padrão de retry do nível 4b (installation-test-pinned): 3 tentativas antes de
-      # falhar o job de fato, com diagnósticos de qualquer tentativa preservados abaixo.
+      # Mesmo padrão de retry do nível 4b, diagnósticos preservados abaixo. shell: bash
+      # explícito: job roda em windows-latest ("Firefox - Windows"), cujo run: padrão é pwsh.
       - name: Testar instalação e desinstalação no Firefox
+        shell: bash
         run: |
           for attempt in 1 2 3; do
             if npm run test:install:firefox; then
