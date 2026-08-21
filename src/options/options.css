@@ -351,6 +351,20 @@ extension-settings-page {
   line-height: 1.5;
 }
 
+.option-row--danger {
+  margin-top: 4px;
+}
+
+.donation-trigger--danger {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.donation-trigger--danger:hover {
+  background: var(--danger);
+  color: #fff;
+}
+
 @media (max-width: 560px) {
   .options-shell {
     padding-inline: 12px;

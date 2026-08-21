@@ -31,7 +31,7 @@ RECURSOS
 • Tutorial ilustrado na primeira instalação, reaberto a qualquer momento pelas configurações.
 
 PRIVACIDADE
-O acesso a páginas web é opcional, desativado por padrão e só é solicitado quando você ativa o realce automático nas configurações. A extensão não tem servidor próprio, não coleta dados de navegação e não envia nada além do número e da mensagem para o WhatsApp — e só quando você pede para abrir a conversa. Política de privacidade completa: https://dinosaulo.github.io/Quick-WhatsApp-Contact/privacy.html
+O acesso a páginas web é opcional, desativado por padrão e só é solicitado quando você ativa o realce automático nas configurações. A extensão não tem servidor próprio, não coleta dados de navegação e não envia dados ao desenvolvedor. Quando o Chrome Sync está ativado, o próprio Chrome pode sincronizar preferências como idioma, tema e país pela infraestrutura do Google, fora do controle direto da extensão. Somente o número e a mensagem são enviados ao WhatsApp — e apenas quando você pede para abrir a conversa. Você pode usar o botão "Apagar todos os dados armazenados" nas configurações para limpar preferências e dados temporários e revogar o acesso opcional a sites, sem precisar desinstalar a extensão. Política de privacidade completa: https://dinosaulo.github.io/Quick-WhatsApp-Contact/privacy.html
 
 APOIO AO PROJETO
 O botão "Buy me a coffee" exibe opções voluntárias de doação. A extensão não vende recursos, não processa pagamentos e não armazena dados financeiros do usuário.
@@ -57,7 +57,7 @@ FEATURES
 • An illustrated first-run tutorial you can reopen anytime from Settings.
 
 PRIVACY
-Access to web pages is optional, off by default, and only requested when you turn on auto-highlight in Settings. The extension has no backend server, collects no browsing data, and sends nothing except the phone number and message to WhatsApp — and only when you ask it to open a chat. Full privacy policy: https://dinosaulo.github.io/Quick-WhatsApp-Contact/privacy.html
+Access to web pages is optional, off by default, and only requested when you turn on auto-highlight in Settings. The extension has no backend server, collects no browsing data, and sends no data to the developer. When Chrome Sync is enabled, Chrome itself may sync preferences such as language, theme, and country through Google's infrastructure, outside the extension's direct control. Only the phone number and message are sent to WhatsApp — and only when you ask it to open a chat. You can use the "Delete all stored data" button in Settings to clear preferences and temporary data and revoke optional site access without uninstalling the extension. Full privacy policy: https://dinosaulo.github.io/Quick-WhatsApp-Contact/privacy.html
 
 SUPPORT THE PROJECT
 The "Buy me a coffee" button shows optional donation methods. The extension does not sell features, process payments, or store the user's financial data.
@@ -74,7 +74,7 @@ Quick WhatsApp Contact is an independent project and is not affiliated with, end
 Reaproveitado de [`STORE_READINESS.md`](./STORE_READINESS.md); versão em inglês para o formulário:
 
 - **contextMenus**: "Adds a right-click action, 'Call on WhatsApp', over text the user has selected — used only to open WhatsApp with that selection."
-- **storage**: "Stores the user's own preferences (language, theme, default country, last used country) and a short-lived handoff value between the popup and the background service worker. No data leaves the device through this permission."
+- **storage**: "Stores the user's preferences (language, theme, default country, last used country, and optional feature state) in chrome.storage.sync. When Chrome Sync is enabled, Chrome may carry these preferences through Google's sync infrastructure to the user's other signed-in Chrome browsers; that transport is controlled by Chrome/Google and the user's sync settings, not by the extension. Short-lived phone handoff values use non-synced chrome.storage.session. No stored data is sent to the developer, and the user can delete all extension data at any time from Settings."
 - **scripting**: "Registers the optional page-content helpers (tel: link button, selection button) only after the user turns the feature on in Settings and grants the optional host permission below. Never runs before that."
 - **Acesso de host opcional `http://*/*`, `https://*/*`**: "Needed only so the optional page helpers can detect `tel:` links and phone-like text selections on whatever site the user is visiting. Not granted at install time; requested only when the user opts in."
 
@@ -90,6 +90,7 @@ Use estas respostas como rascunho e confira os rótulos exibidos pelo Dashboard 
 - **Financial, health, authentication and precise location data**: não tratados pela extensão. As opções de doação abrem serviços externos e nenhum pagamento é processado pela extensão.
 - **Data sale, advertising, creditworthiness and unrelated uses**: não ocorre.
 - **Limited Use certification**: confirmar. O uso é limitado ao recurso voltado ao usuário e a declaração afirmativa está na política de privacidade.
+- **User data deletion/control**: informar, quando o formulário oferecer um campo relacionado, que o botão "Delete all stored data" limpa as preferências e os dados temporários da extensão e revoga o acesso opcional a sites sem exigir a desinstalação.
 - **Privacy policy URL**: `https://dinosaulo.github.io/Quick-WhatsApp-Contact/privacy.html` — publique e teste essa URL antes do envio.
 
 As respostas finais precisam permanecer consistentes com `PRIVACY.md`, `docs/privacy.html`, a descrição da loja e o comportamento do pacote enviado.

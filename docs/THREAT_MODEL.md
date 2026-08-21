@@ -66,6 +66,15 @@ e corrigido, e como a proteção é mantida como regressão automatizada.
 - `chrome.storage.session` nunca chama `setAccessLevel(TRUSTED_AND_UNTRUSTED_CONTEXTS)` —
   os dados de handoff não ficam acessíveis a content scripts, só às páginas da própria
   extensão (guardado por `tests/security.test.js`).
+- **Risco de retenção indevida:** preferências sincronizadas ou valores temporários poderiam
+  permanecer armazenados depois de deixarem de ser desejados pelo usuário. Como mitigação,
+  a página de configurações oferece o botão **"Apagar todos os dados armazenados"**, protegido
+  por confirmação explícita. Ele chama `clearAllStoredData()` para limpar integralmente
+  `chrome.storage.sync` e `chrome.storage.session`, redefine a interface para os valores
+  padrão e revoga o acesso opcional a sites, sem exigir a desinstalação da extensão.
+- A limpeza remove os dados acessíveis à extensão nas duas áreas. A propagação da exclusão
+  de `chrome.storage.sync` entre dispositivos é executada pela infraestrutura do Chrome
+  Sync/Google e, portanto, fica fora do controle direto da extensão.
 - Nenhum recurso executável (`.js`/`.html`) é `web_accessible_resources` — só um ícone
   estático, servido com `use_dynamic_url: true` para não ser uma URL fixa e "probeable"
   por sites externos (fingerprinting de extensões instaladas).
@@ -99,6 +108,7 @@ e corrigido, e como a proteção é mantida como regressão automatizada.
 |---|---|---|
 | `src/background.js` | `onMessage` agora valida `sender.id === chrome.runtime.id` e `sender.tab` antes de processar | Defesa em profundidade — não depender só da ausência de `externally_connectable` no manifesto |
 | `src/options/options.js` | Atributo `value` do país padrão agora usa `selectedCountry.code` (resolvido, seguro) em vez do valor bruto de `chrome.storage.sync` | Fechar uma injeção de atributo HTML alcançável por um valor sincronizado corrompido/adulterado |
+| `src/options/options.js`, `src/utils/storage.js` | Botão confirmado de exclusão limpa `storage.sync`/`storage.session`, restaura padrões e revoga permissões opcionais de sites | Mitigar retenção indevida e oferecer exclusão sem depender da desinstalação |
 
 Nenhuma outra alteração de comportamento foi feita — os demais sinks revisados (`popup.js`,
 `ddi.js`, `onboarding.js`, `donationModal.js`) já estavam seguros por construção; ganharam
@@ -109,7 +119,8 @@ apenas o comentário de justificativa exigido pelo `eslint-disable-next-line` do
 | Arquivo | Cobre |
 |---|---|
 | `tests/background.integration.test.js` | Validação de `sender.id`/`sender.tab`; payloads hostis de seleção; URLs de página não confiáveis |
-| `tests/options.integration.test.js` | Injeção via `defaultCountry` sincronizado (novo) |
+| `tests/options.integration.test.js` | Injeção via `defaultCountry` sincronizado; confirmação, cancelamento, revogação de acesso e redefinição da interface no fluxo de exclusão |
+| `tests/storage.test.js` | `clearAllStoredData()` limpa tanto `chrome.storage.sync` quanto `chrome.storage.session` |
 | `tests/popup.integration.test.js` | Injeção via número de contexto pendente; configurações sincronizadas hostis |
 | `tests/ddi.integration.test.js` | Injeção via query string `?number=` |
 | `tests/donationModalEscaping.test.js` | Escaping de `DONATION_METHODS`; links não-HTTPS não renderizam `<a>`; segurança de seletor CSS |
@@ -138,9 +149,11 @@ não revisado, quebra o build até ser deliberadamente justificado ou corrigido.
 
 ## 6. Riscos residuais aceitos (fora de escopo de correção)
 
-- **`chrome.storage.sync` não é criptografado em repouso.** Isso é uma característica da
-  plataforma, não um bug desta extensão — e os únicos dados guardados são preferências e
-  números/mensagens que o próprio usuário decidiu enviar ao WhatsApp de qualquer forma.
+- **O transporte e a retenção de `chrome.storage.sync` são administrados pelo Chrome
+  Sync/Google.** Isso é uma característica da plataforma, não um componente operado pela
+  extensão. Apenas preferências são gravadas nessa área; números pendentes usam
+  `chrome.storage.session`. O botão de exclusão solicita a limpeza das duas áreas, mas a
+  propagação entre dispositivos sincronizados permanece sob controle da plataforma.
 - **Payload PIX e e-mail PayPal em `src/utils/donation.js` são texto plano no repositório
   público.** Intencional — são informações de recebimento de doação que o desenvolvedor já
   publica ao pedir apoio; não são segredos, não são dados de terceiros, e não passam por
@@ -187,6 +200,10 @@ atualizar deliberadamente o teste de regressão associado, nunca apenas remover 
    source`).
 6. **Toda mudança de segurança ganha um teste de regressão** no arquivo de teste
    correspondente ao componente alterado — não apenas uma correção silenciosa.
+7. **O usuário mantém um controle de exclusão dentro da extensão, sem precisar
+   desinstalá-la.** O fluxo exige confirmação, limpa `chrome.storage.sync` e
+   `chrome.storage.session`, restaura as configurações padrão e revoga o acesso opcional
+   a sites. Guardado por `tests/storage.test.js` e `tests/options.integration.test.js`.
 
 Ao adicionar uma nova skill/feature: rode `npm run verify` (inclui `lint`, `lint:sast`,
 `validate:extension`, a suíte inteira de testes e o build) antes de abrir um PR.

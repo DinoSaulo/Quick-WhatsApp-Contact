@@ -67,7 +67,7 @@
   <body>
     <main>
       <h1>Política de Privacidade — Quick WhatsApp Contact</h1>
-      <p class="updated">Última atualização: 11 de agosto de 2026.</p>
+      <p class="updated">Última atualização: 21 de agosto de 2026.</p>
 
       <h2>Finalidade</h2>
       <p>
@@ -97,6 +97,36 @@
         WhatsApp.
       </p>
 
+      <h2>Base legal</h2>
+      <p>
+        Quando o Regulamento Geral sobre a Proteção de Dados (RGPD/GDPR) ou o UK GDPR for
+        aplicável, o tratamento descrito nesta política se apoia nas seguintes bases legais:
+      </p>
+      <ul>
+        <li>
+          <strong>Execução de contrato ou de medidas pré-contratuais solicitadas pelo usuário
+          (art. 6(1)(b)):</strong> quando a relação de uso constituir um contrato aplicável, esta
+          base cobre o tratamento estritamente necessário para fornecer as funcionalidades que o
+          usuário escolhe utilizar, como formatar o número, preparar a conversa, encaminhar o
+          número e a mensagem ao WhatsApp e aplicar as configurações selecionadas.
+        </li>
+        <li>
+          <strong>Legítimo interesse (art. 6(1)(f)):</strong> aplica-se ao tratamento mínimo
+          necessário para manter a extensão funcional e segura, preservar as preferências
+          escolhidas e oferecer os recursos opcionais ativados pelo usuário. Esse interesse é
+          ponderado contra os direitos e as liberdades do usuário e não prevalece quando estes
+          exigirem maior proteção.
+        </li>
+      </ul>
+      <p>
+        Esses tratamentos são limitados ao dispositivo sempre que possível, não envolvem
+        publicidade ou criação de perfis e podem ser controlados pelo usuário. O usuário pode se
+        opor ao tratamento baseado em legítimo interesse desativando os recursos opcionais,
+        revogando o acesso a sites, apagando os dados armazenados ou entrando em contato pelo
+        e-mail indicado abaixo. A desativação de um tratamento indispensável pode impedir o
+        funcionamento do recurso correspondente.
+      </p>
+
       <h2>Acesso opcional a sites</h2>
       <p>
         Os recursos de página ficam desativados por padrão. Se o usuário os ativar nas
@@ -114,15 +144,29 @@
 
       <h2>Armazenamento e retenção</h2>
       <p>
-        Preferências e o último país utilizado são armazenados em <code>chrome.storage.sync</code>,
-        podendo ser sincronizados pelo próprio Chrome entre dispositivos vinculados à conta do
-        usuário. Números pendentes vindos de uma seleção são guardados temporariamente em
-        <code>chrome.storage.session</code> e removidos quando consumidos pelo popup. A extensão
-        não mantém banco de dados externo.
+        As preferências de idioma, tema, país padrão, último país utilizado e ativação dos recursos
+        opcionais são armazenadas em <code>chrome.storage.sync</code>. Quando o usuário mantém o
+        Chrome Sync ativado, o Chrome pode transmitir e armazenar essas preferências pela
+        infraestrutura de sincronização do Google e replicá-las entre navegadores Chrome nos quais
+        o usuário esteja conectado. Com a sincronização desativada, essa área se comporta como
+        armazenamento local. Esse transporte é administrado pelo Chrome/Google conforme as
+        configurações de sincronização da conta e fica fora do controle direto da extensão: ela
+        não escolhe os servidores, não opera a infraestrutura de sync e não recebe acesso à conta
+        Google ou às cópias sincronizadas.
       </p>
       <p>
-        O usuário pode remover os dados locais desinstalando a extensão ou limpando seus dados
-        pelo Chrome. O acesso opcional a sites pode ser revogado nas configurações da extensão ou
+        Números pendentes vindos de uma seleção são guardados temporariamente em
+        <code>chrome.storage.session</code> e removidos quando consumidos pelo popup. Esses valores
+        de sessão não são gravados em <code>chrome.storage.sync</code>. A extensão não mantém banco
+        de dados externo e não envia os dados armazenados ao desenvolvedor.
+      </p>
+      <p>
+        O usuário pode apagar todos os dados armazenados a qualquer momento, sem precisar
+        desinstalar a extensão, usando o botão "Apagar todos os dados armazenados" na página de
+        configurações. Esse botão limpa <code>chrome.storage.sync</code> e
+        <code>chrome.storage.session</code> por completo e revoga o acesso opcional a sites. Os
+        dados também são removidos ao desinstalar a extensão ou ao limpar os dados pelo Chrome. O
+        acesso opcional a sites pode, isoladamente, ser revogado nas configurações da extensão ou
         na página de gerenciamento do Chrome.
       </p>
 
