@@ -1,7 +1,7 @@
 /* @vitest-environment jsdom */
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const popupStyles = readFileSync(
   resolve(import.meta.dirname, "../src/popup/styles.css"),
@@ -17,6 +17,13 @@ const optionsHtml = readFileSync(
 );
 
 const mockStorage = vi.hoisted(() => ({
+  clearAllStoredData: vi.fn(),
+  DEFAULT_SETTINGS: {
+    autoHighlightEnabled: false,
+    darkModeEnabled: false,
+    language: "en-US",
+    defaultCountry: ""
+  },
   getSettings: vi.fn(),
   saveSettings: vi.fn(),
   setAutoHighlightEnabled: vi.fn(),
@@ -39,6 +46,11 @@ async function renderOptionsPage() {
 }
 
 describe("options page integration", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    document.body.innerHTML = "";
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
 
@@ -53,6 +65,7 @@ describe("options page integration", () => {
     mockStorage.setAutoHighlightEnabled.mockResolvedValue();
     mockStorage.setDarkModeEnabled.mockResolvedValue();
     mockStorage.setLanguage.mockResolvedValue();
+    mockStorage.clearAllStoredData.mockResolvedValue();
     global.chrome = {
       runtime: {
         getURL: vi.fn((path) => `chrome-extension://options-id/${path}`)
@@ -111,7 +124,7 @@ describe("options page integration", () => {
     expect(optionsStyles).toMatch(/\.options-footer a\s*\{[^}]*color:\s*var\(--accent\);[^}]*\}/s);
   });
 
-  it("orders the settings rows: phone helpers, default country, language, dark mode, tutorial", async () => {
+  it("orders the settings rows: phone helpers, default country, language, dark mode, tutorial, clear data", async () => {
     const page = await renderOptionsPage();
     const rowLabelIds = [...page.querySelectorAll(".option-row .option-label")].map((label) =>
       label.getAttribute("for")
@@ -122,7 +135,8 @@ describe("options page integration", () => {
       "country-trigger",
       "language-trigger",
       "dark-mode",
-      "tutorial-button"
+      "tutorial-button",
+      "clear-data-button"
     ]);
   });
 
@@ -645,5 +659,118 @@ describe("options page integration", () => {
 
     expect(toggle.getAttribute("aria-describedby")).toBe("page-access-disclosure");
     expect(disclosure.textContent.trim().length).toBeGreaterThan(20);
+  });
+
+  it("erases all stored data and resets settings after confirmation (right to erasure)", async () => {
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    const page = await renderOptionsPage();
+
+    page.querySelector("#clear-data-button").click();
+    await vi.waitFor(() => expect(mockStorage.clearAllStoredData).toHaveBeenCalled());
+
+    expect(chrome.permissions.remove).toHaveBeenCalledWith({
+      origins: ["http://*/*", "https://*/*"]
+    });
+    expect(page.querySelector("#auto-highlight").checked).toBe(false);
+    expect(page.querySelector("#dark-mode").checked).toBe(false);
+    expect(page.querySelector("#saved-status").textContent).toBe(
+      "All stored data was deleted."
+    );
+  });
+
+  it("keeps stored data untouched when the user cancels the confirmation prompt", async () => {
+    vi.spyOn(window, "confirm").mockReturnValue(false);
+    mockStorage.getSettings.mockResolvedValue({
+      language: "en-US",
+      darkModeEnabled: true,
+      autoHighlightEnabled: true,
+      defaultCountry: "PT"
+    });
+    const page = await renderOptionsPage();
+
+    page.querySelector("#clear-data-button").click();
+
+    expect(mockStorage.clearAllStoredData).not.toHaveBeenCalled();
+    expect(chrome.permissions.remove).not.toHaveBeenCalled();
+    expect(page.querySelector("#auto-highlight").checked).toBe(true);
+    expect(page.querySelector("#dark-mode").checked).toBe(true);
+    expect(page.querySelector("#default-country-hidden").value).toBe("PT");
+    expect(page.querySelector("#saved-status").textContent).toBe("");
+  });
+
+  it("asks for confirmation using the exact localized message before erasing data", async () => {
+    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(false);
+    mockStorage.getSettings.mockResolvedValue({
+      language: "pt-BR",
+      darkModeEnabled: false,
+      autoHighlightEnabled: true,
+      defaultCountry: ""
+    });
+    const page = await renderOptionsPage();
+
+    page.querySelector("#clear-data-button").click();
+
+    expect(confirmSpy).toHaveBeenCalledWith(
+      "Apagar todos os dados armazenados pelo Quick WhatsApp Contact? As preferências e o acesso opcional a sites serão redefinidos. Essa ação não pode ser desfeita."
+    );
+  });
+
+  it("still wipes stored data and shows success even when revoking site access fails", async () => {
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    chrome.permissions.remove.mockRejectedValue(new Error("permission API unavailable"));
+    const page = await renderOptionsPage();
+
+    page.querySelector("#clear-data-button").click();
+    await vi.waitFor(() => expect(mockStorage.clearAllStoredData).toHaveBeenCalled());
+
+    expect(page.querySelector("#saved-status").textContent).toBe(
+      "All stored data was deleted."
+    );
+  });
+
+  it("resets language, default country and theme to defaults after erasure, refreshing the displayed language", async () => {
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    mockStorage.getSettings.mockResolvedValue({
+      language: "pt-BR",
+      darkModeEnabled: true,
+      autoHighlightEnabled: true,
+      defaultCountry: "PT"
+    });
+    const page = await renderOptionsPage();
+    expect(page.querySelector(".title").textContent).toBe("Configurações da extensão");
+
+    page.querySelector("#clear-data-button").click();
+    await vi.waitFor(() => expect(mockStorage.clearAllStoredData).toHaveBeenCalled());
+
+    expect(document.documentElement.dataset.theme).toBe("light");
+    expect(document.documentElement.lang).toBe("en-US");
+    expect(page.querySelector("#language-hidden").value).toBe("en-US");
+    expect(page.querySelector("#language-trigger").textContent.trim()).toBe("English");
+    expect(page.querySelector("#default-country-hidden").value).toBe("");
+    expect(page.querySelector("#country-trigger").textContent).toContain("— Automatic —");
+    expect(page.querySelector(".title").textContent).toBe("Extension settings");
+    expect(page.querySelector("#saved-status").textContent).toBe(
+      "All stored data was deleted."
+    );
+  });
+
+  it("renders the clear-data label, disclosure and button translated to Spanish", async () => {
+    mockStorage.getSettings.mockResolvedValue({
+      language: "es-ES",
+      darkModeEnabled: false,
+      autoHighlightEnabled: true,
+      defaultCountry: ""
+    });
+    const page = await renderOptionsPage();
+
+    expect(page.querySelector('label[for="clear-data-button"]').textContent).toBe(
+      "Eliminar mis datos"
+    );
+    expect(page.querySelector("#clear-data-button").textContent).toBe(
+      "Eliminar todos los datos almacenados"
+    );
+    expect(page.querySelector(".option-row--danger + .privacy-note").textContent).toContain(
+      "Esto no afecta a WhatsApp en sí."
+    );
   });
 });

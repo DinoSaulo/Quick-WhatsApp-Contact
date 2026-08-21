@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  clearAllStoredData,
   consumePendingContextCountry,
   consumePendingContextNumber,
   consumePendingDonationOpen,
@@ -27,12 +28,14 @@ describe("storage utils", () => {
     const mockStorage = {
       sync: {
         get: vi.fn(),
-        set: vi.fn()
+        set: vi.fn(),
+        clear: vi.fn()
       },
       session: {
         get: vi.fn(),
         set: vi.fn(),
-        remove: vi.fn()
+        remove: vi.fn(),
+        clear: vi.fn()
       }
     };
     vi.stubGlobal("chrome", { storage: mockStorage });
@@ -271,6 +274,19 @@ describe("storage utils", () => {
       "quick-whatsapp-contact.language": "en-US",
       "quick-whatsapp-contact.default-country": ""
     });
+  });
+
+  it("clearAllStoredData wipes both sync and session storage (right to erasure)", async () => {
+    await clearAllStoredData();
+    expect(chrome.storage.sync.clear).toHaveBeenCalled();
+    expect(chrome.storage.session.clear).toHaveBeenCalled();
+  });
+
+  it("clearAllStoredData propagates a sync.clear() failure instead of swallowing it", async () => {
+    chrome.storage.sync.clear.mockRejectedValue(new Error("sync clear unavailable"));
+    chrome.storage.session.clear.mockResolvedValue();
+
+    await expect(clearAllStoredData()).rejects.toThrow("sync clear unavailable");
   });
 
   it("saveSettings persists the configured default country", async () => {

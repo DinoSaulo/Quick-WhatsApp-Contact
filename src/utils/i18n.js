@@ -41,6 +41,13 @@ const DICTIONARY = {
     optionTutorial: "Tutorial",
     optionTutorialButton: "View tutorial",
     optionsSaved: "Settings saved",
+    optionClearData: "Delete my data",
+    optionClearDataDisclosure:
+      "Erases every preference this extension stored on this device (and, if Chrome sync is on, on your other signed-in devices) and resets everything below to its default. This does not affect WhatsApp itself.",
+    optionClearDataButton: "Delete all stored data",
+    optionClearDataConfirm:
+      "Delete all data stored by Quick WhatsApp Contact? Preferences and optional site access will be reset. This cannot be undone.",
+    optionClearDataSuccess: "All stored data was deleted.",
     searchCountryPlaceholder: "Search country...",
     searchCountryNoResults: "No countries found",
     donationButtonLabel: "Buy me a coffee",
@@ -125,6 +132,13 @@ const DICTIONARY = {
     optionTutorial: "Tutorial",
     optionTutorialButton: "Ver tutorial",
     optionsSaved: "Configurações salvas",
+    optionClearData: "Apagar meus dados",
+    optionClearDataDisclosure:
+      "Apaga todas as preferências que esta extensão armazenou neste dispositivo (e, se a sincronização do Chrome estiver ativa, nos seus outros dispositivos conectados) e restaura os itens abaixo para o padrão. Isso não afeta o WhatsApp em si.",
+    optionClearDataButton: "Apagar todos os dados armazenados",
+    optionClearDataConfirm:
+      "Apagar todos os dados armazenados pelo Quick WhatsApp Contact? As preferências e o acesso opcional a sites serão redefinidos. Essa ação não pode ser desfeita.",
+    optionClearDataSuccess: "Todos os dados armazenados foram apagados.",
     searchCountryPlaceholder: "Buscar país...",
     searchCountryNoResults: "Nenhum país encontrado",
     donationButtonLabel: "Buy me a coffee",
@@ -209,6 +223,13 @@ const DICTIONARY = {
     optionTutorial: "Tutorial",
     optionTutorialButton: "Ver tutorial",
     optionsSaved: "Ajustes guardados",
+    optionClearData: "Eliminar mis datos",
+    optionClearDataDisclosure:
+      "Borra todas las preferencias que esta extensión guardó en este dispositivo (y, si la sincronización de Chrome está activada, en tus otros dispositivos vinculados) y restablece todo lo de abajo a sus valores predeterminados. Esto no afecta a WhatsApp en sí.",
+    optionClearDataButton: "Eliminar todos los datos almacenados",
+    optionClearDataConfirm:
+      "¿Eliminar todos los datos almacenados por Quick WhatsApp Contact? Las preferencias y el acceso opcional a sitios web se restablecerán. Esta acción no se puede deshacer.",
+    optionClearDataSuccess: "Se eliminaron todos los datos almacenados.",
     searchCountryPlaceholder: "Buscar país...",
     searchCountryNoResults: "No se han encontrado países",
     donationButtonLabel: "Buy me a coffee",

@@ -52,6 +52,24 @@ describe("i18n utils", () => {
     );
   });
 
+  it("expõe os textos do apagamento de dados (direito ao esquecimento) nos 3 idiomas", () => {
+    const en = getMessages("en-US");
+    const pt = getMessages("pt-BR");
+    const es = getMessages("es-ES");
+
+    expect(en.optionClearDataButton).toBe("Delete all stored data");
+    expect(pt.optionClearDataButton).toBe("Apagar todos os dados armazenados");
+    expect(es.optionClearDataButton).toBe("Eliminar todos los datos almacenados");
+
+    expect(en.optionClearDataConfirm).toMatch(/cannot be undone/);
+    expect(pt.optionClearDataConfirm).toMatch(/não pode ser desfeita/);
+    expect(es.optionClearDataConfirm).toMatch(/no se puede deshacer/);
+
+    expect(en.optionClearDataSuccess).toBe("All stored data was deleted.");
+    expect(pt.optionClearDataSuccess).toBe("Todos os dados armazenados foram apagados.");
+    expect(es.optionClearDataSuccess).toBe("Se eliminaron todos los datos almacenados.");
+  });
+
   it("keeps the same keys in every language (no missing translations)", () => {
     const enKeys = Object.keys(getMessages("en-US")).sort();
     const ptKeys = Object.keys(getMessages("pt-BR")).sort();

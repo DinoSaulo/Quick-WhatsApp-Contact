@@ -134,6 +134,12 @@ export async function getSettings() {
   };
 }
 
+// Direito ao esquecimento (LGPD art. 18, V / GDPR art. 17): apaga TODOS os dados desta extensão
+// (preferências sync + qualquer chave session pendente) sem exigir desinstalação.
+export async function clearAllStoredData() {
+  await Promise.all([chrome.storage.sync.clear(), chrome.storage.session.clear()]);
+}
+
 export async function saveSettings(settings = {}) {
   await chrome.storage.sync.set({
     [AUTO_HIGHLIGHT_ENABLED_KEY]:

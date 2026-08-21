@@ -9,6 +9,8 @@ import {
 import { getMessages } from "../utils/i18n.js";
 import { PAGE_ORIGINS } from "../utils/pageOrigins.js";
 import {
+  clearAllStoredData,
+  DEFAULT_SETTINGS,
   getSettings,
   saveSettings,
   setAutoHighlightEnabled,
@@ -187,6 +189,14 @@ class ExtensionSettingsPage extends HTMLElement {
                 <button class="donation-trigger" id="tutorial-button" type="button">${this.messages.optionTutorialButton}</button>
               </div>
             </div>
+
+            <div class="option-row option-row--danger">
+              <label class="option-label" for="clear-data-button">${this.messages.optionClearData}</label>
+              <div class="option-control">
+                <button class="donation-trigger donation-trigger--danger" id="clear-data-button" type="button">${this.messages.optionClearDataButton}</button>
+              </div>
+            </div>
+            <p class="privacy-note">${this.messages.optionClearDataDisclosure}</p>
 
             <div class="status-text" id="saved-status"></div>
           </div>
@@ -385,10 +395,13 @@ class ExtensionSettingsPage extends HTMLElement {
     const autoHighlightInput = this.querySelector("#auto-highlight");
     const darkModeInput = this.querySelector("#dark-mode");
     const tutorialButton = this.querySelector("#tutorial-button");
+    const clearDataButton = this.querySelector("#clear-data-button");
 
     tutorialButton?.addEventListener("click", () => {
       chrome.tabs.create({ url: chrome.runtime.getURL(ONBOARDING_PAGE_PATH) });
     });
+
+    clearDataButton?.addEventListener("click", () => this.handleClearAllData());
 
     autoHighlightInput?.addEventListener("change", async () => {
       const wantsPageHelpers = Boolean(autoHighlightInput.checked);
@@ -420,6 +433,25 @@ class ExtensionSettingsPage extends HTMLElement {
       this.applyTheme(isDark);
       this.showSavedState();
     });
+  }
+
+  // Right to erasure (LGPD art. 18, V / GDPR art. 17) as a self-service control: wipes every
+  // stored preference and revokes the optional site-access grant, no uninstall required.
+  async handleClearAllData() {
+    if (!window.confirm(this.messages.optionClearDataConfirm)) {
+      return;
+    }
+
+    await chrome.permissions.remove({ origins: PAGE_ORIGINS }).catch(() => {});
+    await clearAllStoredData();
+
+    this.settings = { ...DEFAULT_SETTINGS };
+    this.messages = getMessages(this.settings.language);
+    document.documentElement.setAttribute("lang", this.settings.language);
+    this.applyTheme(this.settings.darkModeEnabled);
+    this.render();
+    this.bindEvents();
+    this.showStatus(this.messages.optionClearDataSuccess);
   }
 
   showSavedState() {
