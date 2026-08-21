@@ -3,7 +3,8 @@ dist/
 reports/
 coverage/
 assets/twemoji/
-tasks/ralph/logs/
+tasks/ralph/
 .chrome-for-testing/
 .firefox-releases/
 ci-diagnostics/
+.vscode/settings.json
