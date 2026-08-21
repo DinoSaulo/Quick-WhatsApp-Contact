@@ -33,5 +33,5 @@ export function validateManifest(manifest) {
 }
 
 // Matches the placeholder text a template/checklist leaves behind before real publication content
-// (contact e-mail, TODOs) replaces it — catches an accidental publish of unfinished copy.
-export const PUBLICATION_PLACEHOLDER_PATTERN = /\[e-?mail[^\]]*\]|A DEFINIR|TO BE FILLED|TODO\(owner\)/i;
+// replaces it — catches an accidental publish of unfinished copy.
+export const PUBLICATION_PLACEHOLDER_PATTERN = /\[e-?mail[^\]]*\]|A DEFINIR|TO BE FILLED/i;

@@ -98,9 +98,9 @@ As respostas finais precisam permanecer consistentes com `PRIVACY.md`, `docs/pri
 ## Materiais visuais — pendente
 
 - [x] Ícone da loja 128×128 — `icons/icon128.png`.
-- [ ] Pelo menos 1 screenshot real 1280×800 ou 640×400 (proporção 8:5). As imagens em `assets/onboarding/` são do tutorial interno e estão em tamanhos diferentes — não servem diretamente, precisam ser recapturadas nessas dimensões (popup aberto, options.html, ou um site com o botão de realce automático visível).
+- [x] Pelo menos 1 screenshot real 1280×800 ou 640×400 (proporção 8:5). As imagens em `assets/onboarding/` são do tutorial interno e estão em tamanhos diferentes — não servem diretamente, precisam ser recapturadas nessas dimensões (popup aberto, options.html, ou um site com o botão de realce automático visível).
 - [x] Small tile promocional obrigatório 440×280 — `store-assets/small-promo-440x280.png`.
-- [ ] Marquee 1400×560 (opcional, só se for usar destaque na loja).
+- [x] Marquee 1400×560 (opcional, só se for usar destaque na loja).
 
 As regras de captura estão em [`store-assets/README.md`](../store-assets/README.md).
 

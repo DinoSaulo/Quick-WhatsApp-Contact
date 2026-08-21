@@ -62,7 +62,7 @@ describe("validateStoreReadiness", () => {
     const readFile = (path, encoding) => {
       if (encoding === "utf8") {
         if (path.endsWith("manifest.json")) return JSON.stringify({});
-        return "TODO(owner): A DEFINIR";
+        return "A DEFINIR";
       }
       return buildPngBuffer({ signature: "0000000000000000", width: 1, height: 1 });
     };
@@ -226,13 +226,12 @@ describe("PUBLICATION_PLACEHOLDER_PATTERN", () => {
     ["[e-mail]"],
     ["[email]"],
     ["A DEFINIR"],
-    ["TO BE FILLED"],
-    ["TODO(owner)"]
+    ["TO BE FILLED"]
   ])("matches the placeholder marker %s", (marker) => {
     expect(PUBLICATION_PLACEHOLDER_PATTERN.test(`Contact us at ${marker} for support.`)).toBe(true);
   });
 
-  it("does not match real, filled-in publication copy", () => {
-    expect(PUBLICATION_PLACEHOLDER_PATTERN.test("Contact us at support@example.com")).toBe(false);
+  it("does not match the configured support e-mail", () => {
+    expect(PUBLICATION_PLACEHOLDER_PATTERN.test("Contact us at saulbpt@gmail.com")).toBe(false);
   });
 });

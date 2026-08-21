@@ -254,8 +254,7 @@ npm audit --omit=dev    # production dependency advisories
 
 None are security-critical. Two pre-existing, non-security items surfaced during review:
 
-1. **`PRIVACY.md` has a placeholder support email** (`<!-- TODO(owner): substituir pelo e-mail de
-   suporte antes de enviar à Chrome Web Store. -->`). This is a store-listing completeness gap, not
+1. **`PRIVACY.md` has a placeholder support email** (`saulbpt@gmail.com`). This is a store-listing completeness gap, not
    a vulnerability — flagging it because Chrome Web Store submission requires a real contact before
    publishing.
 2. **Dev-only dependency advisory**: `puppeteer-core@24.8.1` → `@puppeteer/browsers` →
