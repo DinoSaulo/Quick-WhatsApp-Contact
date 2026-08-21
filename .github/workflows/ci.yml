@@ -205,6 +205,20 @@ jobs:
           path: dist/extension/
           retention-days: 1
 
+      # build-extension.mjs limpa dist/ a cada chamada, entao o upload do Firefox acima
+      # precisa terminar antes desta terceira build sobrescrever dist/extension/.
+      - name: Gerar build da extensão (Opera)
+        if: matrix.label == 'Ubuntu'
+        run: npm run build:opera
+
+      - name: Salvar build como artefato (Opera)
+        if: matrix.label == 'Ubuntu'
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: extension-build-opera
+          path: dist/extension/
+          retention-days: 1
+
   # ── Level 2: Integration tests (all platforms) ─────────────────────────────
   integration-tests:
     name: "2 · Integração · ${{ matrix.label }}"
@@ -844,6 +858,17 @@ jobs:
           APP_PATH=$(node scripts/convert-safari-extension.mjs)
           echo "SAFARI_APP_PATH=$APP_PATH" >> "$GITHUB_ENV"
 
+      # Excecao deliberada ao "build so no nivel 1": o projeto Xcode so pode ser gerado numa
+      # maquina com Xcode (macOS), que so existe aqui no nivel 4f.
+      - name: Salvar projeto Xcode como artefato (Safari)
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: extension-build-safari
+          path: |
+            .safari-build
+            !.safari-build/DerivedData
+          retention-days: 1
+
       # Chave nova e isolada (nao reutiliza chrome-for-testing-*/firefox-releases-*); npx playwright
       # install ja e idempotente/rapido num cache-hit, sem precisar de skip condicional aqui.
       - name: Cache do WebKit do Playwright
@@ -946,6 +971,18 @@ jobs:
           name: extension-build-firefox
           path: dist/extension-firefox/
 
+      - name: Baixar build da etapa de testes (Opera)
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          name: extension-build-opera
+          path: dist/extension-opera/
+
+      - name: Baixar build da etapa de testes (Safari)
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          name: extension-build-safari
+          path: dist/extension-safari/
+
       - name: Ler versão do manifesto
         id: version
         run: |
@@ -955,6 +992,8 @@ jobs:
         run: |
           (cd dist/extension-chrome && zip -qr "../../dist/quick-whatsapp-contact-v${{ steps.version.outputs.value }}-chrome.zip" .)
           (cd dist/extension-firefox && zip -qr "../../dist/quick-whatsapp-contact-v${{ steps.version.outputs.value }}-firefox.zip" .)
+          (cd dist/extension-opera && zip -qr "../../dist/quick-whatsapp-contact-v${{ steps.version.outputs.value }}-opera.zip" .)
+          (cd dist/extension-safari && zip -qr "../../dist/quick-whatsapp-contact-v${{ steps.version.outputs.value }}-safari.zip" .)
 
       - name: Publicar release no GitHub
         uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3
@@ -964,5 +1003,7 @@ jobs:
           files: |
             dist/quick-whatsapp-contact-v${{ steps.version.outputs.value }}-chrome.zip
             dist/quick-whatsapp-contact-v${{ steps.version.outputs.value }}-firefox.zip
+            dist/quick-whatsapp-contact-v${{ steps.version.outputs.value }}-opera.zip
+            dist/quick-whatsapp-contact-v${{ steps.version.outputs.value }}-safari.zip
           generate_release_notes: true
           make_latest: true

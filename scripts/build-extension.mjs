@@ -22,6 +22,9 @@ export function buildExtension({
   const outputRoot = resolve(root, "dist", "extension");
   const manifest = JSON.parse(fileSystem.readFileSync(resolve(root, "manifest.json"), "utf8"));
   const firefoxBuild = argv.includes("--firefox");
+  // Opera roda em engine Chromium e ignora as mesmas chaves que o Chrome; hoje o manifest e
+  // identico ao do Chrome. Flag existe apenas como ponto de extensao para o futuro.
+  const operaBuild = argv.includes("--opera");
 
   if (firefoxBuild) {
     // Firefox ignores background.service_worker and reports it as an AMO warning. The source
@@ -71,9 +74,10 @@ export function buildExtension({
     }
   }
 
+  const buildTarget = firefoxBuild ? "firefox" : operaBuild ? "opera" : "chrome";
   fileSystem.writeFileSync(
     resolve(root, "dist", "BUILD_INFO.txt"),
-    `Quick WhatsApp Contact ${manifest.version}\nTarget: ${firefoxBuild ? "firefox" : "chrome"}\nBuilt at ${now().toISOString()}\n`,
+    `Quick WhatsApp Contact ${manifest.version}\nTarget: ${buildTarget}\nBuilt at ${now().toISOString()}\n`,
     "utf8"
   );
 

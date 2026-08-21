@@ -6,6 +6,7 @@
   "scripts": {
     "build": "node scripts/build-extension.mjs",
     "build:firefox": "node scripts/build-extension.mjs --firefox",
+    "build:opera": "node scripts/build-extension.mjs --opera",
     "lint": "node scripts/check-source.mjs",
     "lint:comments": "node scripts/check-comment-length.mjs",
     "lint:sast": "eslint .",
