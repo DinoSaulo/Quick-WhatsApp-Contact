@@ -418,13 +418,23 @@ jobs:
           name: extension-build
           path: dist/extension/
 
+      # Mesmo padrão de retry do nível 4b (installation-test-pinned): 3 tentativas antes de
+      # falhar o job de fato, com diagnósticos de qualquer tentativa preservados abaixo.
       - name: Testar instalação e desinstalação no Chrome
-        run: npm run test:install
+        run: |
+          for attempt in 1 2 3; do
+            if npm run test:install; then
+              exit 0
+            fi
+            echo "Tentativa $attempt de 3 falhou." >&2
+            sleep 5
+          done
+          exit 1
 
-      # extension-install.mjs writes to ci-diagnostics/ and only deletes it on a genuine pass, so a
-      # failed run's evidence is still here to upload. if-no-files-found: ignore is the expected common case, not an error.
-      - name: Anexar diagnósticos do Chrome (em caso de falha)
-        if: failure()
+      # if: always(), não if: failure() (igual ao 4b) — com o retry acima, uma tentativa anterior
+      # que falhou perderia seus diagnósticos assim que uma tentativa posterior tiver sucesso.
+      - name: Anexar diagnósticos do Chrome (em caso de falha em qualquer tentativa)
+        if: always()
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: diagnosticos-chrome-${{ matrix.label }}
@@ -654,13 +664,23 @@ jobs:
           name: extension-build
           path: dist/extension/
 
+      # Mesmo padrão de retry do nível 4b (installation-test-pinned): 3 tentativas antes de
+      # falhar o job de fato, com diagnósticos de qualquer tentativa preservados abaixo.
       - name: Testar instalação e desinstalação no Firefox
-        run: npm run test:install:firefox
+        run: |
+          for attempt in 1 2 3; do
+            if npm run test:install:firefox; then
+              exit 0
+            fi
+            echo "Tentativa $attempt de 3 falhou." >&2
+            sleep 5
+          done
+          exit 1
 
-      # firefox-extension-install.mjs writes to ci-diagnostics/ only on its diagnostics-formatting
-      # (failure) path, so this is safe as if: failure() even without an explicit delete-on-success.
-      - name: Anexar diagnósticos do Firefox (em caso de falha)
-        if: failure()
+      # if: always() — com o retry acima, uma tentativa anterior que falhou (e escreveu
+      # diagnósticos) não pode perder essa evidência quando uma tentativa posterior tiver sucesso.
+      - name: Anexar diagnósticos do Firefox (em caso de falha em qualquer tentativa)
+        if: always()
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: diagnosticos-firefox-${{ matrix.label }}
@@ -751,12 +771,23 @@ jobs:
       - name: Verificar versão do Firefox baixado
         run: node scripts/verify-firefox-version.mjs "$(echo '${{ matrix.firefoxVersion }}' | cut -d. -f1)"
 
+      # Mesmo padrão de retry do nível 4b (installation-test-pinned): 3 tentativas antes de
+      # falhar o job de fato, com diagnósticos de qualquer tentativa preservados abaixo.
       - name: Testar instalação e desinstalação no Firefox
-        run: npm run test:install:firefox
+        run: |
+          for attempt in 1 2 3; do
+            if npm run test:install:firefox; then
+              exit 0
+            fi
+            echo "Tentativa $attempt de 3 falhou." >&2
+            sleep 5
+          done
+          exit 1
 
-      # Same reasoning as installation-test-firefox's equivalent step above.
-      - name: Anexar diagnósticos do Firefox (em caso de falha)
-        if: failure()
+      # if: always() — mesma razão do equivalente installation-test-firefox acima, agora que este
+      # step também tem retry.
+      - name: Anexar diagnósticos do Firefox (em caso de falha em qualquer tentativa)
+        if: always()
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: diagnosticos-firefox-${{ matrix.firefoxVersion }}
@@ -827,7 +858,16 @@ jobs:
       - name: Smoke test do motor WebKit via Playwright (nao e o Safari real)
         id: safari-install-test
         continue-on-error: true
-        run: npm run test:install:safari
+        # Mesmo retry de 3 tentativas dos demais níveis 4; continue-on-error acima trata o outcome final como best-effort.
+        run: |
+          for attempt in 1 2 3; do
+            if npm run test:install:safari; then
+              exit 0
+            fi
+            echo "Tentativa $attempt de 3 falhou." >&2
+            sleep 5
+          done
+          exit 1
 
       - name: Avisar sobre resultado best-effort do WebKit
         if: steps.safari-install-test.outcome == 'failure'
