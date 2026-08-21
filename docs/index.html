@@ -7,6 +7,7 @@
       name="description"
       content="Quick WhatsApp Contact helps you start WhatsApp conversations from phone numbers found on web pages."
     />
+    <link rel="icon" type="image/png" href="./icons/icon16.png" />
     <title>Quick WhatsApp Contact</title>
     <style>
       :root {
@@ -56,8 +57,11 @@
         text-align: center;
       }
       .mark {
-        font-size: 64px;
-        line-height: 1;
+        display: block;
+        width: 112px;
+        height: 112px;
+        margin: 0 auto;
+        object-fit: contain;
       }
       h1 {
         margin: 20px 0 12px;
@@ -81,6 +85,7 @@
         display: inline-flex;
         align-items: center;
         justify-content: center;
+        gap: 9px;
         min-height: 44px;
         padding: 10px 18px;
         border: 1px solid var(--accent);
@@ -88,6 +93,11 @@
         color: var(--accent);
         font-weight: 650;
         text-decoration: none;
+      }
+      .button img {
+        width: 20px;
+        height: 20px;
+        flex: 0 0 auto;
       }
       .button.primary {
         background: var(--accent);
@@ -103,6 +113,16 @@
         background: var(--accent-hover);
         color: #fff;
       }
+      .button:disabled {
+        border-color: var(--border);
+        background: transparent;
+        color: var(--muted);
+        cursor: not-allowed;
+        opacity: 0.68;
+      }
+      .button:disabled img {
+        filter: grayscale(1);
+      }
       footer {
         margin-top: 36px;
         color: var(--muted);
@@ -115,7 +135,12 @@
   </head>
   <body>
     <main>
-      <div class="mark" aria-hidden="true">💬</div>
+      <img
+        class="mark"
+        src="./icons/logo-generated-512.png"
+        alt=""
+        aria-hidden="true"
+      />
       <h1>Quick WhatsApp Contact</h1>
       <p class="summary">
         Start WhatsApp conversations quickly from phone numbers found on any web page—without
@@ -128,13 +153,51 @@
           href="https://chromewebstore.google.com/detail/quick-whatsapp-contact/eplpemmogghafabofbbopdilpjnlolpk"
           rel="noopener noreferrer"
         >
-          Install from Chrome Web Store
+          <img
+            src="https://cdn.simpleicons.org/googlechrome/white"
+            alt=""
+            aria-hidden="true"
+          />
+          Install from Chrome
         </a>
+        <a
+          class="button"
+          href="https://addons.mozilla.org/en-US/firefox/addon/quick-whatsapp-contact/"
+          rel="noopener noreferrer"
+        >
+          <img
+            src="https://cdn.simpleicons.org/firefoxbrowser/FF7139"
+            alt=""
+            aria-hidden="true"
+          />
+          Install for Firefox
+        </a>
+        <a
+          class="button"
+          href="https://github.com/DinoSaulo/Quick-WhatsApp-Contact/releases"
+          rel="noopener noreferrer"
+        >
+          <img
+            src="https://cdn.simpleicons.org/safari/006CFF"
+            alt=""
+            aria-hidden="true"
+          />
+          Install for Safari
+        </a>
+        <button class="button" type="button" disabled aria-label="Opera: Waiting review">
+          <img
+            src="https://cdn.simpleicons.org/opera/FF1B2D"
+            alt=""
+            aria-hidden="true"
+          />
+          Install for Opera (Waiting review)
+        </button>
         <a
           class="button"
           href="https://github.com/DinoSaulo/Quick-WhatsApp-Contact"
           rel="noopener noreferrer"
         >
+          <img src="https://cdn.simpleicons.org/github" alt="" aria-hidden="true" />
           View source on GitHub
         </a>
       </nav>
