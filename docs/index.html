@@ -18,6 +18,7 @@
         --muted: #5f6f5f;
         --accent: #1f8f55;
         --accent-hover: #177345;
+        --surface-strong: #f1eadb;
         --border: #d8ccb1;
         --shadow: rgb(31 42 31 / 12%);
       }
@@ -29,6 +30,7 @@
           --muted: #b3c0cb;
           --accent: #2ecc71;
           --accent-hover: #55d98d;
+          --surface-strong: #26313b;
           --border: #3a4756;
           --shadow: rgb(0 0 0 / 30%);
         }
@@ -123,6 +125,169 @@
       .button:disabled img {
         filter: grayscale(1);
       }
+      .donation-widget {
+        position: fixed;
+        right: clamp(12px, 3vw, 20px);
+        bottom: clamp(12px, 3vh, 20px);
+        z-index: 20;
+      }
+      .donation-widget > .donation-trigger {
+        min-height: auto;
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        padding: 10px 16px;
+        background: var(--surface);
+        color: var(--text);
+        font-size: 13px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: transform 120ms ease, background 120ms ease;
+      }
+      .donation-widget > .donation-trigger:hover,
+      .donation-widget > .donation-trigger:focus-visible {
+        border-color: var(--border);
+        background: var(--surface-strong);
+        color: var(--text);
+        transform: translateY(-1px);
+      }
+      .donation-dialog {
+        width: min(90vw, 420px);
+        max-height: min(85vh, 640px);
+        border: 1px solid var(--border);
+        border-radius: 20px;
+        padding: 20px;
+        background: var(--surface);
+        color: var(--text);
+        box-shadow: 0 18px 50px var(--shadow);
+        font-family: inherit;
+      }
+      .donation-dialog::backdrop {
+        background: rgb(0 0 0 / 45%);
+      }
+      .donation-dialog__header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 12px;
+      }
+      .donation-dialog__title {
+        margin: 0;
+        font-size: 20px;
+      }
+      .donation-dialog__close {
+        width: 28px;
+        height: 28px;
+        flex: none;
+        border: none;
+        border-radius: 999px;
+        background: var(--surface-strong);
+        color: var(--text);
+        font-size: 14px;
+        line-height: 1;
+        cursor: pointer;
+      }
+      .donation-dialog__description {
+        margin: 10px 0 16px;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.5;
+      }
+      .donation-tabs {
+        display: flex;
+        gap: 6px;
+        margin-bottom: 16px;
+        border-bottom: 1px solid var(--border);
+      }
+      .donation-tabs__tab {
+        flex: 1;
+        border: none;
+        border-bottom: 2px solid transparent;
+        padding: 8px 4px 10px;
+        background: transparent;
+        color: var(--muted);
+        font-size: 13px;
+        font-weight: 700;
+        cursor: pointer;
+      }
+      .donation-tabs__tab[aria-selected="true"] {
+        border-bottom-color: var(--accent);
+        color: var(--accent);
+      }
+      .donation-panel {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+        text-align: center;
+      }
+      .donation-panel[hidden] {
+        display: none !important;
+      }
+      .donation-panel__qr {
+        width: 180px;
+        height: 180px;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 8px;
+        background: #fff;
+      }
+      .donation-panel__copy-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        width: 100%;
+      }
+      .donation-panel__value {
+        width: 100%;
+        min-width: 0;
+        flex: 1;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 8px 10px;
+        background: var(--bg);
+        color: var(--text);
+        font-family: inherit;
+        font-size: 11px;
+        text-align: left;
+        cursor: text;
+      }
+      .donation-panel__value:focus {
+        border-color: var(--accent);
+        outline: none;
+      }
+      .donation-copy-button {
+        flex: none;
+        border: none;
+        border-radius: 999px;
+        padding: 8px 12px;
+        background: var(--surface-strong);
+        color: var(--text);
+        font-size: 12px;
+        font-weight: 700;
+        cursor: pointer;
+      }
+      .donation-panel__link {
+        color: var(--accent);
+        font-size: 13px;
+        font-weight: 700;
+        text-underline-offset: 2px;
+      }
+      .donation-panel__link:hover,
+      .donation-panel__link:focus-visible {
+        color: var(--accent-hover);
+      }
+      .donation-panel__feedback {
+        min-height: 16px;
+        margin: 0;
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .donation-panel__feedback[data-state="success"] {
+        color: var(--accent);
+      }
+      .donation-panel__feedback[data-state="error"] {
+        color: #b42318;
+      }
       footer {
         margin-top: 36px;
         color: var(--muted);
@@ -206,5 +371,234 @@
         <a href="./privacy.html">Privacy Policy</a>
       </footer>
     </main>
+
+    <div class="donation-widget">
+      <button class="button donation-trigger" id="donation-trigger" type="button">
+        ☕ Buy me a coffee
+      </button>
+      <dialog class="donation-dialog" id="donation-dialog">
+        <div class="donation-dialog__header">
+          <h2 class="donation-dialog__title">Support this project</h2>
+          <button
+            class="donation-dialog__close"
+            id="donation-close"
+            type="button"
+            aria-label="Close"
+          >
+            ✕
+          </button>
+        </div>
+        <p class="donation-dialog__description">
+          Quick WhatsApp Contact is free and open source. If it saved you time, a small tip is
+          always welcome.
+        </p>
+        <div class="donation-tabs" role="tablist" aria-label="Donation method">
+          <button
+            class="donation-tabs__tab"
+            type="button"
+            role="tab"
+            id="donation-tab-pix"
+            aria-controls="donation-panel-pix"
+            aria-selected="true"
+            data-method-id="pix"
+          >
+            PIX
+          </button>
+          <button
+            class="donation-tabs__tab"
+            type="button"
+            role="tab"
+            id="donation-tab-mbway"
+            aria-controls="donation-panel-mbway"
+            aria-selected="false"
+            data-method-id="mbway"
+          >
+            MB WAY
+          </button>
+          <button
+            class="donation-tabs__tab"
+            type="button"
+            role="tab"
+            id="donation-tab-paypal"
+            aria-controls="donation-panel-paypal"
+            aria-selected="false"
+            data-method-id="paypal"
+          >
+            PayPal
+          </button>
+        </div>
+        <div class="donation-panels">
+          <div
+            class="donation-panel"
+            role="tabpanel"
+            id="donation-panel-pix"
+            aria-labelledby="donation-tab-pix"
+            data-method-panel="pix"
+          >
+            <img
+              class="donation-panel__qr"
+              src="./assets/donation-qrcodes/pix.svg"
+              alt="QR code to donate via PIX"
+              width="180"
+              height="180"
+            />
+            <div class="donation-panel__copy-row">
+              <input
+                class="donation-panel__value"
+                type="text"
+                value="00020126660014BR.GOV.BCB.PIX0111099202954690229Gostei muito da sua extensão!52040000530398654041.005802BR5925Saulo Alexandre de Barros6009SAO PAULO62140510iBwtttNTEr6304BE5A"
+                readonly
+                aria-label="PIX"
+                data-value-input="pix"
+              />
+              <button class="donation-copy-button" type="button" data-copy-method="pix">
+                Copy
+              </button>
+            </div>
+            <a
+              class="donation-panel__link"
+              href="https://nubank.com.br/cobrar/525f3/6a7c8dcb-ae41-452d-919c-418fbe5e3bcb"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Open ↗
+            </a>
+            <p class="donation-panel__feedback" data-copy-feedback="pix" aria-live="polite"></p>
+          </div>
+          <div
+            class="donation-panel"
+            role="tabpanel"
+            id="donation-panel-mbway"
+            aria-labelledby="donation-tab-mbway"
+            data-method-panel="mbway"
+            hidden
+          >
+            <img
+              class="donation-panel__qr"
+              src="./assets/donation-qrcodes/mbway.png"
+              alt="QR code to donate via MB WAY"
+              width="180"
+              height="180"
+            />
+            <div class="donation-panel__copy-row">
+              <input
+                class="donation-panel__value"
+                type="text"
+                value="https://revolut.me/saulo_barros?currency=EUR&amp;amount=100"
+                readonly
+                aria-label="MB WAY"
+                data-value-input="mbway"
+              />
+              <button class="donation-copy-button" type="button" data-copy-method="mbway">
+                Copy
+              </button>
+            </div>
+            <a
+              class="donation-panel__link"
+              href="https://revolut.me/saulo_barros?currency=EUR&amp;amount=100"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Open ↗
+            </a>
+            <p
+              class="donation-panel__feedback"
+              data-copy-feedback="mbway"
+              aria-live="polite"
+            ></p>
+          </div>
+          <div
+            class="donation-panel"
+            role="tabpanel"
+            id="donation-panel-paypal"
+            aria-labelledby="donation-tab-paypal"
+            data-method-panel="paypal"
+            hidden
+          >
+            <img
+              class="donation-panel__qr"
+              src="./assets/donation-qrcodes/paypal.png"
+              alt="QR code to donate via PayPal"
+              width="180"
+              height="180"
+            />
+            <div class="donation-panel__copy-row">
+              <input
+                class="donation-panel__value"
+                type="text"
+                value="saulbpt@gmail.com"
+                readonly
+                aria-label="PayPal"
+                data-value-input="paypal"
+              />
+              <button class="donation-copy-button" type="button" data-copy-method="paypal">
+                Copy
+              </button>
+            </div>
+            <p
+              class="donation-panel__feedback"
+              data-copy-feedback="paypal"
+              aria-live="polite"
+            ></p>
+          </div>
+        </div>
+      </dialog>
+    </div>
+    <script>
+      const donationDialog = document.querySelector("#donation-dialog");
+      const donationTrigger = document.querySelector("#donation-trigger");
+      const donationClose = document.querySelector("#donation-close");
+
+      donationTrigger.addEventListener("click", () => donationDialog.showModal());
+      donationClose.addEventListener("click", () => donationDialog.close());
+      donationDialog.addEventListener("click", (event) => {
+        if (event.target === donationDialog) {
+          donationDialog.close();
+        }
+      });
+
+      document.querySelectorAll("[data-value-input]").forEach((input) => {
+        input.addEventListener("click", () => input.select());
+      });
+
+      document.querySelectorAll("[data-method-id]").forEach((tabButton) => {
+        tabButton.addEventListener("click", () => {
+          const methodId = tabButton.dataset.methodId;
+          document.querySelectorAll("[data-method-id]").forEach((otherTab) => {
+            otherTab.setAttribute("aria-selected", String(otherTab === tabButton));
+          });
+          document.querySelectorAll("[data-method-panel]").forEach((panel) => {
+            panel.hidden = panel.dataset.methodPanel !== methodId;
+          });
+        });
+      });
+
+      document.querySelectorAll("[data-copy-method]").forEach((copyButton) => {
+        copyButton.addEventListener("click", async () => {
+          const methodId = copyButton.dataset.copyMethod;
+          const input = Array.from(document.querySelectorAll("[data-value-input]")).find(
+            (candidate) => candidate.dataset.valueInput === methodId,
+          );
+          const feedback = Array.from(document.querySelectorAll("[data-copy-feedback]")).find(
+            (candidate) => candidate.dataset.copyFeedback === methodId,
+          );
+
+          try {
+            await navigator.clipboard.writeText(input.value);
+            feedback.textContent = "Copied!";
+            feedback.dataset.state = "success";
+          } catch {
+            feedback.textContent =
+              "Could not copy automatically. Select the text and copy it manually.";
+            feedback.dataset.state = "error";
+          }
+
+          window.setTimeout(() => {
+            feedback.textContent = "";
+            delete feedback.dataset.state;
+          }, 2000);
+        });
+      });
+    </script>
   </body>
 </html>
