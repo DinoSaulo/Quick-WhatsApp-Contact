@@ -126,7 +126,12 @@ describe("GitHub Actions cross-platform runtime integration", () => {
   it("connects the workflow step to the real browser lifecycle runner", () => {
     const installation = jobSource("installation-test-chrome", "resolve-chrome-versions");
 
-    expect(installation).toContain("run: npm run test:install");
+    // Wrapped in a retry loop (rare native Chrome crash, see ci.yml) rather than a plain
+    // "run: npm run test:install" — must still invoke the real script.
+    expect(installation).toContain("run: |");
+    expect(installation).toContain("npm run test:install");
+    expect(installation).toMatch(/for attempt in .+; do/);
+    expect(installation).toContain("exit 1");
     expect(packageJson.scripts["test:install"]).toBe(
       "npm run build && node tests/installation/extension-install.mjs",
     );
@@ -196,7 +201,11 @@ describe("GitHub Actions cross-platform runtime integration", () => {
 
     expect(pinnedJob).toContain("needs: [security-tests, resolve-firefox-versions, installation-test-firefox]");
     expect(pinnedJob).toContain("fromJson(needs.resolve-firefox-versions.outputs.versions)");
-    expect(pinnedJob).toContain("run: npm run test:install:firefox");
+    // Same retry-loop wrapping as installation-test-pinned's Chrome equivalent above.
+    expect(pinnedJob).toContain("run: |");
+    expect(pinnedJob).toContain("npm run test:install:firefox");
+    expect(pinnedJob).toMatch(/for attempt in .+; do/);
+    expect(pinnedJob).toContain("exit 1");
     expect(pinnedJob).toContain("scripts/install-firefox-version.mjs");
     expect(pinnedJob).toContain("scripts/verify-firefox-version.mjs");
     expect(pinnedJob).toContain("path: .firefox-releases/${{ matrix.firefoxVersion }}");
