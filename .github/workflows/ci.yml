@@ -172,7 +172,7 @@ jobs:
 
       - name: Anexar relatório JUnit
         if: always()
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: relatorio-unitarios-${{ matrix.label }}
           path: reports/unit.xml
@@ -185,7 +185,7 @@ jobs:
 
       - name: Salvar build como artefato (Chrome)
         if: matrix.label == 'Ubuntu'
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: extension-build
           path: dist/extension/
@@ -199,7 +199,7 @@ jobs:
 
       - name: Salvar build como artefato (Firefox)
         if: matrix.label == 'Ubuntu'
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: extension-build-firefox
           path: dist/extension/
@@ -213,7 +213,7 @@ jobs:
 
       - name: Salvar build como artefato (Opera)
         if: matrix.label == 'Ubuntu'
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: extension-build-opera
           path: dist/extension/
@@ -279,7 +279,7 @@ jobs:
 
       - name: Anexar relatório JUnit
         if: always()
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: relatorio-integracao-${{ matrix.label }}
           path: reports/integration.xml
@@ -337,7 +337,7 @@ jobs:
 
       - name: Anexar relatório JUnit
         if: always()
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: relatorio-seguranca
           path: reports/security.xml
@@ -450,7 +450,7 @@ jobs:
       # que falhou perderia seus diagnósticos assim que uma tentativa posterior tiver sucesso.
       - name: Anexar diagnósticos do Chrome (em caso de falha em qualquer tentativa)
         if: always()
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: diagnosticos-chrome-${{ matrix.label }}
           path: ci-diagnostics/
@@ -593,7 +593,7 @@ jobs:
       # means an EARLIER failed attempt's diagnostics would otherwise go missing once a LATER attempt succeeds and the step reports success.
       - name: Anexar diagnósticos do Chrome (em caso de falha em qualquer tentativa)
         if: always()
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: diagnosticos-chrome-${{ matrix.chromeVersion }}
           path: ci-diagnostics/
@@ -697,7 +697,7 @@ jobs:
       # diagnósticos) não pode perder essa evidência quando uma tentativa posterior tiver sucesso.
       - name: Anexar diagnósticos do Firefox (em caso de falha em qualquer tentativa)
         if: always()
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: diagnosticos-firefox-${{ matrix.label }}
           path: ci-diagnostics/
@@ -804,7 +804,7 @@ jobs:
       # step também tem retry.
       - name: Anexar diagnósticos do Firefox (em caso de falha em qualquer tentativa)
         if: always()
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: diagnosticos-firefox-${{ matrix.firefoxVersion }}
           path: ci-diagnostics/
@@ -861,7 +861,7 @@ jobs:
       # Excecao deliberada ao "build so no nivel 1": o projeto Xcode so pode ser gerado numa
       # maquina com Xcode (macOS), que so existe aqui no nivel 4f.
       - name: Salvar projeto Xcode como artefato (Safari)
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         # upload-artifact ignora paths com prefixo "." por padrão desde set/2024; sem esta flag
         # o artefato nunca e criado, mesmo sem erro visivel no job.
         with:
@@ -907,7 +907,7 @@ jobs:
       # "success" even on a real failure); the explicit outcome check below covers that gap.
       - name: Anexar diagnósticos do Safari (em caso de falha)
         if: failure() || steps.safari-install-test.outcome == 'failure'
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: diagnosticos-safari
           path: ci-diagnostics/
